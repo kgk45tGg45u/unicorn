@@ -1,0 +1,2 @@
+class TradeUnion < ApplicationRecord
+end
