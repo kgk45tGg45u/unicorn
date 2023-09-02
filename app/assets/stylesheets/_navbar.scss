@@ -1,16 +1,18 @@
+.navbartop {
+  width: 100%;
+}
+
 .flexbox {
   display: flex;
   align-items: center;
   background-color: #900C3F;
-  padding: 10px;
+  padding: 0px;
+  opacity: 0.7;
+  box-shadow: 2px 4px 10px rgb(187, 187, 187);
 }
 
 .item {
   flex-grow: 1;
   color: white;
-}
-
-.navbartop {
-  width: 90%;
-  margin: 0 auto;
+  padding: 5px;
 }
