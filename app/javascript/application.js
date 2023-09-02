@@ -2,5 +2,5 @@
 import "@hotwired/turbo-rails"
 import "controllers"
 
-= require popper
-= require bootstrap-sprockets
+import "popper"
+import "bootstrap-sprockets"
