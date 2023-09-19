@@ -1,24 +1,7 @@
-# README
+# Unicorn 1.0
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+Unicorn is a comprehensive platform to calculate working hours and wage according to Theory of Labor Value
 
-Things you may want to cover:
+The app is just starting to be developed. Shout out if you are interested in working with me bringing this project to life.
 
-* Ruby version
-
-* System dependencies
-
-* Configuration
-
-* Database creation
-
-* Database initialization
-
-* How to run the test suite
-
-* Services (job queues, cache servers, search engines, etc.)
-
-* Deployment instructions
-
-* ...
+Telegram: @bijan_s
