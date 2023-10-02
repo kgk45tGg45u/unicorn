@@ -1,0 +1,2 @@
+class Fundone < ApplicationRecord
+end

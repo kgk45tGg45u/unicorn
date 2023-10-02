@@ -1,0 +1,2 @@
+class Fundtwo < ApplicationRecord
+end
