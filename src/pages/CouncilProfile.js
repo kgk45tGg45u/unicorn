@@ -146,6 +146,7 @@ export const CouncilProfile = () => {
                       <td><strong>{unitData.GetUnitByUserId[0].name}</strong></td>
                       <td>Unit profile</td>
                     </tr>
+                    
                     {/* <tr>
                       <td>Union:</td>
                       <td><strong>{unionData.GetUnion ? unionData.GetUnion[0].name : <p>Register union</p>}</strong></td>
