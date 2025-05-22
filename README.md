@@ -4,6 +4,10 @@ Unicorn is an application that implements a calculation method on the basis of l
 
 Unicorn is planned to bring all the economic transactions of the society in one place and decentralizing it with the help of a ticketing system that is available to all. The guideline for the workflow is in writing and will be published soon.
 
+## Link to Figma
+
+[FIGMA](https://www.figma.com/design/VSmk926ar0bdpL1C3Tgy3o/Unicorn?m=auto&t=cyRQBabdPoznvv3E-1)
+
 ## Using the Repository
 
 The repository contains the backend (Node.js) and frontend (React) files. Backend files are located in folder "node-postgres" To reproduce the data, copy the folders to respective servers and build with your favorite building library (i.e. npm install, npm build).
