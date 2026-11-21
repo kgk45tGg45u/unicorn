@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Django
+/staticfiles/
+/private_media/
+/media/
+*.sqlite3
+
+# Secrets and local settings (never commit)
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

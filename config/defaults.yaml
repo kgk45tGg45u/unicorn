@@ -1,0 +1,256 @@
+# Unicorn: the democratic defaults (docs/01_hard_frame_and_defaults.md)
+#
+# Every leaf is a mapping with:
+#   value    the default
+#   type     decimal | int | bool | choice | text | list
+#   min/max  hard bounds (decimal, int). Crossing them is a hard-frame change.
+#   choices  allowed values (choice). Adding a choice is a hard-frame change.
+#   tier     who may change it: unit | confirm | plan | referendum | hard   (docs/01, section 3)
+#   source   sim = the simulation's most successful world (docs/02, section 3) | book p.N | owner YYYY-MM-DD | legal | proposal
+#   help     one plain sentence shown to members
+#
+# Dotted keys come from the nesting: economy.flat_tax.method.
+# `python manage.py load_defaults` copies this file into rules.Parameter (it never overwrites values members have changed).
+# The coding agent must not change values here (CLAUDE.md, section 2).
+
+economy:
+  uniq_per_hour: {value: 1, type: decimal, min: 1, max: 1, tier: hard, source: "book p.39; HF-2", help: "One approved hour of work pays this many UNIQ before tax, for everyone."}
+  flat_tax:
+    method: {value: balance_monthly, type: choice, choices: [balance_monthly, balance_yearly, fixed], tier: plan, source: "sim (plan.tax_balance); book p.88", help: "How the flat tax is set: balanced every month, balanced once a year, or fixed by the members."}
+    min: {value: 0.0, type: decimal, min: 0.0, max: 0.0, tier: hard, source: "HF-9", help: "The lowest possible flat tax."}
+    max: {value: 0.68, type: decimal, min: 0.68, max: 0.68, tier: hard, source: "owner 2026-10-14 (band 30-68%); HF-9", help: "The highest possible flat tax."}
+    fixed_rate: {value: 0.35, type: decimal, min: 0.30, max: 0.68, tier: plan, source: "owner 2026-10-14; docs/02 finding 6", help: "The rate used when the members fix the flat tax."}
+    start_rate: {value: 0.20, type: decimal, min: 0.0, max: 0.68, tier: plan, source: "sim (about 16-20% in the first years)", help: "The flat tax of the first month, before there is data to balance it."}
+  social_share_start: {value: 0.03, type: decimal, min: 0.0, max: 0.5, tier: plan, source: "sim (tools_first_early_benefits)", help: "Share of all hours for free social services and coordination at the start."}
+  social_share_end: {value: 0.17, type: decimal, min: 0.0, max: 0.5, tier: plan, source: "sim", help: "Share reached when every member can live without a capitalist job."}
+  accumulation_share: {value: 0.02, type: decimal, min: 0.0, max: 0.5, tier: plan, source: "sim", help: "Share of all hours, paid by the flat tax, that builds Unicorn's own tools and workplaces."}
+  outside_sales_cap_share: {value: 0.53, type: decimal, min: 0.0, max: 0.9, tier: plan, source: "sim (export_cap)", help: "Largest share of all hours that may go to selling to outside customers."}
+  tools_from_outside_sales_share: {value: 0.5, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "sim (export_for_tools)", help: "Share of the planned tool purchases that extra outside sales should earn."}
+  activation_share: {value: 0.57, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "sim", help: "Share of new tools and workplaces that goes to opening new trades."}
+  euro_priority: {value: tools, type: choice, choices: [tools, goods], tier: plan, source: "sim; book p.84 (accumulation decided first)", help: "When euros are short, who keeps them first: Unicorn's planned tools, or the materials of members' goods."}
+  min_offer_share_when_euros_short: {value: 0.44, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "sim (min_offer)", help: "When euros are short, at least this share of members' usual purchases stays on offer (those needing the fewest euros)."}
+  tax_on_outside_sales_estimate: {value: 0.15, type: decimal, min: 0.0, max: 0.6, tier: confirm, source: "sim (world that passed all tests)", help: "Default share of an outside sale a seller keeps back for their own taxes; sellers may change theirs with a reason."}
+  issue_tolerance_share: {value: 0.2, type: decimal, min: 0.0, max: 1.0, tier: confirm, source: "proposal (book p.58 credit line)", help: "Paying more hours than the plan expected, by more than this share, opens a warning ticket."}
+  fund1_deficit_years: {value: 20, type: int, min: 0, max: 50, tier: referendum, source: "owner 2026-10-09", help: "Years during which unspent UNIQ may grow; afterwards the plan must shrink them or keep them within members' savings target."}
+  savings_target_months: {value: 6, type: decimal, min: 1, max: 24, tier: plan, source: "sim (members.savings.target_months)", help: "Months of their own spending that members usually want to keep as savings."}
+  products:
+    advance_share: {value: 0.10, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "sim (members_advance_share); owner 2026-11-21", help: "Share of expected orders a unit may make before the orders arrive."}
+    outside_advance_share: {value: 0.10, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "sim (outside_advance_share); owner 2026-11-21", help: "The same for products sold to outside customers."}
+    own_initiative_pay: {value: when_sold, type: choice, choices: [when_sold, when_approved], tier: referendum, source: "owner 2026-11-21 (mixed rule)", help: "Hours on products made beyond orders and the advance share are paid when the products sell. Paying them earlier risks hidden inflation."}
+    unsold_after_days: {value: 90, type: int, min: 7, max: 365, tier: confirm, source: "proposal", help: "Products made ahead that stay unsold this long are written off."}
+    cancel_rule: {value: free_until_batch_start, type: choice, choices: [free_until_batch_start, free_until_delivery], tier: confirm, source: "proposal", help: "Until when a member may cancel an order without paying."}
+  services:
+    pay_rule: {value: when_performed, type: choice, choices: [when_performed, planned_shifts, by_type], tier: plan, source: "owner 2026-11-21", help: "Service hours are paid only when performed; planned shifts or a rule by type of service can be chosen later."}
+    customer_confirm_hours: {value: 48, type: int, min: 12, max: 168, tier: confirm, source: "proposal", help: "Hours a customer has to confirm or dispute a performed service; silence counts as confirmed."}
+    no_show_paid: {value: false, type: bool, tier: plan, source: "proposal", help: "Whether a provider is paid when a customer does not come."}
+  retirement:
+    suggest_on_alarm: {value: true, type: bool, tier: plan, source: "proposal (sim moved savings automatically)", help: "While unspent UNIQ are too many, the app suggests moving savings above the target into the retirement account."}
+    suggest_share: {value: 0.5, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "sim (deposit_share)", help: "Share of savings above the target the app suggests moving."}
+    payout_months: {value: 240, type: int, min: 12, max: 480, tier: referendum, source: "sim", help: "Months over which a retirement account is paid back in equal parts."}
+    early_withdrawal_max_share_per_month: {value: 0.0833, type: decimal, min: 0.0, max: 1.0, tier: referendum, source: "proposal; book p.93", help: "Before pension age, at most this share of the retirement account can be taken out each month."}
+  pension:
+    enabled: {value: true, type: bool, tier: referendum, source: "owner 2026-11-21", help: "Members past pension age or unable to work get an equal pension in UNIQ, paid from the flat tax."}
+    qualifying_active_months: {value: 36, type: int, min: 0, max: 120, tier: referendum, source: "owner 2026-11-21 ('2 or 3 years')", help: "Active months in Unicorn needed before the pension is paid."}
+    active_month_min_hours: {value: 10, type: decimal, min: 0, max: 160, tier: referendum, source: "proposal", help: "Approved hours that make a month count as active (care and illness months also count)."}
+    share_of_median_net: {value: 0.6, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "proposal (not simulated)", help: "The pension as a share of the median monthly net UNIQ income of active members."}
+    age: {value: 67, type: int, min: 55, max: 75, tier: referendum, source: "legal (German statutory age); proposal", help: "Pension age for members in Germany."}
+  benefits:
+    distribution: {value: by_need, type: choice, choices: [by_need, equal], tier: plan, source: "sim", help: "How the fund pays members' basic euro bills: heaviest burden first, or the same for everyone."}
+    may_start: {value: anytime, type: choice, choices: [anytime, after_tools], tier: plan, source: "sim (benefit_start anytime)", help: "Whether bills may be paid before the planned tools are bought."}
+    min_attractiveness: {value: 1.15, type: decimal, min: 1.0, max: 3.0, tier: plan, source: "sim (benefit_min_attr)", help: "The benefit budget grows only while an hour in Unicorn buys at least this many hours of a typical capitalist job."}
+    adjust_months: {value: 6, type: int, min: 1, max: 24, tier: plan, source: "sim", help: "Months over which the benefit budget moves toward what the fund can sustain."}
+    cut_per_month_below_min_reserve: {value: 0.05, type: decimal, min: 0.0, max: 0.5, tier: plan, source: "sim", help: "Monthly cut of the benefit budget while the euro reserve is below its minimum."}
+    guarantee: {value: true, type: bool, tier: referendum, source: "sim (basic_guarantee); constitution draft rule 8", help: "Nobody is worse off on basic needs than without Unicorn: the fund tops them up."}
+    independent_costs_eur: {value: 250, type: decimal, min: 0, max: 2000, tier: confirm, source: "sim", help: "Typical monthly euro costs (health and care insurance) of a member without a capitalist job."}
+  shortage_bonus:
+    enabled: {value: false, type: bool, tier: referendum, source: "book p.76; HF-2", help: "A temporary extra per hour in one trade with a red shortage. Off unless a referendum switches it on."}
+    max_share: {value: 0.25, type: decimal, min: 0.0, max: 0.25, tier: hard, source: "HF-2", help: "The largest possible bonus per hour."}
+    max_months: {value: 3, type: int, min: 1, max: 3, tier: hard, source: "HF-2", help: "The longest a bonus can last per decision."}
+  planning_rate:
+    method: {value: measured_outside_sales, type: choice, choices: [measured_outside_sales, fixed], tier: plan, source: "book p.154; proposal", help: "How the planning rate is found: euros earned per hour of outside sales, or a fixed number. Only for comparing, never an exchange."}
+    fallback_eur_per_hour: {value: 17.35, type: decimal, min: 1, max: 200, tier: plan, source: "sim (average German net wage)", help: "Euros per hour used until outside sales have been measured."}
+    measure_months: {value: 12, type: int, min: 1, max: 36, tier: confirm, source: "proposal", help: "Months of outside sales used to measure the planning rate."}
+
+alarms:
+  unspent_uniq_amber_months: {value: 6, type: decimal, min: 1, max: 24, tier: plan, source: "sim (savings target)", help: "Unspent UNIQ above this many months of spending turn the light amber."}
+  unspent_uniq_red_multiple: {value: 2.0, type: decimal, min: 1.0, max: 10.0, tier: plan, source: "sim (alarms.uniq_red)", help: "Red at this multiple of the amber level."}
+  shelves_amber: {value: 0.95, type: decimal, min: 0.5, max: 1.0, tier: plan, source: "sim", help: "Amber when members get less than this share of what they order in time."}
+  shelves_red: {value: 0.80, type: decimal, min: 0.3, max: 1.0, tier: plan, source: "sim", help: "Red below this share."}
+  unsold_amber: {value: 0.10, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "sim results (10% costs little)", help: "Amber when more than this share of products made ahead is written off."}
+  unsold_red: {value: 0.30, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "sim results (30% delays independence a decade)", help: "Red above this share."}
+  euro_reserve_amber_months: {value: 5.4, type: decimal, min: 0, max: 24, tier: plan, source: "sim (reserve_months)", help: "Amber when the trade fund holds fewer months of outgoings."}
+  euro_reserve_red_months: {value: 2, type: decimal, min: 0, max: 24, tier: plan, source: "sim (reserve_min_months)", help: "Red below this."}
+  idle_shifts_amber: {value: 0.10, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "proposal", help: "With paid shifts: amber when more than this share of shift time had no customers."}
+  idle_shifts_red: {value: 0.30, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "proposal", help: "Red above this share."}
+  street_price_enabled: {value: false, type: bool, tier: plan, source: "sim (basis still open, docs/12)", help: "Show the street-price light once members decide what it is based on."}
+
+membership:
+  founders_target: {value: 25, type: int, min: 3, max: 1000, tier: referendum, source: "owner 2026-10-09", help: "Number of founders who start the trial year."}
+  trial_months: {value: 12, type: int, min: 0, max: 24, tier: referendum, source: "owner 2026-10-09", help: "Months after launch during which nobody new joins."}
+  joining_rule: {value: open, type: choice, choices: [open, managed], tier: referendum, source: "sim (open door)", help: "Open: everyone who passes the identity check may join. Managed: admitted as fast as Unicorn can absorb them."}
+  min_age: {value: 18, type: int, min: 18, max: 18, tier: hard, source: "legal (contracts)", help: "Minimum age of members."}
+  vouches_needed: {value: 2, type: int, min: 1, max: 5, tier: referendum, source: "proposal (real-world file 3)", help: "Verified members who must vouch for a new member."}
+  in_person_check: {value: true, type: bool, tier: referendum, source: "proposal (real-world file 3)", help: "A new member is also seen once in person by an identity helper."}
+  vouches_per_voucher_per_month: {value: 5, type: int, min: 1, max: 50, tier: confirm, source: "proposal", help: "How many people one member may vouch for each month."}
+  max_unicorn_hours_per_week: {value: 48, type: decimal, min: 10, max: 70, tier: referendum, source: "proposal (health; EU working-time directive)", help: "Most Unicorn hours a member may record in a week without a special council decision."}
+  benefits_warning_hours_per_week: {value: 15, type: decimal, min: 1, max: 40, tier: confirm, source: "legal (file 4, section 4)", help: "Members on means-tested benefits are warned when they pass this many hours a week."}
+
+governance:
+  confirmers:
+    size: {value: 4, type: int, min: 3, max: 12, tier: referendum, source: "owner 2026-11-21", help: "Random members drawn to confirm an action."}
+    rule: {value: all_yes, type: choice, choices: [all_yes, all_but_one, majority], tier: referendum, source: "owner 2026-11-21", help: "All confirmers must say yes; any no goes to a panel."}
+    deadline_hours: {value: 72, type: int, min: 24, max: 336, tier: confirm, source: "proposal", help: "Time each confirmer has to answer."}
+    max_replacements: {value: 2, type: int, min: 0, max: 5, tier: confirm, source: "proposal", help: "How often a silent seat is drawn again before the matter goes to a panel."}
+    min_member_months: {value: 3, type: int, min: 0, max: 24, tier: referendum, source: "proposal", help: "Months of membership before a member can be drawn (founders exempt in the first year)."}
+    max_draws_per_month: {value: 4, type: int, min: 1, max: 30, tier: confirm, source: "proposal", help: "Most times one member is drawn in a month."}
+    break_months_per_year: {value: 3, type: int, min: 0, max: 12, tier: confirm, source: "proposal", help: "Months a year a member may pause being drawn."}
+    review_minutes: {value: 30, type: int, min: 0, max: 120, tier: plan, source: "proposal (book p.140: council work is paid)", help: "Paid minutes for each confirmer who answers."}
+  panel:
+    size: {value: 12, type: int, min: 5, max: 50, tier: referendum, source: "owner 2026-11-21", help: "Random members drawn after a 'no'."}
+    majority: {value: 7, type: int, min: 3, max: 50, tier: referendum, source: "owner 2026-11-21 (majority)", help: "Yes votes the panel needs to approve."}
+    deadline_hours: {value: 120, type: int, min: 24, max: 336, tier: confirm, source: "proposal", help: "Time the panel has."}
+    review_minutes: {value: 45, type: int, min: 0, max: 240, tier: plan, source: "proposal", help: "Paid minutes for each panel member who answers."}
+  petition:
+    share: {value: 0.02, type: decimal, min: 0.001, max: 0.2, tier: referendum, source: "proposal", help: "Share of active members whose signatures force a referendum."}
+    min_signatures: {value: 5, type: int, min: 1, max: 1000, tier: referendum, source: "proposal", help: "At least this many signatures in any case."}
+    days: {value: 14, type: int, min: 3, max: 60, tier: referendum, source: "proposal", help: "Days to collect signatures."}
+  referendum:
+    days: {value: 14, type: int, min: 7, max: 60, tier: referendum, source: "proposal", help: "Days a referendum is open."}
+    quorum: {value: 0.20, type: decimal, min: 0.05, max: 0.75, tier: referendum, source: "proposal", help: "Share of active members who must vote for the result to count."}
+    majority: {value: simple, type: choice, choices: [simple, two_thirds], tier: referendum, source: "proposal", help: "Majority needed in an ordinary referendum."}
+  hard_frame_change:
+    days: {value: 21, type: int, min: 21, max: 21, tier: hard, source: "proposal; docs/01 section 4", help: "Days a vote on the hard frame is open."}
+    quorum: {value: 0.25, type: decimal, min: 0.25, max: 0.25, tier: hard, source: "proposal", help: "Turnout needed to change the hard frame."}
+    majority: {value: two_thirds, type: choice, choices: [two_thirds], tier: hard, source: "proposal", help: "Majority needed to change the hard frame."}
+  mediation:
+    mediators: {value: 3, type: int, min: 1, max: 7, tier: confirm, source: "proposal (book p.70)", help: "Mediators drawn from volunteers for a mediation ticket."}
+    days: {value: 14, type: int, min: 3, max: 60, tier: confirm, source: "proposal", help: "Days the mediators have to find an agreement."}
+  flags:
+    hide_after_flags: {value: 3, type: int, min: 1, max: 20, tier: confirm, source: "proposal (DSA notice and action)", help: "Flags from different members that hide content until the review."}
+  delegation:
+    volunteer_days: {value: 7, type: int, min: 1, max: 30, tier: confirm, source: "proposal", help: "Days volunteers can apply to carry out a decision."}
+    max_mandate_days: {value: 90, type: int, min: 1, max: 365, tier: referendum, source: "proposal", help: "Longest a mandate for one decision can last."}
+  tasks:
+    claim_timeout_days: {value: 7, type: int, min: 1, max: 60, tier: confirm, source: "proposal", help: "A claimed task not done in this time is free again."}
+  council:
+    decision_rule: {value: majority, type: choice, choices: [consensus, majority, two_thirds], tier: unit, source: "proposal (book p.139)", help: "Default decision rule of a new working council."}
+    quorum: {value: 0.5, type: decimal, min: 0.0, max: 1.0, tier: unit, source: "proposal", help: "Share of the council that must take part in a decision."}
+    vote_days: {value: 3, type: int, min: 1, max: 30, tier: unit, source: "proposal", help: "Days a council decision stays open."}
+    rotation_months: {value: 6, type: int, min: 1, max: 36, tier: unit, source: "proposal (book p.139: rotation)", help: "How often the council's responsible changes."}
+    hours_approval: {value: any_other_member, type: choice, choices: [any_other_member, two_members, responsible_or_other], tier: unit, source: "proposal", help: "Who approves a worker's hours. Never the worker alone."}
+    admission: {value: council_approves, type: choice, choices: [open, council_approves], tier: unit, source: "proposal", help: "How new workers join a unit."}
+  one_person_units:
+    sample_share_per_month: {value: 0.10, type: decimal, min: 0.0, max: 1.0, tier: confirm, source: "proposal", help: "Share of one-person units whose hours a random member checks each month."}
+    check_minutes: {value: 15, type: int, min: 0, max: 120, tier: plan, source: "proposal", help: "Paid minutes for that check."}
+  plausibility:
+    deviation: {value: 0.30, type: decimal, min: 0.05, max: 2.0, tier: confirm, source: "proposal", help: "Gap between paid hours and the hours the output should need that opens a review."}
+    months: {value: 2, type: int, min: 1, max: 12, tier: confirm, source: "proposal", help: "Months in a row the gap must last."}
+  units:
+    trial_months: {value: 3, type: int, min: 0, max: 24, tier: confirm, source: "proposal", help: "A new unit's trial time."}
+    post_check_days: {value: 14, type: int, min: 1, max: 60, tier: confirm, source: "proposal", help: "Days random confirmers have to review a unit opened with an amber check."}
+    dormant_after_months: {value: 6, type: int, min: 1, max: 36, tier: confirm, source: "proposal", help: "A unit without activity this long becomes dormant."}
+    join_forces_value_gap: {value: 0.30, type: decimal, min: 0.05, max: 5.0, tier: confirm, source: "owner 2026-11-21 (join forces); proposal", help: "Two units making the same item get a 'join forces' suggestion when one needs this much more time."}
+    join_forces_km: {value: 50, type: decimal, min: 1, max: 1000, tier: confirm, source: "proposal", help: "Only units this close get that suggestion."}
+  ticket_limits:
+    purchase_auto_eur: {value: 50, type: decimal, min: 0, max: 500, tier: referendum, source: "proposal", help: "Purchases up to this amount with a green plan check are approved automatically."}
+    purchase_confirm_max_eur: {value: 2000, type: decimal, min: 0, max: 100000, tier: referendum, source: "proposal", help: "Above this, a purchase must be in the plan or go to a referendum."}
+  unions:
+    min_councils: {value: 2, type: int, min: 2, max: 20, tier: referendum, source: "book p.140; docs/05 section 7", help: "Units of related trades needed to form a union."}
+    delegate_rotation_months: {value: 6, type: int, min: 1, max: 36, tier: confirm, source: "docs/05 section 7 (book p.139: rotation)", help: "How often each unit's delegate to its union changes."}
+  local:
+    min_members: {value: 10, type: int, min: 3, max: 10000, tier: confirm, source: "proposal", help: "Verified members who must live in an area before a local council can open there."}
+    rotation_months: {value: 6, type: int, min: 1, max: 36, tier: confirm, source: "docs/05 section 7", help: "How often a local council's responsible changes."}
+  assist:
+    max_assisted_per_helper: {value: 5, type: int, min: 1, max: 50, tier: confirm, source: "proposal (book p.68)", help: "Members one helper may act for at the same time."}
+    max_months: {value: 12, type: int, min: 1, max: 36, tier: confirm, source: "proposal", help: "Longest a consent to act for a member lasts before it must be signed again."}
+
+plan:
+  period_years: {value: 1, type: int, min: 1, max: 5, tier: referendum, source: "owner 2026-11-21 (annual first, later e.g. three-yearly)", help: "Length of a plan period."}
+  variants_min: {value: 2, type: int, min: 2, max: 2, tier: hard, source: "owner 2026-11-21", help: "The planning group drafts at least this many whole plans."}
+  variants_max: {value: 3, type: int, min: 3, max: 3, tier: hard, source: "owner 2026-11-21", help: "And at most this many."}
+  group_size: {value: 15, type: int, min: 5, max: 60, tier: referendum, source: "proposal", help: "Random members in the planning group."}
+  group_share_if_small: {value: 0.333, type: decimal, min: 0.1, max: 1.0, tier: referendum, source: "proposal", help: "With fewer than three times the group size in members, this share of all members is drawn instead."}
+  group_min: {value: 5, type: int, min: 3, max: 60, tier: referendum, source: "proposal", help: "The smallest planning group."}
+  experts_max: {value: 5, type: int, min: 0, max: 20, tier: referendum, source: "owner 2026-11-21 (experts from the unions)", help: "Expert advisers the unions may name; they advise but do not decide the group's choices."}
+  group_hours_cap_per_week: {value: 6, type: decimal, min: 0, max: 40, tier: plan, source: "proposal", help: "Paid planning hours per group member and week."}
+  vote_method: {value: ranked_irv, type: choice, choices: [ranked_irv], tier: referendum, source: "owner 2026-11-21 (members rank the plans); proposal (instant runoff)", help: "How members rank the whole plans."}
+  quorum_fail_extension_months: {value: 3, type: int, min: 1, max: 12, tier: referendum, source: "proposal", help: "If too few vote, the current plan runs on for this long and the vote is repeated."}
+  emergency_red_months: {value: 2, type: int, min: 1, max: 12, tier: referendum, source: "proposal", help: "A red light lasting this long lets the planning group propose an emergency change."}
+  calendar:
+    proposals_open: {value: "07-01", type: text, tier: referendum, source: "proposal", help: "Day (month-day) plan proposals open."}
+    proposals_close: {value: "08-31", type: text, tier: referendum, source: "proposal", help: "Day plan proposals close."}
+    group_drawn: {value: "09-01", type: text, tier: referendum, source: "proposal", help: "Day the planning group is drawn."}
+    drafting_close: {value: "10-15", type: text, tier: referendum, source: "proposal", help: "Day the drafts must be ready."}
+    comments_close: {value: "10-31", type: text, tier: referendum, source: "proposal", help: "Day public comments end."}
+    vote_open: {value: "11-01", type: text, tier: referendum, source: "proposal", help: "Day the ranked vote opens."}
+    vote_close: {value: "11-14", type: text, tier: referendum, source: "proposal", help: "Day the ranked vote closes."}
+    adoption: {value: "11-15", type: text, tier: referendum, source: "proposal", help: "Day the winning plan is adopted."}
+    period_start: {value: "01-01", type: text, tier: referendum, source: "proposal", help: "Day a plan period starts."}
+
+market:
+  shortage_cap_per_member: {value: 2, type: int, min: 1, max: 100, tier: confirm, source: "proposal (constitution draft rule 2: shortages shared out)", help: "While an item's shelves light is red, each member may order at most this many a month."}
+  delivery_confirm_hours: {value: 48, type: int, min: 12, max: 168, tier: confirm, source: "proposal", help: "Hours a buyer has to confirm or dispute a delivery; silence counts as received."}
+  outside_input_days: {value: 7, type: int, min: 1, max: 60, tier: confirm, source: "proposal", help: "Days added to a delivery date when an input must first be bought from outside."}
+
+catalogue:
+  measure_min_hours: {value: 40, type: decimal, min: 1, max: 1000, tier: confirm, source: "proposal", help: "Approved hours an offer needs before its price uses measured instead of declared hours."}
+  measure_min_units: {value: 10, type: decimal, min: 1, max: 10000, tier: confirm, source: "proposal", help: "Units delivered an offer needs for the same."}
+  measure_window_months: {value: 3, type: int, min: 1, max: 12, tier: confirm, source: "proposal (sim measured last month)", help: "Months of hours and output used to measure an offer's hours."}
+  placeholder_retire_months: {value: 12, type: int, min: 1, max: 60, tier: confirm, source: "proposal", help: "Placeholders nobody used this long are retired."}
+
+tradefund:
+  max_payers_per_request: {value: 2, type: int, min: 1, max: 5, tier: referendum, source: "legal (file 4: few payers, against money-laundering alerts)", help: "Most holders that pay one request."}
+  payment_deadline_days: {value: 5, type: int, min: 1, max: 30, tier: confirm, source: "proposal", help: "Days a holder has to send a requested payment."}
+  missed_after_extra_days: {value: 7, type: int, min: 1, max: 30, tier: confirm, source: "proposal", help: "Days after the deadline when a payment counts as missed."}
+  reserve_target_months: {value: 5.4, type: decimal, min: 0, max: 24, tier: plan, source: "sim (reserve_months)", help: "Months of outgoings the fund keeps before raising benefits or buying extra tools."}
+  reserve_min_months: {value: 2, type: decimal, min: 0, max: 24, tier: plan, source: "sim", help: "Below this the fund cuts benefits and stops buying extra tools."}
+  loss_reserve_share: {value: 0.02, type: decimal, min: 0.0, max: 0.2, tier: plan, source: "legal (file 4); proposal (size)", help: "Share of every set-aside kept as a reserve against theft and missed payments."}
+  setaside_share_of_net: {value: 1.0, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "sim (all outside sales after taxes go to the fund)", help: "Share of an outside sale, after the seller's tax reserve, held for the group."}
+  holder_max_share: {value: 0.10, type: decimal, min: 0.01, max: 0.5, tier: referendum, source: "legal (file 4: vote-set band); proposal", help: "No holder may hold more than this share of the whole fund."}
+  base_cap_eur: {value: 300, type: decimal, min: 0, max: 100000, tier: referendum, source: "proposal", help: "What any verified holder may hold, whatever the fund's size."}
+  reimburse_min_trust: {value: 0.5, type: decimal, min: 0.0, max: 1.0, tier: referendum, source: "proposal", help: "Trust a member needs to buy something themselves and be reimbursed."}
+  trust:
+    start: {value: 0.2, type: decimal, min: 0.0, max: 1.0, tier: referendum, source: "legal (starts small); proposal", help: "Trust rating of a new holder."}
+    founders_start: {value: 0.5, type: decimal, min: 0.0, max: 1.0, tier: referendum, source: "proposal", help: "Trust rating of a founder."}
+    on_time: {value: 0.02, type: decimal, min: 0.0, max: 0.2, tier: referendum, source: "legal (grows slowly); proposal", help: "Rise for each payment made on time."}
+    monthly: {value: 0.01, type: decimal, min: 0.0, max: 0.1, tier: referendum, source: "proposal", help: "Rise for each month as a holder without a problem."}
+    late: {value: -0.05, type: decimal, min: -1.0, max: 0.0, tier: referendum, source: "proposal", help: "Fall for a late payment."}
+    missed: {value: -0.30, type: decimal, min: -1.0, max: 0.0, tier: referendum, source: "legal (falls fast); proposal", help: "Fall for a missed payment."}
+    mismatch: {value: -0.20, type: decimal, min: -1.0, max: 0.0, tier: referendum, source: "proposal", help: "Fall for a mismatch decided against the holder."}
+  trust_review_group_size: {value: 3, type: int, min: 1, max: 9, tier: referendum, source: "legal (small elected group)", help: "Members elected yearly to review contested trust ratings."}
+  donation_currencies: {value: [EUR, USD], type: list, tier: referendum, source: "owner 2026-11-21", help: "Currencies in which the fund accepts donations."}
+
+logistics:
+  default_cover_radius_km: {value: 10, type: decimal, min: 0.5, max: 1000, tier: confirm, source: "proposal", help: "Default delivery radius of a new unit (each unit can set its own)."}
+  courier_speed_kmh: {value: 15, type: decimal, min: 3, max: 120, tier: confirm, source: "proposal (bicycle)", help: "Default speed used to compute courier hours."}
+  stop_minutes: {value: 5, type: decimal, min: 0, max: 60, tier: confirm, source: "proposal", help: "Minutes added per delivery stop."}
+
+reputation:   # docs/05 section 10: used only to suggest who might answer a ticket, never for work, pay, votes, prices, draws or trust
+  window_months: {value: 12, type: int, min: 1, max: 60, tier: confirm, source: "docs/05 section 10", help: "Helpful marks older than this no longer count."}
+  half_life_days: {value: 180, type: int, min: 7, max: 1825, tier: confirm, source: "proposal", help: "A helpful mark counts half as much after this many days."}
+  suggest_count: {value: 3, type: int, min: 0, max: 20, tier: confirm, source: "proposal", help: "Members suggested as possible answerers of a ticket."}
+  max_marks_per_pair_per_month: {value: 3, type: int, min: 1, max: 100, tier: confirm, source: "proposal", help: "Helpful marks from one member to another that count in one month."}
+
+security:   # docs/08 section 1 (denial of service, spam); login and sign-up limits are django-allauth settings
+  tickets_per_member_per_day: {value: 20, type: int, min: 1, max: 1000, tier: confirm, source: "proposal", help: "Tickets one member can open in a day."}
+  comments_per_member_per_hour: {value: 30, type: int, min: 1, max: 1000, tier: confirm, source: "proposal", help: "Comments one member can write in an hour."}
+  flags_per_member_per_day: {value: 20, type: int, min: 1, max: 1000, tier: confirm, source: "proposal", help: "Flags one member can raise in a day."}
+  shop_orders_per_ip_per_hour: {value: 10, type: int, min: 1, max: 1000, tier: confirm, source: "proposal", help: "Orders from one internet address in the outside shop in an hour."}
+
+housing:
+  rent_uniq_per_m2: {value: 0.59, type: decimal, min: 0.0, max: 5.0, tier: plan, source: "sim (tools_first_early_benefits)", help: "Monthly rent of a Unicorn home in UNIQ per square metre, paid to Fund 1 (later)."}
+  m2_per_member: {value: 30, type: decimal, min: 10, max: 100, tier: plan, source: "owner 2026-10-09", help: "Floor area of a Unicorn home per member."}
+  share_of_investment: {value: 0.24, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "sim (housing_share)", help: "Share of new capital that becomes homes once building starts."}
+  max_rent_share: {value: 0.5, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "sim", help: "A member moves in only if the rent is at most this share of their net UNIQ income."}
+
+targets:   # the conditions for success (docs/02, section 5), shown on "Are we on track?"
+  outside_sales_start_eur: {value: 100, type: decimal, min: 0, max: 10000, tier: plan, source: "sim (world that passed all tests)", help: "Outside sales per member and month needed at the start."}
+  outside_sales_growth: {value: 0.125, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "sim", help: "Yearly growth of outside sales needed."}
+  materials_share_of_german: {value: 0.5, type: decimal, min: 0.0, max: 2.0, tier: plan, source: "sim (materials_scale)", help: "Bought materials per hour, as a share of German firms', needed."}
+  tax_on_outside_sales: {value: 0.15, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "sim", help: "Taxes on outside sales as a share of their revenue in the successful world."}
+  unsold_share: {value: 0.10, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "sim", help: "Most products made ahead that may go unsold."}
+  can_live_without_job_year20: {value: 0.95, type: decimal, min: 0.0, max: 1.0, tier: plan, source: "sim (default world)", help: "Share of members who could live without a capitalist job by year 20 in the default world."}
+
+sectors:
+  starter_services: {value: ["Unicorn coordination", "Repairs of computers and household goods", "Personal services (hair, beauty, laundry)", "Teaching and lessons", "Care and social work", "Arts and culture", "Sports and recreation", "Cleaning, gardening and office help", "Post and courier", "IT services", "Legal, accounting and advice (licensed members)", "Architecture and engineering", "Marketing", "Other professional services (design, photography, translation)"], type: list, tier: plan, source: "sim (14 lighter seed services)", help: "Services suggested to the founders first."}
+  later_order: {value: ["Farming", "Food workshops", "Energy", "Textiles", "Furniture", "Car repair", "Health care", "Water", "Waste"], type: list, tier: plan, source: "sim (sectors.later_order)", help: "Order in which later trades are suggested as Unicorn owns tools."}
