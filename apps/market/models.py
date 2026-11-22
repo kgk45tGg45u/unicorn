@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from apps.core.models import AppendOnlyModel
+
 
 class Order(models.Model):
     """One purchase by a member. Its lines hold the offer, the price and the status."""
@@ -47,6 +49,7 @@ class OrderLine(models.Model):
     production_order = models.ForeignKey(
         "ProductionOrder", null=True, blank=True, on_delete=models.PROTECT, related_name="lines"
     )
+    stock_lot = models.ForeignKey("StockLot", null=True, blank=True, on_delete=models.PROTECT, related_name="lines")
     delivered_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -180,3 +183,45 @@ class InputRequest(models.Model):
 
     def __str__(self):
         return f"{self.quantity} {self.item.name} for production order {self.production_order_id} ({self.status})"
+
+
+class StockLot(models.Model):
+    """Products on a unit's shelf: made ahead, made on the unit's own initiative, or refused by a buyer."""
+
+    ORIGINS = [
+        ("advance", _("made ahead")),
+        ("own_initiative", _("own initiative")),
+        ("refused", _("refused by a buyer")),
+    ]
+    STATUSES = [("available", _("available")), ("sold_out", _("sold out")), ("written_off", _("written off"))]
+
+    offer = models.ForeignKey("catalogue.Offer", on_delete=models.PROTECT, related_name="stock_lots")
+    quantity = models.DecimalField(max_digits=14, decimal_places=4)
+    quantity_left = models.DecimalField(max_digits=14, decimal_places=4)
+    made_at = models.DateTimeField()
+    expires_at = models.DateTimeField(null=True, blank=True)
+    origin = models.CharField(max_length=14, choices=ORIGINS)
+    status = models.CharField(max_length=12, choices=STATUSES, default="available")
+    production_order = models.ForeignKey(
+        ProductionOrder, null=True, blank=True, on_delete=models.PROTECT, related_name="stock_lots"
+    )
+
+    class Meta:
+        ordering = ["made_at", "id"]
+        indexes = [models.Index(fields=["offer", "status"])]
+
+    def __str__(self):
+        return f"{self.quantity_left} of {self.quantity} {self.offer} ({self.status})"
+
+
+class WasteRecord(AppendOnlyModel):
+    """Products nobody bought, written off. The next tax balance takes their hours back (HF-9)."""
+
+    lot = models.ForeignKey(StockLot, on_delete=models.PROTECT, related_name="waste")
+    quantity = models.DecimalField(max_digits=14, decimal_places=4)
+    hours = models.DecimalField(max_digits=18, decimal_places=4)  # quantity x the offer's value when written off
+    period = models.ForeignKey("ledger.Period", on_delete=models.PROTECT, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.quantity} wasted ({self.hours} h)"

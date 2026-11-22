@@ -252,6 +252,9 @@ class HoursEntry(models.Model):
     note = models.CharField(max_length=300, blank=True)
     status = models.CharField(max_length=14, choices=STATUSES, default="draft")
     needs_extra_approval = models.BooleanField(default=False)
+    paid_fraction = models.DecimalField(
+        max_digits=7, decimal_places=6, default=0
+    )  # of own-initiative hours paid so far
     rejection_reason = models.CharField(max_length=300, blank=True)
     period = models.ForeignKey("ledger.Period", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
     transaction = models.ForeignKey(

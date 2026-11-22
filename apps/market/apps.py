@@ -7,4 +7,10 @@ class MarketConfig(AppConfig):
     label = "market"
 
     def ready(self):
-        from . import services  # noqa: F401
+        from apps.core.management.commands import daily
+
+        from . import jobs, services  # noqa: F401
+
+        for entry in (("market.write_offs", {}),):
+            if entry not in daily.DAILY_JOBS:
+                daily.DAILY_JOBS.append(entry)

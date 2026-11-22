@@ -15,7 +15,7 @@ from apps.ledger import services as ledger
 from apps.rules.services import get_param
 from apps.units import services as unit_services
 
-from .models import InputRequest, Order, OrderLine, ProductionOrder, PurchaseNeed, WeeklyPlan
+from .models import InputRequest, Order, OrderLine, ProductionOrder, PurchaseNeed, StockLot, WasteRecord, WeeklyPlan
 
 BERLIN = ZoneInfo("Europe/Berlin")
 
@@ -124,6 +124,13 @@ def place_order(member, offer, quantity, note="") -> OrderLine:
 
 def _fulfil(line):
     """Serve a new line from the shelf, or put it into a production order."""
+    lot = _lot_for(line.offer, line.quantity)
+    if lot is not None:
+        line.stock_lot = lot
+        line.status = OrderLine.FROM_STOCK
+        line.due_date = today()
+        line.save(update_fields=["stock_lot", "status", "due_date"])
+        return
     assign_to_batch(line)
 
 
@@ -483,7 +490,9 @@ def _input_quantity(po) -> Decimal:
 
 
 def _stock_remainder(po, remainder):
-    """The part of a batch nobody ordered goes to the shelf. Built in P05.T04."""
+    """The part of a batch nobody ordered goes to the shelf."""
+    origin = "own_initiative" if po.origin == "own_initiative" else "advance"
+    make_lot(po.offer, remainder, origin, po)
 
 
 def complete_production(po, member, quantity_done):
@@ -590,3 +599,241 @@ def _production_decision_action(decision):
 
 
 unit_services.DECISION_ACTIONS["production"] = _production_decision_action
+
+
+# --- Stock, made ahead, own initiative, written off (docs/06 section 5) ---
+
+STOCK_RESERVING = ("from_stock", "handed_over")  # lines that have claimed a lot but not drawn it yet
+
+
+def make_lot(offer, quantity, origin, po=None) -> StockLot:
+    now = timezone.now()
+    days = offer.item.shelf_life_days
+    lot = StockLot.objects.create(
+        offer=offer,
+        quantity=quantity,
+        quantity_left=quantity,
+        made_at=now,
+        expires_at=now + timedelta(days=days) if days else None,
+        origin=origin,
+        production_order=po,
+    )
+    audit.record("system", "stock.lot_made", lot, quantity=str(quantity), origin=origin)
+    return lot
+
+
+def reserved(lot) -> Decimal:
+    from django.db.models import Sum
+
+    total = OrderLine.objects.filter(stock_lot=lot, status__in=STOCK_RESERVING).aggregate(t=Sum("quantity"))["t"]
+    return total or Decimal("0")
+
+
+def free_quantity(lot) -> Decimal:
+    return lot.quantity_left - reserved(lot)
+
+
+def _lot_for(offer, quantity):
+    """The lot that will serve a line: first to expire first, and big enough for the whole line."""
+    now = timezone.now()
+    lots = StockLot.objects.select_for_update().filter(offer=offer, status="available", quantity_left__gt=0)
+    lots = [lot for lot in lots if lot.expires_at is None or lot.expires_at > now]
+    lots.sort(key=lambda lot: (lot.expires_at is None, lot.expires_at or lot.made_at, lot.pk))
+    return next((lot for lot in lots if free_quantity(lot) >= quantity), None)
+
+
+def draw_stock(lot, quantity):
+    """A sale takes `quantity` off the shelf. Own-initiative lots then pay out their pending hours."""
+    lot = StockLot.objects.select_for_update().get(pk=lot.pk)
+    if quantity > lot.quantity_left:
+        raise MarketError(_("There is not enough on the shelf."))
+    lot.quantity_left -= quantity
+    if lot.quantity_left <= 0:
+        lot.status = "sold_out"
+    lot.save(update_fields=["quantity_left", "status"])
+    if lot.origin == "own_initiative":
+        pay_pending_sale(lot, quantity)
+    return lot
+
+
+def pay_pending_sale(lot, units_sold):
+    """Pay own-initiative hours pro rata as the products sell (HF-9: the mixed rule).
+
+    Each pending entry has been paid `paid_fraction` of its hours; it is now owed the sold share of the lot.
+    When the lot is sold out, the rounding remainder is paid too.
+    """
+    from django.db.models import Sum
+
+    from apps.core.money import minutes_to_uniq
+    from apps.ledger.models import Entry
+    from apps.units.models import HoursEntry
+
+    if lot.production_order_id is None:
+        return
+    sold_share = (lot.quantity - lot.quantity_left) / lot.quantity
+    period = ledger.current_period()
+    entries = HoursEntry.objects.select_for_update().filter(
+        ref_type="production_order", ref_id=str(lot.production_order_id), status="pending_sale"
+    )
+    for entry in entries:
+        total = minutes_to_uniq(entry.minutes)
+        account = ledger.member_account(entry.member)
+        paid = Entry.objects.filter(
+            transaction__kind="hours_pay",
+            transaction__ref_type="hoursentry",
+            transaction__ref_id=str(entry.pk),
+            account=account,
+        ).aggregate(t=Sum("amount"))["t"] or Decimal("0")
+        due = total if lot.status == "sold_out" else uniq(total * sold_share)
+        gross = min(due, total) - paid
+        if gross <= 0:
+            continue
+        tx = ledger.post(
+            "hours_pay",
+            _("Paid for %(time)s at %(unit)s as the products sold")
+            % {"time": f"{entry.minutes // 60}:{entry.minutes % 60:02d}", "unit": entry.unit.name},
+            [ledger.Leg(ledger.fund2(), -gross), ledger.Leg(account, gross)],
+            ref=entry,
+            period=period,
+        )
+        tax = uniq(gross * period.tax_rate)
+        if tax:
+            ledger.post(
+                "tax",
+                _("Flat tax %(rate)s%%") % {"rate": (period.tax_rate * 100).normalize()},
+                [ledger.Leg(account, -tax), ledger.Leg(ledger.fund2(), tax)],
+                ref=entry,
+                period=period,
+            )
+        entry.paid_fraction = ((paid + gross) / total).quantize(Decimal("0.000001"))
+        entry.transaction = tx
+        if paid + gross >= total:
+            entry.status = "paid"
+        entry.save(update_fields=["paid_fraction", "transaction", "status"])
+        audit.record("system", "hours.paid_as_sold", entry, gross=str(gross), units_sold=str(units_sold))
+
+
+def _months_ago(months):
+    moment = timezone.now().astimezone(BERLIN)
+    total = moment.year * 12 + moment.month - 1 - months
+    return moment.replace(year=total // 12, month=total % 12 + 1, day=min(moment.day, 28))
+
+
+def average_monthly_orders(offer) -> Decimal:
+    from django.db.models import Sum
+
+    total = (
+        OrderLine.objects.filter(offer=offer, created_at__gte=_months_ago(3))
+        .exclude(status="cancelled")
+        .aggregate(t=Sum("quantity"))["t"]
+    )
+    return (total or Decimal("0")) / 3
+
+
+def allowed_advance(offer, estimate=None) -> Decimal:
+    """What a unit may make ahead this month: its advance share of the expected orders.
+
+    The expectation is the average of the last 3 months of orders; in the offer's first 3 months it is the
+    council's own estimate (`estimate`, orders a month).
+    """
+    from django.db.models import Sum
+
+    young = offer.created_at > _months_ago(3)
+    base = Decimal(str(estimate or 0)) if young else average_monthly_orders(offer)
+    allowed = uniq(offer.advance_share * base)
+    first = today().replace(day=1)
+    already = ProductionOrder.objects.filter(offer=offer, origin="advance", created_at__gte=_start_of(first)).exclude(
+        status="cancelled"
+    ).aggregate(t=Sum("quantity"))["t"] or Decimal("0")
+    return max(Decimal("0"), allowed - already)
+
+
+def _start_of(day):
+    return datetime(day.year, day.month, day.day, tzinfo=BERLIN)
+
+
+def _new_batch(offer, quantity, member, origin):
+    try:
+        quantity = Decimal(str(quantity))
+    except (InvalidOperation, ValueError, TypeError):
+        raise MarketError(_("Please enter how many you want to make.")) from None
+    if quantity <= 0:
+        raise MarketError(_("Please enter how many you want to make."))
+    _need_worker(member, offer.unit)
+    if offer.status != "active" or offer.is_service:
+        raise MarketError(_("Only an active product can be made for the shelf."))
+    po = ProductionOrder.objects.create(
+        offer=offer,
+        quantity=quantity,
+        origin=origin,
+        due_date=today() + timedelta(days=catalogue.lead_time_days(offer)),
+    )
+    explode(po)
+    audit.record(member.number, f"production.{origin}", po, quantity=str(quantity))
+    unit_services.touch(offer.unit)
+    return po
+
+
+def start_advance(offer, quantity, member, estimate=None) -> ProductionOrder:
+    """Make products ahead for the shelf, up to the unit's advance share (more: own initiative only)."""
+    with transaction.atomic():
+        offer = type(offer).objects.select_related("item", "unit").get(pk=offer.pk)
+        _need_worker(member, offer.unit)
+        left = allowed_advance(offer, estimate)
+        if Decimal(str(quantity)) > left:
+            raise MarketError(
+                _(
+                    "That is more than the %(share)s of expected orders a unit may make ahead. "
+                    "You can still make up to %(left)s ahead this month, or make more on your own initiative."
+                )
+                % {"share": f"{offer.advance_share:.0%}", "left": left.normalize()}
+            )
+        return _new_batch(offer, quantity, member, "advance")
+
+
+def start_own_initiative(offer, quantity, member) -> ProductionOrder:
+    """Make products beyond the orders and the advance share. The hours are paid only as the products sell."""
+    with transaction.atomic():
+        offer = type(offer).objects.select_related("item", "unit").get(pk=offer.pk)
+        return _new_batch(offer, quantity, member, "own_initiative")
+
+
+def write_off_lots(now=None):
+    """Unsold lots whose shelf life ended, or that sat longer than `economy.products.unsold_after_days`."""
+    now = now or timezone.now()
+    cutoff = now - timedelta(days=get_param("economy.products.unsold_after_days"))
+    count = 0
+    candidates = StockLot.objects.filter(status="available", quantity_left__gt=0).select_related("offer__unit")
+    for lot in candidates:
+        if not ((lot.expires_at and lot.expires_at <= now) or lot.made_at <= cutoff):
+            continue
+        with transaction.atomic():
+            lot = StockLot.objects.select_for_update().select_related("offer__unit", "offer__item").get(pk=lot.pk)
+            if lot.status != "available" or lot.quantity_left <= 0 or reserved(lot) > 0:
+                continue
+            left = lot.quantity_left
+            lot.status = "written_off"
+            lot.quantity_left = Decimal("0")
+            lot.save(update_fields=["status", "quantity_left"])
+            hours = uniq(left * lot.offer.value_total)
+            WasteRecord.objects.create(lot=lot, quantity=left, hours=hours, period=ledger.current_period(now))
+            audit.record("system", "stock.written_off", lot, quantity=str(left), hours=str(hours))
+            _notify_written_off(lot, left)
+            count += 1
+    return count
+
+
+def _notify_written_off(lot, left):
+    if lot.origin == "own_initiative":
+        body = _(
+            "%(qty)s %(item)s from your own initiative were not sold and are written off. "
+            "The hours still waiting for these sales stay unpaid."
+        )
+    else:
+        body = _("%(qty)s %(item)s were not sold and are written off. Their hours are taken back through the flat tax.")
+    for w in unit_services.workers(lot.offer.unit):
+        unit_services._notify(
+            w.member,
+            _("Unsold %(item)s written off") % {"item": lot.offer.item.name},
+            body % {"qty": left.normalize(), "item": lot.offer.item.name},
+        )

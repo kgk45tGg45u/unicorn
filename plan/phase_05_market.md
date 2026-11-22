@@ -99,7 +99,7 @@
 
 ---
 
-### - [ ] P05.T04 — Stock, made ahead, own initiative, written off
+### - [x] P05.T04 — Stock, made ahead, own initiative, written off
 
 **Read:** docs/06 section 5 ("Made ahead", "Own initiative"); docs/03 section 3 (Waste); HF-9.
 **Files:** `apps/market/models.py` (StockLot, WasteRecord), `apps/market/services.py`, `apps/market/jobs.py`, `apps/market/tests/test_stock.py`
