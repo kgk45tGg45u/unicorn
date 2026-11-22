@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from apps.core.admin import ReadOnlyAdmin
 
-from .models import Item, Offer, UnitOfMeasure
+from .models import Item, Offer, OfferInput, OfferTool, OwnFreeConfirmation, UnitOfMeasure
 
 
 @admin.register(UnitOfMeasure)
@@ -18,3 +18,18 @@ class ItemAdmin(ReadOnlyAdmin):
 @admin.register(Offer)
 class OfferAdmin(ReadOnlyAdmin):
     list_display = ("item", "unit", "status", "value_total")
+
+
+@admin.register(OfferInput)
+class OfferInputAdmin(ReadOnlyAdmin):
+    list_display = ("offer", "item", "quantity_per_batch", "source")
+
+
+@admin.register(OfferTool)
+class OfferToolAdmin(ReadOnlyAdmin):
+    list_display = ("offer", "tool_item", "source")
+
+
+@admin.register(OwnFreeConfirmation)
+class OwnFreeConfirmationAdmin(ReadOnlyAdmin):
+    list_display = ("input", "month", "confirmed_at")

@@ -63,7 +63,7 @@
 
 ---
 
-### - [ ] P04.T03 — Recipes: inputs and tools with their source
+### - [x] P04.T03 — Recipes: inputs and tools with their source
 
 **Read:** docs/04 section 5.
 **Files:** `apps/catalogue/models.py` (OfferInput, OfferTool, OwnFreeConfirmation), `apps/catalogue/services.py`, `apps/catalogue/templates/catalogue/recipe_editor.html`, `apps/catalogue/tests/test_recipes.py`

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "New offer" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% blocktranslate with item=item.name unit=unit.name %}{{ unit }} makes {{ item }}{% endblocktranslate %}</h1>
+{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+<form method="post">{% csrf_token %}
+  <input type="hidden" name="item" value="{{ item.pk }}">
+  {% for field in form %}<div class="mb-3"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}
+  <button class="btn btn-primary" type="submit">{% translate "Next: the recipe" %}</button>
+</form>
+{% endblock %}

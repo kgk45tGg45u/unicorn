@@ -135,3 +135,69 @@ class Offer(models.Model):
                 errors.append(_("A service has no batch fields: batch size, setup or working time of a batch."))
         if errors:
             raise ValidationError(errors)
+
+
+class OfferInput(models.Model):
+    """One input of a recipe, per batch (or per session), with where it comes from (docs/04 section 5)."""
+
+    SOURCES = [
+        ("unicorn", _("Made in Unicorn")),
+        ("own_free", _("I provide it free")),
+        ("buy_outside", _("Buy it from outside")),
+    ]
+
+    offer = models.ForeignKey(Offer, on_delete=models.CASCADE, related_name="inputs")
+    item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name="used_as_input")
+    quantity_per_batch = models.DecimalField(max_digits=14, decimal_places=4)
+    source = models.CharField(max_length=12, choices=SOURCES)
+    preferred_supplier = models.ForeignKey(Offer, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    euro_price_estimate = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    currency = models.CharField(max_length=3, default="EUR")
+    provided_by = models.ForeignKey("members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    note = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.quantity_per_batch} {self.item.name} for {self.offer}"
+
+
+class OfferTool(models.Model):
+    """A durable thing a recipe uses again and again."""
+
+    SOURCES = [
+        ("unicorn_owned", _("Owned by Unicorn")),
+        ("own_free", _("I provide it free")),
+        ("to_buy", _("Not there yet: must be bought")),
+    ]
+
+    offer = models.ForeignKey(Offer, on_delete=models.CASCADE, related_name="tools")
+    tool_item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name="used_as_tool")
+    source = models.CharField(max_length=14, choices=SOURCES)
+    uses_per_batch = models.DecimalField(max_digits=14, decimal_places=4)
+    lifetime_uses = models.DecimalField(max_digits=14, decimal_places=4)
+    value_uniq = models.DecimalField(max_digits=18, decimal_places=4, default=0)
+    euro_price = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    currency = models.CharField(max_length=3, default="EUR")
+    provided_by = models.ForeignKey("members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.tool_item.name} for {self.offer}"
+
+
+class OwnFreeConfirmation(models.Model):
+    """A monthly question to a member: do you still provide this input? Answered when `confirmed_at` is set."""
+
+    input = models.ForeignKey(OfferInput, on_delete=models.CASCADE, related_name="confirmations")
+    month = models.DateField()  # the first of the month
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["input", "month"], name="one_confirmation_per_month")]
+
+    def __str__(self):
+        return f"{self.input} {self.month:%Y-%m}"

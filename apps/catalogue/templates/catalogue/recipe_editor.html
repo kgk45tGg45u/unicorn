@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Recipe" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% blocktranslate with offer=offer %}Recipe: {{ offer }}{% endblocktranslate %}</h1>
+<p class="text-muted">{{ offer.get_status_display }}{% if offer.status_note %} · {{ offer.status_note }}{% endif %} · {% blocktranslate with h=offer.declared_hours_per_unit %}{{ h }} hours of direct work per unit{% endblocktranslate %}</p>
+{% for message in messages %}<div class="alert alert-info">{{ message }}</div>{% endfor %}
+{% if problems %}<div class="alert alert-warning"><strong>{% translate "Before you can publish:" %}</strong><ul class="mb-0">{% for p in problems %}<li>{{ p }}</li>{% endfor %}</ul></div>{% endif %}
+
+<h2 class="h5">{% translate "What goes in (per batch or session)" %}</h2>
+<ul class="list-group mb-3">
+{% for r in inputs %}
+  <li class="list-group-item d-flex justify-content-between align-items-start">
+    <span>{{ r.quantity_per_batch|floatformat:"-4" }} {{ r.item.uom.name }} {{ r.item.name }} · {{ r.get_source_display }}
+      {% if r.source == "buy_outside" %}· €{{ r.euro_price_estimate|floatformat:"-4" }} {% translate "each" %}{% endif %}
+      {% if r.source == "own_free" and r.provided_by %}· {{ r.provided_by.display_name }}
+        {% if r.provided_by == request.member %}<form method="post" action="{% url 'catalogue:confirm_free' r.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">{% translate "I still provide it" %}</button></form>{% endif %}{% endif %}</span>
+    <form method="post" action="{% url 'catalogue:remove_row' offer.pk 'input' r.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">{% translate "Remove" %}</button></form>
+  </li>
+{% empty %}<li class="list-group-item text-muted">{% translate "No inputs yet." %}</li>{% endfor %}
+</ul>
+<form method="post" action="{% url 'catalogue:add_input' offer.pk %}" class="row g-2 mb-4">{% csrf_token %}
+  <div class="col-12 col-md-4"><label class="form-label" for="in-name">{% translate "Item (type a new name if it does not exist)" %}</label>
+    <input class="form-control" id="in-name" name="name" required hx-get="{% url 'catalogue:item_search' %}" hx-trigger="keyup changed delay:300ms" hx-target="#in-results" hx-vals='js:{q: document.getElementById("in-name").value}'>
+    <div id="in-results" class="small"></div></div>
+  <div class="col-6 col-md-2"><label class="form-label" for="in-q">{% translate "Quantity" %}</label><input class="form-control" id="in-q" name="quantity" required></div>
+  <div class="col-6 col-md-2"><label class="form-label" for="in-uom">{% translate "Measured in" %}</label><select class="form-select" id="in-uom" name="uom">{% for u in uoms %}<option value="{{ u.code }}">{{ u.name }}</option>{% endfor %}</select></div>
+  <div class="col-12 col-md-4"><span class="form-label d-block">{% translate "Where does it come from?" %}</span>
+    <div class="form-check"><input class="form-check-input" type="radio" name="source" id="s1" value="unicorn" checked><label class="form-check-label" for="s1">{% translate "Made in Unicorn" %}</label></div>
+    <div class="form-check"><input class="form-check-input" type="radio" name="source" id="s2" value="own_free"><label class="form-check-label" for="s2">{% translate "I provide it free" %}</label></div>
+    <div class="form-check"><input class="form-check-input" type="radio" name="source" id="s3" value="buy_outside"><label class="form-check-label" for="s3">{% translate "Buy it from outside" %}</label></div></div>
+  <div class="col-6 col-md-3"><label class="form-label" for="in-p">{% translate "Price in euros per unit (if bought outside)" %}</label><input class="form-control" id="in-p" name="euro_price_estimate"></div>
+  <div class="col-6 col-md-3"><label class="form-label" for="in-w">{% translate "Who provides it free?" %}</label><select class="form-select" id="in-w" name="provided_by"><option value="">–</option>{% for w in workers %}<option value="{{ w.pk }}">{{ w.display_name }}</option>{% endfor %}</select></div>
+  <div class="col-12 col-md-2 align-self-end"><button class="btn btn-primary w-100" type="submit">{% translate "Add input" %}</button></div>
+</form>
+
+<h2 class="h5">{% translate "Tools" %}</h2>
+<ul class="list-group mb-3">
+{% for t in tools %}
+  <li class="list-group-item d-flex justify-content-between"><span>{{ t.tool_item.name }} · {{ t.get_source_display }} · {{ t.uses_per_batch|floatformat:"-4" }} {% translate "uses per batch, lasts" %} {{ t.lifetime_uses|floatformat:"-4" }}</span>
+  <form method="post" action="{% url 'catalogue:remove_row' offer.pk 'tool' t.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">{% translate "Remove" %}</button></form></li>
+{% empty %}<li class="list-group-item text-muted">{% translate "No tools yet." %}</li>{% endfor %}
+</ul>
+<form method="post" action="{% url 'catalogue:add_tool' offer.pk %}" class="row g-2 mb-4">{% csrf_token %}
+  <div class="col-12 col-md-3"><label class="form-label" for="t-name">{% translate "Tool" %}</label><input class="form-control" id="t-name" name="name" required></div>
+  <div class="col-12 col-md-3"><label class="form-label" for="t-src">{% translate "Where does it come from?" %}</label><select class="form-select" id="t-src" name="source"><option value="own_free">{% translate "I provide it free" %}</option><option value="unicorn_owned">{% translate "Owned by Unicorn" %}</option><option value="to_buy">{% translate "Not there yet: must be bought" %}</option></select></div>
+  <div class="col-6 col-md-2"><label class="form-label" for="t-u">{% translate "Uses per batch" %}</label><input class="form-control" id="t-u" name="uses_per_batch" value="1"></div>
+  <div class="col-6 col-md-2"><label class="form-label" for="t-l">{% translate "Lasts for this many uses" %}</label><input class="form-control" id="t-l" name="lifetime_uses" value="1000"></div>
+  <div class="col-6 col-md-2"><label class="form-label" for="t-w">{% translate "Who provides it?" %}</label><select class="form-select" id="t-w" name="provided_by"><option value="">–</option>{% for w in workers %}<option value="{{ w.pk }}">{{ w.display_name }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-3"><label class="form-label" for="t-v">{% translate "Value in UNIQ (Unicorn-owned)" %}</label><input class="form-control" id="t-v" name="value_uniq"></div>
+  <div class="col-6 col-md-3"><label class="form-label" for="t-e">{% translate "Price in euros (bought with euros)" %}</label><input class="form-control" id="t-e" name="euro_price"></div>
+  <div class="col-12 col-md-2 align-self-end"><button class="btn btn-primary w-100" type="submit">{% translate "Add tool" %}</button></div>
+</form>
+{% block preview %}{% endblock %}
+<form method="post" action="{% url 'catalogue:publish' offer.pk %}">{% csrf_token %}<button class="btn btn-success" type="submit">{% translate "Publish the offer" %}</button></form>
+{% endblock %}
