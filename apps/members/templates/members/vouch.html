@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block content %}
+<h1>{% translate "Vouch for a member" %}</h1>
+<p>{% translate "By vouching you say: I know this person, and this is their only account." %}</p>
+{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+<form method="post">
+  {% csrf_token %}
+  <div class="mb-3"><label class="form-label" for="number">{% translate "Member number" %}</label>
+    <input class="form-control" id="number" name="number" placeholder="M-XXXX-XXXX" required></div>
+  <div class="mb-3"><label class="form-label" for="statement">{% translate "Your statement" %}</label>
+    <textarea class="form-control" id="statement" name="statement" rows="3" required></textarea></div>
+  <button class="btn btn-primary" type="submit">{% translate "Vouch" %}</button>
+</form>
+{% endblock %}

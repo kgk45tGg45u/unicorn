@@ -171,3 +171,60 @@ class PrivateFile(models.Model):
 
     def __str__(self):
         return f"{self.kind} file {self.pk} of {self.owner.number}"
+
+
+class Vouch(models.Model):
+    """A verified member says: I know this person, and this is their only account. Append-only."""
+
+    voucher = models.ForeignKey(Member, on_delete=models.PROTECT, related_name="vouches_given")
+    vouchee = models.ForeignKey(Member, on_delete=models.PROTECT, related_name="vouches_received")
+    statement = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["voucher", "vouchee"], name="unique_vouch")]
+
+    def __str__(self):
+        return f"{self.voucher.number} vouches for {self.vouchee.number}"
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValueError("Vouches cannot be changed.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Vouches cannot be deleted.")
+
+
+class InPersonCheck(models.Model):
+    """An identity helper saw the person in person. Never holds an ID number or a copy of an ID. Append-only."""
+
+    helper = models.ForeignKey(Member, on_delete=models.PROTECT, related_name="checks_made")
+    member = models.ForeignKey(Member, on_delete=models.PROTECT, related_name="checks_received")
+    seen_on = models.DateField()
+    town = models.CharField(max_length=80)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.member.number} seen by {self.helper.number} on {self.seen_on}"
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValueError("Identity checks cannot be changed.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Identity checks cannot be deleted.")
+
+
+class MemberHash(models.Model):
+    """HMAC of a normalised value, to find duplicate accounts. Not reversible; deleted with the account."""
+
+    KINDS = [("email", "email"), ("phone", "phone"), ("iban", "iban"), ("name_birth", "name and birth date")]
+
+    member = models.ForeignKey(Member, on_delete=models.PROTECT, related_name="hashes")
+    kind = models.CharField(max_length=12, choices=KINDS)
+    value = models.CharField(max_length=64, db_index=True)
+
+    def __str__(self):
+        return f"{self.kind} hash of {self.member.number}"

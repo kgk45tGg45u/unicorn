@@ -116,7 +116,7 @@
 
 ---
 
-### - [ ] P01.T05 — Identity: vouches, in-person checks, duplicates, founders
+### - [x] P01.T05 — Identity: vouches, in-person checks, duplicates, founders
 
 **Read:** docs/08 section 2.
 **Files:** `apps/members/models.py` (Vouch, InPersonCheck, MemberHash), `apps/members/services.py`, `apps/members/views.py`, `apps/members/templates/members/vouch.html`, `.../identity_check.html`, `apps/members/management/commands/bootstrap_founders.py`, `apps/members/tests/test_identity.py`

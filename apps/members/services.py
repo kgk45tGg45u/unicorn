@@ -105,7 +105,8 @@ def set_private(member, **fields) -> dict:
         else:
             row.blob = blob
             row.save()
-        return data
+    update_hashes(member)
+    return data
 
 
 def store_private_file(member, uploaded_file, kind):
@@ -150,3 +151,127 @@ def shred(member) -> None:
     from . import crypto
 
     crypto.shred_key(member)
+
+
+# --- Identity: one person, one account (HF-13, docs/08 section 2) ---
+
+VERIFIED_HOOKS: list = []  # other apps add functions f(member); P02 opens the accounts
+
+
+class IdentityError(ValueError):
+    """An identity action is not allowed. The message is plain words for the member."""
+
+
+def _month_start():
+    from django.utils import timezone
+
+    now = timezone.localtime()
+    return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
+def vouch(voucher, vouchee, statement):
+    from apps.core import audit
+    from apps.rules.services import get_param
+
+    from .models import InPersonCheck, Vouch
+
+    if voucher.pk == vouchee.pk:
+        raise IdentityError(_("You cannot vouch for yourself."))
+    if not is_verified(voucher):
+        raise IdentityError(_("Only verified members can vouch."))
+    if not statement.strip():
+        raise IdentityError(_("Please write a short statement."))
+    if InPersonCheck.objects.filter(helper=voucher, member=vouchee).exists():
+        raise IdentityError(_("A helper who checked someone in person cannot also vouch for them."))
+    with transaction.atomic():
+        limit = get_param("membership.vouches_per_voucher_per_month")
+        if Vouch.objects.filter(voucher=voucher, created_at__gte=_month_start()).count() >= limit:
+            raise IdentityError(_("You have reached the monthly limit of vouches."))
+        if Vouch.objects.filter(voucher=voucher, vouchee=vouchee).exists():
+            raise IdentityError(_("You have already vouched for this member."))
+        v = Vouch.objects.create(voucher=voucher, vouchee=vouchee, statement=statement)
+        audit.record(voucher.number, "vouch", v, vouchee=vouchee.number)
+    try_verify(vouchee)
+    return v
+
+
+def record_in_person_check(helper, member, seen_on, town):
+    from apps.core import audit
+
+    from .models import InPersonCheck, Vouch
+
+    if helper.pk == member.pk:
+        raise IdentityError(_("You cannot check yourself."))
+    if not (is_verified(helper) and helper.is_identity_helper):
+        raise IdentityError(_("Only verified identity helpers can record an in-person check."))
+    if Vouch.objects.filter(voucher=helper, vouchee=member).exists():
+        raise IdentityError(_("A helper who vouched for someone cannot also check them in person."))
+    if not town.strip():
+        raise IdentityError(_("Please write the town where you met."))
+    with transaction.atomic():
+        check = InPersonCheck.objects.create(helper=helper, member=member, seen_on=seen_on, town=town)
+        audit.record(helper.number, "in_person_check", check, member=member.number)
+    try_verify(member)
+    return check
+
+
+def try_verify(member) -> bool:
+    """Make the member verified once they have enough vouches and, if required, an in-person check."""
+    from django.utils import timezone
+
+    from apps.core import audit
+    from apps.rules.services import get_param
+
+    from .models import InPersonCheck, Member, Vouch
+
+    with transaction.atomic():
+        member = Member.objects.select_for_update().get(pk=member.pk)
+        if member.status != Member.APPLICANT:
+            return False
+        if Vouch.objects.filter(vouchee=member).count() < get_param("membership.vouches_needed"):
+            return False
+        if get_param("membership.in_person_check") and not InPersonCheck.objects.filter(member=member).exists():
+            return False
+        member.status = Member.MEMBER
+        member.verified_at = timezone.now()
+        member.save(update_fields=["status", "verified_at"])
+        audit.record("system", "member.verified", member, number=member.number)
+        for hook in VERIFIED_HOOKS:
+            hook(member)
+    return True
+
+
+def _normalise(kind, value):
+    value = str(value)
+    if kind == "email":
+        return value.strip().lower()
+    if kind == "phone":
+        return "".join(ch for ch in value if ch.isdigit())
+    if kind == "iban":
+        return "".join(value.split()).upper()
+    return " ".join(value.lower().split())
+
+
+def update_hashes(member):
+    """Recompute the member's duplicate-detection hashes; flag a match with another member."""
+    from apps.core import audit
+    from apps.core.hashing import hmac_hex
+
+    from .models import Member, MemberHash
+
+    private = get_private(member)
+    wanted = {"email": member.user.email}
+    for kind in ("phone", "iban"):
+        if private.get(kind):
+            wanted[kind] = private[kind]
+    if private.get("legal_name") and private.get("birth_date"):
+        wanted["name_birth"] = f"{private['legal_name']}|{private['birth_date']}"
+    with transaction.atomic():
+        MemberHash.objects.filter(member=member).delete()
+        for kind, raw in wanted.items():
+            digest = hmac_hex(f"{kind}:{_normalise(kind, raw)}")
+            MemberHash.objects.create(member=member, kind=kind, value=digest)
+            if MemberHash.objects.filter(kind=kind, value=digest).exclude(member=member).exists():
+                audit.record("system", "duplicate_suspected", member, kind=kind)
+                if member.status != Member.MEMBER:
+                    Member.objects.filter(pk=member.pk).update(status=Member.APPLICANT)

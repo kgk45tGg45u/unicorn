@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.dateparse import parse_date
 from django.utils.translation import gettext as _
 
 from . import crypto, services
@@ -20,7 +21,16 @@ def my_account(request):
         if member.joined_at is None:
             missing.append("contract")
         missing.append("verification")
-    return render(request, "members/my_account.html", {"member": member, "missing": missing})
+    return render(
+        request,
+        "members/my_account.html",
+        {
+            "member": member,
+            "missing": missing,
+            "vouches": member.vouches_received.select_related("voucher"),
+            "checks": member.checks_received.select_related("helper"),
+        },
+    )
 
 
 def public_profile(request, number):
@@ -71,3 +81,48 @@ def private_file(request, pk):
     except crypto.KeyDestroyed:
         raise Http404 from None
     return FileResponse(io.BytesIO(data), as_attachment=True, filename=name, content_type=pf.content_type)
+
+
+@login_required
+def vouch_page(request):
+    member = request.member
+    if member is None or not services.is_verified(member):
+        return HttpResponseForbidden(_("Only verified members can vouch for others."))
+    error = None
+    if request.method == "POST":
+        target = Member.objects.filter(number=request.POST.get("number", "").strip().upper(), deleted=False).first()
+        if target is None:
+            error = _("We could not find a member with that number.")
+        else:
+            try:
+                services.vouch(member, target, request.POST.get("statement", ""))
+            except services.IdentityError as e:
+                error = str(e)
+            else:
+                messages.success(request, _("Thank you. Your vouch is recorded."))
+                return redirect("members:vouch")
+    return render(request, "members/vouch.html", {"error": error})
+
+
+@login_required
+def identity_check_page(request):
+    member = request.member
+    if member is None or not (services.is_verified(member) and member.is_identity_helper):
+        return HttpResponseForbidden(_("Only identity helpers can record in-person checks."))
+    error = None
+    if request.method == "POST":
+        target = Member.objects.filter(number=request.POST.get("number", "").strip().upper(), deleted=False).first()
+        seen_on = parse_date(request.POST.get("seen_on", ""))
+        if target is None:
+            error = _("We could not find a member with that number.")
+        elif seen_on is None:
+            error = _("Please enter the date as YYYY-MM-DD.")
+        else:
+            try:
+                services.record_in_person_check(member, target, seen_on, request.POST.get("town", ""))
+            except services.IdentityError as e:
+                error = str(e)
+            else:
+                messages.success(request, _("The check is recorded."))
+                return redirect("members:identity_check")
+    return render(request, "members/identity_check.html", {"error": error})

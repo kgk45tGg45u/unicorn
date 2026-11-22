@@ -17,6 +17,12 @@
   {% if "verification" in missing %}<li>{% translate "Be vouched for by two members and meet an identity helper in person." %}</li>{% endif %}
 </ul>
 {% endif %}
+<h2 class="h5">{% translate "Vouches and checks I received" %}</h2>
+<ul>
+  {% for v in vouches %}<li>{% blocktranslate with name=v.voucher.display_name number=v.voucher.number %}Vouched for by {{ name }} ({{ number }}){% endblocktranslate %}</li>{% endfor %}
+  {% for c in checks %}<li>{% blocktranslate with town=c.town date=c.seen_on number=c.helper.number %}Seen in person by {{ number }} on {{ date }} in {{ town }}{% endblocktranslate %}</li>{% endfor %}
+  {% if not vouches and not checks %}<li class="text-muted">{% translate "None yet." %}</li>{% endif %}
+</ul>
 <p><a href="{% url 'members:public_profile' member.number %}">{% translate "See my public profile" %}</a></p>
 <p><a href="{% url 'mfa_index' %}">{% translate "Passkeys and recovery codes" %}</a> ·
    <a href="{% url 'account_logout' %}">{% translate "Log out" %}</a></p>

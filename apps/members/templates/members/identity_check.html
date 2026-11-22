@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block content %}
+<h1>{% translate "Identity checks" %}</h1>
+<p>{% translate "Record that you saw this person in person and checked an official ID. Do not write down the ID number, and do not keep a copy." %}</p>
+{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+<form method="post">
+  {% csrf_token %}
+  <div class="mb-3"><label class="form-label" for="number">{% translate "Member number" %}</label>
+    <input class="form-control" id="number" name="number" placeholder="M-XXXX-XXXX" required></div>
+  <div class="mb-3"><label class="form-label" for="seen_on">{% translate "Date you met (YYYY-MM-DD)" %}</label>
+    <input class="form-control" id="seen_on" name="seen_on" required></div>
+  <div class="mb-3"><label class="form-label" for="town">{% translate "Town" %}</label>
+    <input class="form-control" id="town" name="town" required></div>
+  <button class="btn btn-primary" type="submit">{% translate "Record the check" %}</button>
+</form>
+{% endblock %}

@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from apps.core.admin import ReadOnlyAdmin
 
-from .models import ContractTemplate, Member, PrivateFile, Signature
+from .models import ContractTemplate, InPersonCheck, Member, MemberHash, PrivateFile, Signature, Vouch
 
 
 @admin.register(Member)
@@ -25,3 +25,18 @@ class SignatureAdmin(ReadOnlyAdmin):
 class PrivateFileAdmin(ReadOnlyAdmin):
     list_display = ("owner", "kind", "size", "created_at")
     exclude = ("name_enc",)
+
+
+@admin.register(Vouch)
+class VouchAdmin(ReadOnlyAdmin):
+    list_display = ("voucher", "vouchee", "created_at")
+
+
+@admin.register(InPersonCheck)
+class InPersonCheckAdmin(ReadOnlyAdmin):
+    list_display = ("helper", "member", "seen_on", "town")
+
+
+@admin.register(MemberHash)
+class MemberHashAdmin(ReadOnlyAdmin):
+    list_display = ("member", "kind")
