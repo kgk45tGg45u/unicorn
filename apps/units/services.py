@@ -836,3 +836,77 @@ def waiting_for(member, unit):
         .exclude(approvals__approver=member)
         .select_related("member")
     )
+
+
+# --- Reports ---
+
+
+def month_bounds(year, month):
+    from datetime import date, timedelta
+
+    first = date(year, month, 1)
+    nxt = date(year + (month == 12), month % 12 + 1, 1)
+    return first, nxt - timedelta(days=1)
+
+
+def unit_report(unit, year, month):
+    """Hours of the unit in a month by worker, by activity and by status (drafts left out)."""
+    from collections import defaultdict
+
+    from .models import HoursEntry
+
+    first, last = month_bounds(year, month)
+    rows = HoursEntry.objects.filter(unit=unit, date__range=(first, last)).exclude(status="draft")
+    rows = rows.select_related("member")
+    by_worker, by_activity, by_status = defaultdict(int), defaultdict(int), defaultdict(int)
+    for e in rows:
+        by_worker[e.member.display_name] += e.minutes
+        by_activity[e.get_activity_display()] += e.minutes
+        by_status[e.get_status_display()] += e.minutes
+    return {
+        "by_worker": sorted(by_worker.items()),
+        "by_activity": sorted(by_activity.items()),
+        "by_status": sorted(by_status.items()),
+        "total": sum(by_worker.values()),
+    }
+
+
+def my_hours_totals(member):
+    """Per month and per unit: paid minutes, gross UNIQ, tax and net."""
+    from collections import defaultdict
+    from decimal import Decimal
+
+    from apps.core.money import minutes_to_uniq, uniq
+
+    from .models import HoursEntry
+
+    by_month, by_unit = (
+        defaultdict(lambda: [0, Decimal(0), Decimal(0)]),
+        defaultdict(lambda: [0, Decimal(0), Decimal(0)]),
+    )
+    for e in HoursEntry.objects.filter(member=member, status="paid").select_related("unit", "period"):
+        gross = minutes_to_uniq(e.minutes)
+        tax = uniq(gross * e.period.tax_rate)
+        for bucket in (by_month[f"{e.period.year}-{e.period.month:02d}"], by_unit[e.unit.name]):
+            bucket[0] += e.minutes
+            bucket[1] += gross
+            bucket[2] += tax
+    fmt = lambda d: [(k, v[0], v[1], v[2], v[1] - v[2]) for k, v in sorted(d.items(), reverse=True)]  # noqa: E731
+    return fmt(by_month), fmt(by_unit)
+
+
+def public_numbers(unit, months=12):
+    """Approved hours per month and the number of workers: no names."""
+    from django.db.models import Sum
+    from django.db.models.functions import TruncMonth
+
+    from .models import HoursEntry
+
+    rows = (
+        HoursEntry.objects.filter(unit=unit, status__in=["approved", "paid", "pending_sale"])
+        .annotate(m=TruncMonth("date"))
+        .values("m")
+        .annotate(total=Sum("minutes"))
+        .order_by("-m")[:months]
+    )
+    return [(r["m"].strftime("%Y-%m"), r["total"]) for r in rows], workers(unit).count()

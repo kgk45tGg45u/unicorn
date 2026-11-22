@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "My hours: totals" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "My paid hours" %}</h1>
+<h2 class="h5">{% translate "Per month" %}</h2>
+<div class="table-responsive"><table class="table"><thead><tr><th>{% translate "Month" %}</th><th>{% translate "Minutes" %}</th><th>{% translate "Gross UNIQ" %}</th><th>{% translate "Tax" %}</th><th>{% translate "Net" %}</th></tr></thead>
+<tbody>{% for k, m, g, t, n in by_month %}<tr><td>{{ k }}</td><td>{{ m }}</td><td>{{ g }}</td><td>{{ t }}</td><td>{{ n }}</td></tr>{% empty %}<tr><td colspan="5">{% translate "No paid hours yet." %}</td></tr>{% endfor %}</tbody></table></div>
+<h2 class="h5">{% translate "Per unit" %}</h2>
+<div class="table-responsive"><table class="table"><thead><tr><th>{% translate "Unit" %}</th><th>{% translate "Minutes" %}</th><th>{% translate "Gross UNIQ" %}</th><th>{% translate "Tax" %}</th><th>{% translate "Net" %}</th></tr></thead>
+<tbody>{% for k, m, g, t, n in by_unit %}<tr><td>{{ k }}</td><td>{{ m }}</td><td>{{ g }}</td><td>{{ t }}</td><td>{{ n }}</td></tr>{% empty %}<tr><td colspan="5">{% translate "No paid hours yet." %}</td></tr>{% endfor %}</tbody></table></div>
+<p><a href="{% url 'units:my_hours' %}">{% translate "Back to my hours" %}</a></p>
+{% endblock %}

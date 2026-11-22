@@ -30,6 +30,7 @@
   <div class="col-12 col-md-3 align-self-end"><button class="btn btn-primary w-100" type="submit">{% translate "Send for approval" %}</button></div>
 </form>
 {% endif %}
+<p><a href="{% url 'units:my_totals' %}">{% translate "Totals per month and per unit" %}</a></p>
 <h2 class="h5">{% translate "My entries" %}</h2>
 <div class="table-responsive"><table class="table">
   <thead><tr><th>{% translate "Day" %}</th><th>{% translate "Unit" %}</th><th>{% translate "Time" %}</th><th>{% translate "Status" %}</th></tr></thead>

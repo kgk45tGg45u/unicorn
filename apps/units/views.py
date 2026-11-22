@@ -20,6 +20,7 @@ def unit_page(request, slug):
     member = request.member if request.user.is_authenticated else None
     is_worker = bool(member) and services.is_worker(member, unit)
     can_decide = bool(member) and services.can_decide_joins(member, unit)
+    monthly, worker_count = services.public_numbers(unit)
     return render(
         request,
         "units/unit.html",
@@ -27,6 +28,8 @@ def unit_page(request, slug):
             "unit": unit,
             "workers": [m.member for m in services.workers(unit)],
             "is_worker": is_worker,
+            "monthly": monthly,
+            "worker_count": worker_count,
             "responsible": services.responsible(unit),
             "i_am_responsible": bool(member)
             and (services.responsible(unit) or None) is not None
@@ -298,3 +301,39 @@ def approve_page(request, slug):
             messages.success(request, _("Done."))
         return redirect("units:approve", slug=slug)
     return render(request, "units/approve.html", {"unit": unit, "entries": services.waiting_for(request.member, unit)})
+
+
+@login_required
+def unit_report(request, slug):
+    import csv
+    from datetime import date
+
+    from django.http import HttpResponse
+
+    unit = get_object_or_404(Unit, slug=slug)
+    if not services.is_council_member(request.member, unit) and not services.can_decide_joins(request.member, unit):
+        messages.error(request, _("Only council members can see the report."))
+        return redirect("units:unit", slug=slug)
+    today = date.today()
+    try:
+        year, month = int(request.GET.get("year", today.year)), int(request.GET.get("month", today.month))
+        report = services.unit_report(unit, year, month)
+    except ValueError:
+        year, month = today.year, today.month
+        report = services.unit_report(unit, year, month)
+    if request.GET.get("format") == "csv":
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="{unit.slug}-{year}-{month:02d}.csv"'
+        writer = csv.writer(response)
+        writer.writerow(["kind", "name", "minutes"])
+        for kind in ("by_worker", "by_activity", "by_status"):
+            for name, minutes in report[kind]:
+                writer.writerow([kind[3:], name, minutes])
+        return response
+    return render(request, "units/report.html", {"unit": unit, "year": year, "month": month, "r": report})
+
+
+@login_required
+def my_hours_totals(request):
+    by_month, by_unit = services.my_hours_totals(request.member)
+    return render(request, "units/my_totals.html", {"by_month": by_month, "by_unit": by_unit})

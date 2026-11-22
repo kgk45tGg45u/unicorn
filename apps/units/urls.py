@@ -7,6 +7,7 @@ app_name = "units"
 urlpatterns = [
     path("", views.unit_list, name="list"),
     path("me/hours/", views.my_hours, name="my_hours"),
+    path("me/hours/totals/", views.my_hours_totals, name="my_totals"),
     path("me/hours/timer/", views.timer, name="timer"),
     path("me/hours/<int:pk>/submit/", views.submit_draft, name="submit_draft"),
     path("open/", views.open_unit, name="open"),
@@ -21,6 +22,7 @@ urlpatterns = [
     path("<slug:slug>/decline-turn/", views.decline_turn, name="decline_turn"),
     path("<slug:slug>/reopen/", views.reopen, name="reopen"),
     path("<slug:slug>/approve/", views.approve_page, name="approve"),
+    path("<slug:slug>/report/", views.unit_report, name="report"),
     path("<slug:slug>/hours/", views.unit_hours, name="unit_hours"),
     path("<slug:slug>/leave/", views.leave, name="leave"),
 ]

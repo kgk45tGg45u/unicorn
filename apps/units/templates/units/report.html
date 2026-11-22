@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Monthly report" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% blocktranslate with name=unit.name y=year m=month %}Hours of {{ name }}, {{ y }}-{{ m }}{% endblocktranslate %}</h1>
+{% for message in messages %}<div class="alert alert-info">{{ message }}</div>{% endfor %}
+<form method="get" class="row g-2 mb-3">
+  <div class="col-6 col-md-2"><label class="form-label" for="year">{% translate "Year" %}</label><input class="form-control" id="year" name="year" type="number" value="{{ year }}"></div>
+  <div class="col-6 col-md-2"><label class="form-label" for="month">{% translate "Month" %}</label><input class="form-control" id="month" name="month" type="number" min="1" max="12" value="{{ month }}"></div>
+  <div class="col-12 col-md-3 align-self-end"><button class="btn btn-primary" type="submit">{% translate "Show" %}</button> <a class="btn btn-outline-secondary" href="?year={{ year }}&month={{ month }}&format=csv">CSV</a></div>
+</form>
+<p>{% blocktranslate with t=r.total %}Total: {{ t }} minutes.{% endblocktranslate %}</p>
+<div class="row">
+  <div class="col-md-4"><h2 class="h5">{% translate "By worker" %}</h2><ul>{% for n, m in r.by_worker %}<li>{{ n }}: {{ m }} min</li>{% endfor %}</ul></div>
+  <div class="col-md-4"><h2 class="h5">{% translate "By kind of work" %}</h2><ul>{% for n, m in r.by_activity %}<li>{{ n }}: {{ m }} min</li>{% endfor %}</ul></div>
+  <div class="col-md-4"><h2 class="h5">{% translate "By status" %}</h2><ul>{% for n, m in r.by_status %}<li>{{ n }}: {{ m }} min</li>{% endfor %}</ul></div>
+</div>
+<p><a href="{% url 'units:unit' unit.slug %}">{% translate "Back to the unit" %}</a></p>
+{% endblock %}

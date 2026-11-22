@@ -255,7 +255,7 @@
 
 ---
 
-### - [ ] P03.T09 — Hours pages and reports
+### - [x] P03.T09 — Hours pages and reports
 
 **Files:** `apps/units/views.py`, `apps/units/templates/units/report.html`, `apps/units/tests/test_reports.py`
 
