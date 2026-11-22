@@ -5,7 +5,7 @@
 
 ---
 
-### - [ ] P04.T01 — Units of measure, items and placeholders
+### - [x] P04.T01 — Units of measure, items and placeholders
 
 **Read:** docs/04 sections 2 and 9.
 **Files:** `apps/catalogue/` (new app), `apps/catalogue/models.py`, `apps/catalogue/migrations/0002_units_of_measure.py`, `apps/catalogue/services.py`, `apps/catalogue/views.py`, `apps/catalogue/tests/test_items.py`

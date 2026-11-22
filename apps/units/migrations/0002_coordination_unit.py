@@ -20,6 +20,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("units", "0001_initial"),
+        ("rules", "0001_initial"),  # the default cover radius reads the defaults table
     ]
 
     operations = [

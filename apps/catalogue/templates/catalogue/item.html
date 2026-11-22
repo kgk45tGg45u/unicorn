@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ item.name }} · Unicorn{% endblock %}
+{% block content %}
+<h1>{{ item.name }}</h1>
+<p class="text-muted">{{ item.get_kind_display }} · {% blocktranslate with u=item.uom.name %}counted per {{ u }}{% endblocktranslate %}{% if item.status == "placeholder" %} · {% translate "Not made in Unicorn yet" %}{% endif %}</p>
+{% if item.description %}<p>{{ item.description }}</p>{% endif %}
+{% if item.shelf_life_days %}<p>{% blocktranslate with d=item.shelf_life_days %}Keeps for {{ d }} days.{% endblocktranslate %}</p>{% endif %}
+{% block offers %}{% endblock %}
+{% endblock %}

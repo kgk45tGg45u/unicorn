@@ -1,0 +1,5 @@
+{% load i18n %}
+<ul class="list-group">
+{% for i in items %}<li class="list-group-item" data-item-id="{{ i.pk }}" data-uom="{{ i.uom_id }}">{{ i.name }} <span class="text-muted">({{ i.uom.name }}){% if i.status == "placeholder" %} · {% translate "not made in Unicorn" %}{% endif %}</span></li>
+{% empty %}<li class="list-group-item text-muted">{% translate "No item found. You can type a new name." %}</li>{% endfor %}
+</ul>

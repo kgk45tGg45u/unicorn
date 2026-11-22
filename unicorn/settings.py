@@ -79,6 +79,7 @@ INSTALLED_APPS = [
     "apps.ledger",
     "apps.units",
     "apps.plan",
+    "apps.catalogue",
 ]
 
 MIDDLEWARE = [

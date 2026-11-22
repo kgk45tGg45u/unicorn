@@ -24,6 +24,7 @@ urlpatterns = [
     path("", include("apps.members.urls")),
     path("", include("apps.ledger.urls")),
     path("units/", include("apps.units.urls")),
+    path("", include("apps.catalogue.urls")),
     path("rules/", include("apps.rules.urls")),
     path("", include("apps.core.urls")),
 ]
