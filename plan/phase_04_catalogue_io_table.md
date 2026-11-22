@@ -190,7 +190,7 @@
 
 ---
 
-### - [ ] P04.T06 — Offer and item pages
+### - [x] P04.T06 — Offer and item pages
 
 **Read:** docs/06 section 6 ("Each offer shows"); docs/04 section 4 (lead time).
 **Files:** `apps/catalogue/views.py`, `apps/catalogue/templates/catalogue/offer.html`, `.../item.html`, `apps/catalogue/services.py` (lead time), `apps/catalogue/tests/test_pages.py`

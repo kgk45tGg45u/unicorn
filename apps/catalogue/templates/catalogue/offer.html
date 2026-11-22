@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ offer.item.name }} · Unicorn{% endblock %}
+{% block content %}
+<h1>{{ offer.item.name }}</h1>
+<p class="text-muted"><a href="{% url 'units:unit' offer.unit.slug %}">{{ offer.unit.name }}</a>{% if offer.unit.town %} · {{ offer.unit.town }}{% endif %} · {% blocktranslate with u=offer.item.uom.name %}per {{ u }}{% endblocktranslate %}</p>
+{% if offer.status != "active" %}<div class="alert alert-warning">{{ offer.get_status_display }}{% if offer.status_note %}: {{ offer.status_note }}{% endif %}</div>{% endif %}
+<p class="display-6">{{ offer.value_total|floatformat:2 }} UNIQ</p>
+<p>{% blocktranslate with d=offer.value_direct|floatformat:2 i=offer.value_indirect|floatformat:2 %}Direct {{ d }} h + indirect {{ i }} h.{% endblocktranslate %}
+{% blocktranslate with e=offer.euro_content|floatformat:2 %}€{{ e }} of this is bought from outside.{% endblocktranslate %}</p>
+<p class="text-muted">{{ offer.get_value_basis_display|capfirst }}.</p>
+<p>{% blocktranslate with days=lead_time %}Expected lead time: {{ days }} days.{% endblocktranslate %}</p>
+
+<h2 class="h5">{% translate "Recipe" %}</h2>
+<ul>
+{% for r in inputs %}<li>{{ r.quantity_per_batch|floatformat:"-4" }} {{ r.item.uom.name }} {{ r.item.name }} — {% if r.source == "unicorn" %}{% translate "made in Unicorn" %}{% elif r.source == "own_free" %}{% translate "provided free by a member" %}{% else %}{% translate "bought from outside" %}{% endif %}</li>
+{% empty %}<li class="text-muted">{% translate "No inputs." %}</li>{% endfor %}
+</ul>
+{% if tools %}<h3 class="h6">{% translate "Tools" %}</h3><ul>{% for t in tools %}<li>{{ t.tool_item.name }} — {% if t.source == "unicorn_owned" %}{% translate "owned by Unicorn" %}{% elif t.source == "own_free" %}{% translate "provided free by a member" %}{% else %}{% translate "still to be bought" %}{% endif %}</li>{% endfor %}</ul>{% endif %}
+
+<h2 class="h5">{% translate "How is this price made?" %}</h2>
+<p>{% translate "The price is the hours of work in this item: the hours the unit works on it directly, plus the hours inside everything used to make it. Everyone's hour counts the same. Nobody sets the price: it is calculated from the recipe, and it changes only when the recipe or its inputs change." %}</p>
+<p><a href="{% url 'catalogue:item' offer.item.pk %}">{% translate "Other units that make this" %}</a>{% if can_edit %} · <a href="{% url 'catalogue:recipe' offer.pk %}">{% translate "Edit the recipe" %}</a>{% endif %}</p>
+{% endblock %}

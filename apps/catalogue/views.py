@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
@@ -13,7 +14,8 @@ from .models import Item, Offer, OfferInput, OfferTool, UnitOfMeasure
 
 def item_page(request, pk):
     item = get_object_or_404(Item, pk=pk)
-    return render(request, "catalogue/item.html", {"item": item})
+    offers = item.offers.filter(status="active").select_related("unit").order_by("unit__name", "pk")
+    return render(request, "catalogue/item.html", {"item": item, "offers": offers})
 
 
 def item_search(request):
@@ -175,3 +177,28 @@ def confirm_free(request, pk):
     except services.CatalogueError as e:
         messages.error(request, str(e))
     return redirect("catalogue:recipe", pk=row.offer_id)
+
+
+def offer_page(request, pk):
+    offer = get_object_or_404(Offer.objects.select_related("unit", "item", "item__uom"), pk=pk)
+    member = request.member if request.user.is_authenticated else None
+    can_edit = bool(member) and unit_services_can_edit(member, offer.unit)
+    if offer.status not in ("active", "value_error", "paused") and not can_edit:
+        raise Http404
+    return render(
+        request,
+        "catalogue/offer.html",
+        {
+            "offer": offer,
+            "inputs": offer.inputs.select_related("item", "item__uom"),
+            "tools": offer.tools.select_related("tool_item"),
+            "lead_time": services.lead_time_days(offer),
+            "can_edit": can_edit,
+        },
+    )
+
+
+def unit_services_can_edit(member, unit):
+    from apps.units import services as unit_services
+
+    return unit_services.can_edit_unit(member, unit)

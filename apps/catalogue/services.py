@@ -501,3 +501,28 @@ def preview(offer) -> Preview:
                 indirect += r.quantity_per_batch * value / q
                 euro += r.quantity_per_batch * eur / q
     return Preview(direct, uniq(indirect), uniq(direct + indirect), uniq(euro))
+
+
+# --- Lead time ---
+
+
+def lead_time_days(offer, _depth=0, _seen=None) -> int:
+    """Days until a batch is ready: its own cycle, the longest Unicorn-made input, and the outside-input days.
+
+    For an input without a preferred supplier, the quickest active supplier counts. Stock is ignored until P05.
+    """
+    seen = set(_seen or ())
+    if offer.pk in seen or _depth > 10:
+        return offer.cycle_days
+    seen.add(offer.pk)
+    longest = 0
+    outside = False
+    for r in offer.inputs.select_related("item", "preferred_supplier"):
+        if r.source == "buy_outside":
+            outside = True
+        elif r.source == "unicorn":
+            suppliers = [r.preferred_supplier] if r.preferred_supplier_id else list(active_offers_of(r.item))
+            if suppliers:
+                longest = max(longest, min(lead_time_days(s, _depth + 1, seen) for s in suppliers))
+    extra = get_param("market.outside_input_days") if outside else 0
+    return offer.cycle_days + longest + extra

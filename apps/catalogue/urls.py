@@ -6,6 +6,7 @@ app_name = "catalogue"
 
 urlpatterns = [
     path("units/<slug:slug>/offers/new/", views.offer_new, name="offer_new"),
+    path("offers/<int:pk>/", views.offer_page, name="offer"),
     path("offers/<int:pk>/recipe/", views.recipe_editor, name="recipe"),
     path("offers/<int:pk>/recipe/input/", views.recipe_add_input, name="add_input"),
     path("offers/<int:pk>/recipe/tool/", views.recipe_add_tool, name="add_tool"),
