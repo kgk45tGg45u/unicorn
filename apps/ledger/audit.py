@@ -116,5 +116,7 @@ def run_audit(full=False) -> AuditRun:
     )
     if not run.ok:
         audit_log.record("system", "audit_failed", run, findings=len(findings))
-        # From P06 on this also opens a ticket for the elected auditors.
+        from apps.tickets import briefs
+
+        briefs.audit_failure(run)  # until auditors are elected (P07.T09), random confirmers look at it
     return run

@@ -35,6 +35,7 @@ def test_a_ticket_for_confirmers_draws_them():
 
 def test_an_automatic_ticket_that_is_not_green_goes_to_confirmers():
     members = pool(8)
+    unit = make_unit("bakery", status="paused")
     t = services.create_ticket(
         "open_unit",
         members[0],
@@ -42,6 +43,7 @@ def test_an_automatic_ticket_that_is_not_green_goes_to_confirmers():
         brief="The brief.",
         check={"question": "q?", "choices": ["a", "b", "c"], "correct": 0},
         plan_check={"color": "red", "points": []},
+        action_payload={"unit_id": unit.pk},
     )
     t.refresh_from_db()
     assert t.decision_method == "confirmers" and t.status == "confirming"

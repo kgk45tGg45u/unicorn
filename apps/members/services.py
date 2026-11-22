@@ -147,8 +147,24 @@ def read_private_file(pf):
 
 
 def can_view_file(viewer, pf) -> bool:
-    # Later phases add confirmers seated on the ticket that needs the file.
-    return viewer is not None and viewer.pk == pf.owner_id
+    if viewer is None:
+        return False
+    if viewer.pk == pf.owner_id:
+        return True
+    return _is_seated_for_licence(viewer, pf)
+
+
+def _is_seated_for_licence(viewer, pf) -> bool:
+    """The confirmers seated on a licence ticket may open its document while the ticket is open (P06.T07)."""
+    from apps.tickets.models import Seat
+
+    seats = Seat.objects.filter(
+        member=viewer,
+        replaced=False,
+        confirmation__ticket__type="verify_licence",
+        confirmation__ticket__status__in=("open", "confirming", "panel"),
+    ).values_list("confirmation__ticket__action_payload", flat=True)
+    return any((payload or {}).get("document_id") == pf.pk for payload in seats)
 
 
 def shred(member) -> None:
@@ -277,6 +293,17 @@ def update_hashes(member):
             MemberHash.objects.create(member=member, kind=kind, value=digest)
             if MemberHash.objects.filter(kind=kind, value=digest).exclude(member=member).exists():
                 audit.record("system", "duplicate_suspected", member, kind=kind)
+                other = (
+                    MemberHash.objects.filter(kind=kind, value=digest)
+                    .exclude(member=member)
+                    .select_related("member")
+                    .first()
+                    .member
+                )
+                from apps.tickets import briefs
+
+                newer, older = (member, other) if member.pk > other.pk else (other, member)
+                briefs.duplicate_suspected(newer, older, kind)
                 if member.status != Member.MEMBER:
                     Member.objects.filter(pk=member.pk).update(status=Member.APPLICANT)
 
@@ -413,6 +440,9 @@ def submit_licence(member, kind, uploaded_file, expires_on=None):
         pf = store_private_file(member, uploaded_file, "licence")
         licence = Licence.objects.create(member=member, kind=kind, document=pf, expires_on=expires_on)
         audit.record(member.number, "licence.submitted", licence, kind=kind)
+        from apps.tickets import briefs
+
+        briefs.verify_licence(licence)  # two random confirmers check it
         return licence
 
 
@@ -475,6 +505,22 @@ def delete_account(member):
         member.save(update_fields=["deleted"])
         audit.record(member.number, "member.deleted", member)
         return Member.objects.get(pk=member.pk)
+
+
+def suspend(member, reason):
+    """Suspend an account (a proven duplicate). The UNIQ account stays (HF-8)."""
+    from apps.core import audit
+
+    from .models import Member
+
+    with transaction.atomic():
+        member = Member.objects.select_for_update().get(pk=member.pk)
+        if member.status == Member.SUSPENDED:
+            return member
+        member.status = Member.SUSPENDED
+        member.save(update_fields=["status"])
+        audit.record("system", "member.suspended", member, reason=reason)
+        return member
 
 
 def has_reached_pension_age(member) -> bool:

@@ -41,7 +41,15 @@ def test_the_author_and_the_units_workers_are_never_drawn():
     unit = make_unit("bakery")
     us.add_first_worker(unit, members[1])
     us.decide_join(us.request_to_join(unit, members[2]), members[1], True)
-    t = services.create_ticket("close_unit", members[0], "Close", scope="unit", scope_unit=unit, open_now=False)
+    t = services.create_ticket(
+        "close_unit",
+        members[0],
+        "Close",
+        scope="unit",
+        scope_unit=unit,
+        action_payload={"unit_id": unit.pk},
+        open_now=False,
+    )
     pool_numbers = {m.number for m in draw.eligible(t)}
     assert members[0].number not in pool_numbers
     assert members[1].number not in pool_numbers and members[2].number not in pool_numbers

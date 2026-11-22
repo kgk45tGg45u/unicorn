@@ -61,6 +61,7 @@ def create_ticket(
     check=None,
     action_payload=None,
     plan_check=None,
+    action=None,
     open_now=True,
 ):
     """Make a ticket. `check` is {"question", "choices": [3 texts], "correct": 0-2, "hint"}."""
@@ -76,7 +77,8 @@ def create_ticket(
     _check_brief(info, brief, check)
     from . import actions
 
-    found = actions.problems(info.action, action_payload)
+    action = action or info.action
+    found = actions.problems(action, action_payload)
     if found:
         raise TicketError(" ".join(found))
     check = check or {}
@@ -96,7 +98,7 @@ def create_ticket(
             check_correct=check.get("correct") or 0,
             check_hint=check.get("hint", ""),
             decision_method=info.method,
-            action=info.action or "",
+            action=action or "",
             action_payload=action_payload or {},
             plan_check=plan_check,
             status="open" if open_now else "draft",

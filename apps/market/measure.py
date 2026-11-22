@@ -126,6 +126,9 @@ def _streak(offer, kind, month, months):
 
 def _notice(offer, record, verb, **data):
     audit.record("system", verb, offer, month=f"{record.month:%Y-%m}", value=str(record.value), **data)
+    from apps.tickets import briefs
+
+    briefs.hours_review(offer, record.kind, record.month, record.value)  # HF-15: a notice goes to people
     record.notified = True
     record.save(update_fields=["notified"])
 

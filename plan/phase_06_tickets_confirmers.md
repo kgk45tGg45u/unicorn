@@ -171,7 +171,7 @@
 
 ---
 
-### - [ ] P06.T07 — Actions, and moving earlier flows onto tickets
+### - [x] P06.T07 — Actions, and moving earlier flows onto tickets
 
 **Read:** docs/05 section 5 item 1 ("Automatic actions").
 **Files:** `apps/tickets/actions.py`, `apps/units/services.py`, `apps/catalogue/services.py`, `apps/members/services.py`, `apps/market/services.py`, `apps/ledger/audit.py`, `apps/tickets/tests/test_actions.py`

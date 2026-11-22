@@ -1,6 +1,6 @@
 from apps.core.jobs import job
 
-from . import confirm
+from . import confirm, sampling
 
 
 @job("tickets.seat_deadlines")
@@ -12,4 +12,5 @@ def seat_deadlines(payload):
 
 @job("tickets.one_person_checks")
 def one_person_checks(payload):
-    """Placeholder until P06.T07."""
+    """Once a month: a random sample of the one-person units gets a check ticket. Safe to run twice."""
+    sampling.one_person_checks()

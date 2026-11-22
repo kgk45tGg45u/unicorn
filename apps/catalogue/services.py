@@ -253,8 +253,11 @@ def request_recompute():
 PUBLISH_HOOKS: list = []
 
 
-def publish_offer(offer, member):
-    """Check the recipe, the unit's licence and insurance (HF-17) and the plan, then make the offer active."""
+def publish_offer(offer, member, approved_by=None):
+    """Check the recipe, the unit's licence and insurance (HF-17) and the plan, then make the offer active.
+
+    `approved_by` is an approved ticket: the random confirmers already decided on a red plan check.
+    """
     from apps.plan import check as plan_check
 
     _need_editor(member, offer)
@@ -279,10 +282,13 @@ def publish_offer(offer, member):
         result = plan_check.check(
             {"type": "offer", "offer": offer.pk, "euros_per_batch": str(_euros_per_batch(offer)), "unit": unit.pk}
         )
-        if result.color == "red":
+        if result.color == "red" and approved_by is None:
             offer.status_note = _("waiting for random confirmers")
             offer.save(update_fields=["status_note"])
             audit.record(member.number, "offer.publish_held", offer, check="red")
+            from apps.tickets import briefs
+
+            briefs.offer_red_check(offer, member, result)  # HF-15: people decide, the check never refuses
             return offer
         offer.status = "active"
         offer.status_note = ""

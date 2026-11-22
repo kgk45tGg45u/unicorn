@@ -101,6 +101,7 @@ TYPES: dict[str, TicketType] = {
             _("Check a licence"),
             "confirmers",
             action="verify_licence",
+            reject_action="reject_licence",
             confirmers=2,
             needs_brief=True,
             creatable=False,

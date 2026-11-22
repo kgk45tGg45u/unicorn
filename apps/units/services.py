@@ -161,6 +161,11 @@ SECOND_WORKER_HOOKS.append(_default_rules_hook)
 # kind -> function(decision) run when a decision of that kind is approved. P03.T06 adds close_unit.
 DECISION_ACTIONS: dict = {}
 
+# Functions called with (decision) when a decision is opened and when it is closed. The tickets app adds one of each,
+# so that every council decision also has a ticket (P06.T07) and this app never imports it.
+DECISION_OPENED_HOOKS: list = []
+DECISION_CLOSED_HOOKS: list = []
+
 
 def _apply_rules_change(decision):
     from . import council_rules
@@ -204,6 +209,8 @@ def _create_decision(unit, member, title, text, kind, payload):
             closes_at=now + timedelta(days=days),
         )
         audit.record(member.number if member else "system", "unit.decision_opened", decision, kind=kind)
+        for hook in DECISION_OPENED_HOOKS:
+            hook(decision)
         if not has_council(unit):
             _finish(decision, approved=True, result={"one_person_unit": True})
         return decision
@@ -269,6 +276,8 @@ def _finish(decision, approved, result):
     audit.record("system", "unit.decision_closed", decision, status=decision.status)
     if approved and decision.kind in DECISION_ACTIONS:
         DECISION_ACTIONS[decision.kind](decision)
+    for hook in DECISION_CLOSED_HOOKS:
+        hook(decision)
     return decision
 
 
@@ -481,7 +490,7 @@ def open_unit(member, data):
         unit = Unit(slug=_slug_for(data["name"]), created_by=member, last_activity_at=now, **fields)
         if result.color == "red":
             unit.status = "paused"
-            unit.status_note = _("waiting for random confirmers")
+            unit.status_note = _("waiting for random confirmers")  # HF-15: a ticket, never a refusal
         else:
             unit.status = "trial"
             unit.opened_at = now
@@ -495,6 +504,10 @@ def open_unit(member, data):
             check=result.color,
             points=[{"color": p.color, "text": p.text} for p in result.points],
         )
+        if result.color == "red":
+            from apps.tickets import briefs
+
+            briefs.open_unit(unit, member, result)  # HF-15: the random confirmers decide before it opens
         return unit
 
 
@@ -536,13 +549,45 @@ def reopen_unit(member, unit):
     return unit
 
 
+def release_unit(unit):
+    """A paused unit starts its trial: its opening was approved."""
+    with transaction.atomic():
+        unit = Unit.objects.select_for_update().get(pk=unit.pk)
+        if unit.status != "paused":
+            return unit
+        now = timezone.now()
+        unit.status, unit.status_note, unit.opened_at = "trial", "", now
+        unit.trial_until = member_services._add_months(now, get_param("governance.units.trial_months"))
+        unit.save(update_fields=["status", "status_note", "opened_at", "trial_until"])
+        audit.record("system", "unit.released", unit)
+        return unit
+
+
+# Functions called with (unit) when a unit is paused by a decision; the market releases its open orders (P06.T10).
+PAUSE_HOOKS: list = []
+
+
+def pause_unit(unit, reason):
+    """Pause a unit after a panel said it should not keep working. Its open orders are released."""
+    with transaction.atomic():
+        unit = Unit.objects.select_for_update().get(pk=unit.pk)
+        if unit.status in ("closed", "merged", "paused"):
+            return unit
+        unit.status, unit.status_note = "paused", str(reason)[:120]
+        unit.save(update_fields=["status", "status_note"])
+        audit.record("system", "unit.paused", unit, reason=str(reason))
+        for hook in PAUSE_HOOKS:
+            hook(unit)
+        return unit
+
+
 def touch(unit):
     """Record that something happened in the unit (hours, orders, bookings)."""
     Unit.objects.filter(pk=unit.pk).update(last_activity_at=timezone.now())
 
 
-def close_unit(unit, reason, member=None, decision=None):
-    """Close a unit: by an approved `close_unit` council decision, or by the single worker of a one-person unit.
+def close_unit(unit, reason, member=None, decision=None, ticket=None):
+    """Close a unit: by an approved council decision or ticket, or by the single worker of a one-person unit.
 
     Returns the list of reasons that still block closing (the unit stays `closing`), or [] when it is closed.
     """
@@ -557,7 +602,8 @@ def close_unit(unit, reason, member=None, decision=None):
             and is_worker(member, unit)
             and member_services.is_verified(member)
         )
-        if not (by_decision or alone):
+        by_ticket = ticket is not None and ticket.status == "approved"
+        if not (by_decision or alone or by_ticket):
             raise UnitError(_("Closing a unit needs a decision of its council."))
         if unit.status in ("closed", "merged"):
             return []
@@ -848,6 +894,40 @@ def reject_hours(entry, approver, reason):
             _("Your hours at %(unit)s were not approved") % {"unit": entry.unit.name},
             _("Reason: %(reason)s") % {"reason": entry.rejection_reason},
         )
+        return entry
+
+
+def correct_hours(entry, minutes, reason):
+    """Pay again after a mistake: reverse the payment and the tax with written reasons, then pay the right amount.
+
+    Used by an approved `hours_correct` ticket. Ledger rows are never changed; the correction is new rows (HF-7).
+    """
+    from apps.ledger import services as ledger
+    from apps.ledger.models import Transaction
+
+    from .models import HoursEntry
+
+    if not (reason or "").strip():
+        raise UnitError(_("A correction needs a written reason."))
+    if not isinstance(minutes, int) or not 0 <= minutes <= 1440:
+        raise UnitError(_("Please enter between 0 minutes and 24 hours."))
+    with transaction.atomic():
+        entry = HoursEntry.objects.select_for_update().get(pk=entry.pk)
+        if entry.status != "paid" or entry.transaction_id is None:
+            raise UnitError(_("Only paid hours can be corrected."))
+        taxes = list(Transaction.objects.filter(kind="tax", ref_type="hoursentry", ref_id=str(entry.pk)))
+        for tx in [*taxes, entry.transaction]:  # the tax first: the member holds only what is left after it
+            legs = [ledger.Leg(e.account, -e.amount) for e in tx.entries.select_related("account")]
+            ledger.post("correction", reason, legs, ref=tx)
+        entry.transaction = None
+        if minutes == 0:
+            entry.status, entry.rejection_reason = "rejected", str(reason)[:300]
+            entry.save(update_fields=["transaction", "status", "rejection_reason"])
+        else:
+            entry.minutes, entry.status, entry.period = minutes, "approved", ledger.current_period()
+            entry.save(update_fields=["transaction", "minutes", "status", "period"])
+            pay_hours(entry)
+        audit.record("system", "hours.corrected", entry, minutes=minutes, reason=reason)
         return entry
 
 

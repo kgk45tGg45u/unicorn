@@ -858,7 +858,7 @@ def _notify_written_off(lot, left):
 
 # --- Handing over and paying (docs/06 section 5, items 4 and 5) ---
 
-DISPUTE_REASONS = {"not_received": _("Not received"), "damaged": _("Damaged")}
+DISPUTE_REASONS = {"not_received": _("Not received"), "damaged": _("Damaged")}  # a booking: "Not performed"
 
 
 def hand_over(line, worker):
@@ -976,7 +976,7 @@ def refuse(line, buyer):
 
 
 def dispute(line, buyer, reason, text=""):
-    """'Not received' or 'damaged'. The UNIQ stay held. Until tickets exist (P06) it is recorded in the audit log."""
+    """'Not received' or 'damaged'. The UNIQ stay held, and a ticket asks random confirmers."""
     if reason not in DISPUTE_REASONS:
         raise MarketError(_("Please say what went wrong."))
     with transaction.atomic():
@@ -988,7 +988,12 @@ def dispute(line, buyer, reason, text=""):
         line.disputed_at = timezone.now()
         line.dispute_text = f"{reason}: {text}".strip()[:300]
         line.save(update_fields=["disputed_at", "dispute_text"])
-        audit.record(buyer.number, "order.disputed", line, reason=reason)  # P06 turns this into a flag ticket
+        audit.record(buyer.number, "order.disputed", line, reason=reason)
+        from apps.tickets import briefs
+
+        briefs.dispute(
+            buyer, DISPUTE_REASONS[reason], line.offer.item.name, line.offer.unit, {"order_line": line.pk, "text": text}
+        )
         return line
 
 
@@ -1302,7 +1307,11 @@ def dispute_booking(booking, customer, text=""):
         booking.status = "disputed"
         booking.dispute_text = text.strip()[:300]
         booking.save(update_fields=["status", "dispute_text"])
-        audit.record(customer.number, "booking.disputed", booking)  # P06 turns this into a flag ticket
+        audit.record(customer.number, "booking.disputed", booking)
+        from apps.tickets import briefs
+
+        offer = booking.slot.offer
+        briefs.dispute(customer, _("Not performed"), offer.item.name, offer.unit, {"booking": booking.pk, "text": text})
         return booking
 
 
