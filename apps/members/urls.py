@@ -13,5 +13,6 @@ urlpatterns = [
     path("files/<int:pk>/", views.private_file, name="private_file"),
     path("vouch/", views.vouch_page, name="vouch"),
     path("identity-checks/", views.identity_check_page, name="identity_check"),
+    path("portfolio/", views.portfolio, name="portfolio"),
     path("m/<str:number>/", views.public_profile, name="public_profile"),
 ]

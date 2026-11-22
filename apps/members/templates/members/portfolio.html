@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "My work portfolio" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "My work portfolio" %}</h1>
+{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+
+<h2 class="h4 mt-4">{% translate "Skills" %}</h2>
+<ul>
+  {% for s in skills %}
+    <li>{{ s.trade_name }} · {{ s.get_level_display }}
+      <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="action" value="delete_skill"><input type="hidden" name="id" value="{{ s.pk }}">
+        <button class="btn btn-link btn-sm" type="submit">{% translate "Remove" %}</button></form></li>
+  {% empty %}<li class="text-muted">{% translate "No skills yet." %}</li>{% endfor %}
+</ul>
+<form method="post" class="row g-2 align-items-end">
+  {% csrf_token %}<input type="hidden" name="action" value="skill">
+  <div class="col-12 col-md-4"><label class="form-label" for="trade_name">{% translate "Trade" %}</label><input class="form-control" id="trade_name" name="trade_name" required></div>
+  <div class="col-6 col-md-3"><label class="form-label" for="level">{% translate "Level" %}</label>
+    <select class="form-select" id="level" name="level">{% for value, label in levels %}<option value="{{ value }}"{% if value == "able" %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-3"><label class="form-label" for="trade_code">{% translate "Trade code (optional)" %}</label><input class="form-control" id="trade_code" name="trade_code"></div>
+  <div class="col-12 col-md-2"><button class="btn btn-primary w-100" type="submit">{% translate "Add" %}</button></div>
+</form>
+
+<h2 class="h4 mt-4">{% translate "Availability" %}</h2>
+<form method="post" class="row g-2 align-items-end">
+  {% csrf_token %}<input type="hidden" name="action" value="availability">
+  <div class="col-6 col-md-3"><label class="form-label" for="hours_per_week">{% translate "Hours per week" %}</label><input class="form-control" id="hours_per_week" name="hours_per_week" value="{{ availability.hours_per_week|default:0 }}"></div>
+  <div class="col-12 col-md-6"><label class="form-label" for="note">{% translate "Note" %}</label><input class="form-control" id="note" name="note" value="{{ availability.note }}"></div>
+  <div class="col-12 col-md-3"><button class="btn btn-primary w-100" type="submit">{% translate "Save" %}</button></div>
+</form>
+
+<h2 class="h4 mt-4">{% translate "Licences" %}</h2>
+<ul>
+  {% for l in licences %}<li>{{ l.get_kind_display }} · {{ l.get_status_display }}{% if l.expires_on %} · {% translate "valid until" %} {{ l.expires_on }}{% endif %}
+    · <a href="{% url 'members:private_file' l.document_id %}">{% translate "My document" %}</a></li>
+  {% empty %}<li class="text-muted">{% translate "No licences yet." %}</li>{% endfor %}
+</ul>
+<form method="post" enctype="multipart/form-data" class="row g-2 align-items-end">
+  {% csrf_token %}<input type="hidden" name="action" value="licence">
+  <div class="col-12 col-md-3"><label class="form-label" for="kind">{% translate "Kind" %}</label>
+    <select class="form-select" id="kind" name="kind">{% for value, label in licence_kinds %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div>
+  <div class="col-12 col-md-4"><label class="form-label" for="document">{% translate "Document (PDF, JPEG or PNG, up to 10 MB)" %}</label><input class="form-control" type="file" id="document" name="document" accept=".pdf,.jpg,.jpeg,.png" required></div>
+  <div class="col-6 col-md-3"><label class="form-label" for="expires_on">{% translate "Valid until (YYYY-MM-DD)" %}</label><input class="form-control" id="expires_on" name="expires_on"></div>
+  <div class="col-6 col-md-2"><button class="btn btn-primary w-100" type="submit">{% translate "Upload" %}</button></div>
+</form>
+<p class="small text-muted mt-2">{% translate "Only you and, later, the members who check your licence can open the document. Others see only a badge once it is verified." %}</p>
+
+<h2 class="h4 mt-4">{% translate "Public profile" %}</h2>
+<form method="post">
+  {% csrf_token %}<input type="hidden" name="action" value="public">
+  <div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="public_profile" name="public_profile" value="1"{% if member.public_profile %} checked{% endif %}>
+    <label class="form-check-label" for="public_profile">{% translate "Show my skills and verified licences on my public profile" %}</label></div>
+  <button class="btn btn-primary" type="submit">{% translate "Save" %}</button>
+</form>
+{% endblock %}

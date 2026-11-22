@@ -1,4 +1,5 @@
 import io
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -10,7 +11,17 @@ from django.utils.translation import gettext_lazy
 
 from . import crypto, services
 from .forms import AboutYouForm
-from .models import ContractTemplate, LaunchClick, Member, PrivateFile, Signature, SiteState
+from .models import (
+    Availability,
+    ContractTemplate,
+    LaunchClick,
+    Licence,
+    Member,
+    PrivateFile,
+    Signature,
+    SiteState,
+    Skill,
+)
 
 
 @login_required
@@ -37,7 +48,16 @@ def my_account(request):
 
 def public_profile(request, number):
     member = get_object_or_404(Member, number=number, deleted=False)
-    return render(request, "members/public_profile.html", {"profile": member})
+    badges = []
+    if member.public_profile:
+        badges = [
+            {"kind": label, "key": key} for key, label in Licence.KINDS if services.has_verified_licence(member, key)
+        ]
+    return render(
+        request,
+        "members/public_profile.html",
+        {"profile": member, "skills": member.skills.all() if member.public_profile else [], "badges": badges},
+    )
 
 
 def _parts(template):
@@ -199,5 +219,65 @@ def launch(request):
             "clicked": LaunchClick.objects.filter(member=member).exists(),
             "clicks": LaunchClick.objects.count(),
             "founders": Member.objects.filter(is_founder=True, status=Member.MEMBER).count(),
+        },
+    )
+
+
+@login_required
+def portfolio(request):
+    member = request.member
+    if member is None:
+        return redirect("members:join_about")
+    error = None
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "skill" and request.POST.get("trade_name", "").strip():
+            level = request.POST.get("level", "able")
+            Skill.objects.create(
+                member=member,
+                trade_name=request.POST["trade_name"].strip()[:80],
+                trade_code=request.POST.get("trade_code", "").strip()[:16],
+                description=request.POST.get("description", ""),
+                level=level if level in dict(Skill.LEVELS) else "able",
+            )
+        elif action == "delete_skill":
+            Skill.objects.filter(member=member, pk=request.POST.get("id") or 0).delete()
+        elif action == "availability":
+            try:
+                hours = Decimal(request.POST.get("hours_per_week") or "0")
+            except InvalidOperation:
+                hours = None
+            if hours is None or not (0 <= hours <= 168):
+                error = _("Please enter hours per week as a number between 0 and 168.")
+            else:
+                Availability.objects.update_or_create(
+                    member=member, defaults={"hours_per_week": hours, "note": request.POST.get("note", "")[:200]}
+                )
+        elif action == "public":
+            member.public_profile = bool(request.POST.get("public_profile"))
+            member.save(update_fields=["public_profile"])
+        elif action == "licence":
+            upload = request.FILES.get("document")
+            kind = request.POST.get("kind")
+            if upload is None or kind not in dict(Licence.KINDS):
+                error = _("Please choose the kind of licence and a file.")
+            else:
+                try:
+                    services.submit_licence(member, kind, upload, parse_date(request.POST.get("expires_on", "")))
+                except services.FileRejected as e:
+                    error = str(e)
+        if error is None:
+            return redirect("members:portfolio")
+    return render(
+        request,
+        "members/portfolio.html",
+        {
+            "member": member,
+            "skills": member.skills.all(),
+            "availability": Availability.objects.filter(member=member).first(),
+            "licences": member.licences.all(),
+            "levels": Skill.LEVELS,
+            "licence_kinds": Licence.KINDS,
+            "error": error,
         },
     )

@@ -23,6 +23,7 @@
   {% for c in checks %}<li>{% blocktranslate with town=c.town date=c.seen_on number=c.helper.number %}Seen in person by {{ number }} on {{ date }} in {{ town }}{% endblocktranslate %}</li>{% endfor %}
   {% if not vouches and not checks %}<li class="text-muted">{% translate "None yet." %}</li>{% endif %}
 </ul>
+<p><a href="{% url 'members:portfolio' %}">{% translate "My work portfolio" %}</a></p>
 <p><a href="{% url 'members:public_profile' member.number %}">{% translate "See my public profile" %}</a></p>
 <p><a href="{% url 'mfa_index' %}">{% translate "Passkeys and recovery codes" %}</a> ·
    <a href="{% url 'account_logout' %}">{% translate "Log out" %}</a></p>

@@ -384,3 +384,33 @@ def record_launch_click(member):
             state.save()
             audit.record("system", "launched")
         return state
+
+
+# --- Work portfolio and licences (docs/06 section 3, HF-17) ---
+
+
+def has_verified_licence(member, kind, today=None) -> bool:
+    from django.db.models import Q
+    from django.utils import timezone
+
+    from .models import Licence
+
+    today = today or timezone.localdate()
+    return (
+        Licence.objects.filter(member=member, kind=kind, status="verified")
+        .filter(Q(expires_on__isnull=True) | Q(expires_on__gte=today))
+        .exists()
+    )
+
+
+def submit_licence(member, kind, uploaded_file, expires_on=None):
+    """Store the licence document privately; status `submitted` until confirmers verify it (P06)."""
+    from apps.core import audit
+
+    from .models import Licence
+
+    with transaction.atomic():
+        pf = store_private_file(member, uploaded_file, "licence")
+        licence = Licence.objects.create(member=member, kind=kind, document=pf, expires_on=expires_on)
+        audit.record(member.number, "licence.submitted", licence, kind=kind)
+        return licence

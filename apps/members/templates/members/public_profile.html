@@ -5,7 +5,11 @@
 <h1>{{ profile.display_name }}</h1>
 <p class="text-muted">{{ profile.number }}</p>
 {% if profile.public_profile %}
-  {# The work portfolio is added in P01.T07. #}
+  {% if skills %}
+    <h2 class="h5">{% translate "Skills" %}</h2>
+    <ul>{% for s in skills %}<li>{{ s.trade_name }} · {{ s.get_level_display }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% for b in badges %}<span class="badge text-bg-success me-1">{% blocktranslate with kind=b.kind %}Licence verified: {{ kind }}{% endblocktranslate %}</span>{% endfor %}
 {% else %}
   <p>{% translate "This member keeps their profile private." %}</p>
 {% endif %}

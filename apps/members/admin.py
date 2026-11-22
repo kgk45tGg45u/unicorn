@@ -3,13 +3,16 @@ from django.contrib import admin
 from apps.core.admin import ReadOnlyAdmin
 
 from .models import (
+    Availability,
     ContractTemplate,
     InPersonCheck,
+    Licence,
     Member,
     MemberHash,
     PrivateFile,
     Signature,
     SiteState,
+    Skill,
     Vouch,
     Waitlist,
 )
@@ -61,3 +64,18 @@ class SiteStateAdmin(ReadOnlyAdmin):
 class WaitlistAdmin(ReadOnlyAdmin):
     list_display = ("created_at", "invited_at")
     exclude = ("email",)
+
+
+@admin.register(Skill)
+class SkillAdmin(ReadOnlyAdmin):
+    list_display = ("member", "trade_name", "level")
+
+
+@admin.register(Licence)
+class LicenceAdmin(ReadOnlyAdmin):
+    list_display = ("member", "kind", "status", "expires_on")
+
+
+@admin.register(Availability)
+class AvailabilityAdmin(ReadOnlyAdmin):
+    list_display = ("member", "hours_per_week")

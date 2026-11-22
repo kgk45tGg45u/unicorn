@@ -179,7 +179,7 @@
 
 ---
 
-### - [ ] P01.T07 — Work portfolio and licences
+### - [x] P01.T07 — Work portfolio and licences
 
 **Read:** docs/06 section 3 ("The job portfolio"); docs/07 section 7.
 **Files:** `apps/members/models.py` (Skill, Licence, Availability), `apps/members/views.py`, `apps/members/templates/members/portfolio*.html`, `apps/members/tests/test_portfolio.py`

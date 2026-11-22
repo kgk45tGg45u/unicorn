@@ -262,3 +262,59 @@ class Waitlist(models.Model):
 
     def __str__(self):
         return f"waitlist {self.pk}"
+
+
+class Skill(models.Model):
+    """One trade a member can do. Shown in the portfolio; never used to rank or assign work (HF-10)."""
+
+    LEVELS = [("learning", _("learning")), ("able", _("able")), ("expert", _("expert"))]
+
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="skills")
+    trade_name = models.CharField(max_length=80)
+    trade_code = models.CharField(max_length=16, blank=True)  # a CPA code such as CPA_Q87_88
+    description = models.TextField(blank=True)
+    level = models.CharField(max_length=10, choices=LEVELS, default="able")
+
+    def __str__(self):
+        return f"{self.trade_name} ({self.level})"
+
+
+class Licence(models.Model):
+    """A licence a trade needs by law (HF-17). The document is private; others see only the badge."""
+
+    KINDS = [
+        ("legal_advice", _("legal advice")),
+        ("tax_advice", _("tax advice")),
+        ("health_care", _("health care")),
+        ("childcare_permit", _("childcare permit")),
+        ("master_craftsman", _("master craftsman")),
+        ("food_registration", _("food registration")),
+        ("passenger_transport", _("passenger transport")),
+        ("other", _("other")),
+    ]
+    STATUSES = [
+        ("submitted", _("submitted")),
+        ("verified", _("verified")),
+        ("rejected", _("rejected")),
+        ("expired", _("expired")),
+    ]
+
+    member = models.ForeignKey(Member, on_delete=models.PROTECT, related_name="licences")
+    kind = models.CharField(max_length=20, choices=KINDS)
+    document = models.ForeignKey(PrivateFile, on_delete=models.PROTECT, related_name="licences")
+    status = models.CharField(max_length=10, choices=STATUSES, default="submitted")
+    expires_on = models.DateField(null=True, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    decided_by = models.CharField(max_length=32, blank=True)  # a ticket number later
+
+    def __str__(self):
+        return f"{self.kind} licence of {self.member.number} ({self.status})"
+
+
+class Availability(models.Model):
+    member = models.OneToOneField(Member, on_delete=models.CASCADE, related_name="availability")
+    hours_per_week = models.DecimalField(max_digits=5, decimal_places=1, default=0)
+    note = models.CharField(max_length=200, blank=True)
+
+    def __str__(self):
+        return f"{self.member.number}: {self.hours_per_week} h/week"
