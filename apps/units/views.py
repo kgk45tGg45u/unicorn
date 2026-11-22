@@ -158,3 +158,31 @@ def decline_turn(request, slug):
     except services.UnitError as e:
         messages.error(request, str(e))
     return redirect("units:unit", slug=slug)
+
+
+@login_required
+def open_unit(request):
+    from .forms import OpenUnitForm
+
+    form = OpenUnitForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            unit = services.open_unit(request.member, form.cleaned_data)
+        except services.UnitError as e:
+            form.add_error(None, str(e))
+        else:
+            if unit.status == "paused":
+                messages.info(request, _("Your unit is waiting for random confirmers to look at it."))
+            return redirect("units:unit", slug=unit.slug)
+    return render(request, "units/open.html", {"form": form})
+
+
+@login_required
+@require_POST
+def reopen(request, slug):
+    unit = get_object_or_404(Unit, slug=slug)
+    try:
+        services.reopen_unit(request.member, unit)
+    except services.UnitError as e:
+        messages.error(request, str(e))
+    return redirect("units:unit", slug=slug)

@@ -129,7 +129,7 @@
 
 ---
 
-### - [ ] P03.T06 — Opening, pausing and closing a unit
+### - [x] P03.T06 — Opening, pausing and closing a unit
 
 **Read:** docs/06 section 2; docs/05 section 9 ("Opening a unit"); docs/01 HF-15, HF-17.
 **Files:** `apps/plan/` (new app, only `check.py` for now), `apps/units/services.py`, `apps/units/forms.py`, `apps/units/views.py`, `apps/units/templates/units/open.html`, `apps/units/tests/test_open_close.py`

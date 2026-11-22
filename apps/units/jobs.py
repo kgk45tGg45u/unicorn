@@ -13,3 +13,13 @@ def close_decisions(payload):
 def rotate(payload):
     """Pass the responsibility on where its turn is over. Safe to run twice."""
     services.rotate_due()
+
+
+@job("units.end_trials")
+def end_trials(payload):
+    services.end_trials()
+
+
+@job("units.dormant")
+def dormant(payload):
+    services.mark_dormant()

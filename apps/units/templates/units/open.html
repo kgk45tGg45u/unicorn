@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Open a unit" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Open a unit" %}</h1>
+<p>{% translate "A unit is a group that makes things or does work for others. You can start at once. The unit is on trial for a few months." %}</p>
+{% for message in messages %}<div class="alert alert-info">{{ message }}</div>{% endfor %}
+{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+<form method="post">{% csrf_token %}
+  {% for field in form %}
+    <div class="mb-3">
+      {% if field.field.widget.input_type == "checkbox" %}
+        <div class="form-check">{{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+      {% else %}
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+      {% endif %}
+      {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+      {{ field.errors }}
+    </div>
+  {% endfor %}
+  <button class="btn btn-primary" type="submit">{% translate "Open the unit" %}</button>
+</form>
+{% endblock %}

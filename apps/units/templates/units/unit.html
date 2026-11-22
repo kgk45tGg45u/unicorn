@@ -4,6 +4,8 @@
 {% block content %}
 <h1>{{ unit.name }}</h1>
 <p class="text-muted">{{ unit.get_kind_display }} · {{ unit.get_status_display }}</p>
+{% if unit.status_note %}<p class="alert alert-warning">{{ unit.status_note|capfirst }}</p>{% endif %}
+{% if unit.status == "dormant" and is_worker %}<form method="post" action="{% url 'units:reopen' unit.slug %}">{% csrf_token %}<button class="btn btn-primary mb-2" type="submit">{% translate "Reopen this unit" %}</button></form>{% endif %}
 {% if unit.description %}<p>{{ unit.description }}</p>{% endif %}
 {% for message in messages %}<div class="alert alert-info">{{ message }}</div>{% endfor %}
 {% if responsible %}<p>{% blocktranslate with name=responsible.member.display_name %}Responsible for now: {{ name }}{% endblocktranslate %}</p>{% endif %}

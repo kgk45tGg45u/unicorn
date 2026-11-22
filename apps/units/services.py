@@ -405,3 +405,164 @@ def _leave_check(member):
 
 if _leave_check not in member_services.LEAVE_CHECKS:
     member_services.LEAVE_CHECKS.append(_leave_check)
+
+
+# --- Opening, ending trials, going dormant, closing ---
+
+CLOSE_CHECKS: list = []  # check(unit) -> list[str] of plain-words reasons; P05 adds open production orders
+
+
+def _slug_for(name):
+    from django.utils.text import slugify
+
+    base = slugify(name)[:70] or "unit"
+    if base in RESERVED_SLUGS:
+        base = f"{base}-unit"
+    slug, n = base, 2
+    while Unit.objects.filter(slug=slug).exists():
+        slug, n = f"{base}-{n}", n + 1
+    return slug
+
+
+RESERVED_SLUGS = {"open", "requests", "decisions", "me"}
+
+
+def open_unit(member, data):
+    """Open a unit. Hard-frame checks block (HF-13, HF-17); the plan check never refuses (HF-15)."""
+    from datetime import timedelta  # noqa: F401
+
+    from apps.plan import check as plan_check
+
+    from . import council_rules  # noqa: F401
+
+    if not member_services.is_verified(member):  # HF-13
+        raise UnitError(_("Only verified members can open a unit."))
+    kind = data.get("kind")
+    licence = data.get("licence_kind_required", "")
+    if licence and not member_services.has_verified_licence(member, licence):  # HF-17
+        raise UnitError(
+            _("This trade needs a licence by law. Add your licence to your portfolio and wait until it is verified.")
+        )
+    if kind in ("service", "social") and not data.get("insurance_confirmed"):  # HF-17
+        raise UnitError(_("A service needs insurance. Please confirm that the unit is insured."))
+    result = plan_check.check(
+        {"type": "open_unit", "kind": kind, "name": data.get("name", ""), "member": member.number}
+    )
+    now = timezone.now()
+    fields = {
+        k: data[k]
+        for k in (
+            "name",
+            "kind",
+            "mode",
+            "description",
+            "trade_code",
+            "town",
+            "postcode",
+            "country",
+            "cover_radius_km",
+            "licence_kind_required",
+            "insurance_confirmed",
+        )
+        if k in data
+    }
+    with transaction.atomic():
+        unit = Unit(slug=_slug_for(data["name"]), created_by=member, last_activity_at=now, **fields)
+        if result.color == "red":
+            unit.status = "paused"
+            unit.status_note = _("waiting for random confirmers")
+        else:
+            unit.status = "trial"
+            unit.opened_at = now
+            unit.trial_until = member_services._add_months(now, get_param("governance.units.trial_months"))
+        unit.save()
+        add_first_worker(unit, member)
+        audit.record(
+            member.number,
+            "unit.opened",
+            unit,
+            check=result.color,
+            points=[{"color": p.color, "text": p.text} for p in result.points],
+        )
+        return unit
+
+
+def end_trials(now=None):
+    now = now or timezone.now()
+    count = 0
+    for unit in Unit.objects.filter(status="trial", trial_until__lte=now):
+        unit.status = "open"
+        unit.save(update_fields=["status"])
+        audit.record("system", "unit.trial_ended", unit)
+        count += 1
+    return count
+
+
+def mark_dormant(now=None):
+    """Open units with no activity for `dormant_after_months` become dormant."""
+    now = now or timezone.now()
+    cutoff = member_services._add_months(now, -get_param("governance.units.dormant_after_months"))
+    count = 0
+    for unit in Unit.objects.filter(status="open").exclude(kind="coordination"):
+        last = unit.last_activity_at or unit.opened_at
+        if last is not None and last < cutoff:
+            unit.status = "dormant"
+            unit.save(update_fields=["status"])
+            audit.record("system", "unit.dormant", unit)
+            count += 1
+    return count
+
+
+def reopen_unit(member, unit):
+    if not is_worker(member, unit):
+        raise UnitError(_("Only workers of the unit can reopen it."))
+    if unit.status != "dormant":
+        raise UnitError(_("This unit is not dormant."))
+    unit.status = "open"
+    unit.last_activity_at = timezone.now()
+    unit.save(update_fields=["status", "last_activity_at"])
+    audit.record(member.number, "unit.reopened", unit)
+    return unit
+
+
+def touch(unit):
+    """Record that something happened in the unit (hours, orders, bookings)."""
+    Unit.objects.filter(pk=unit.pk).update(last_activity_at=timezone.now())
+
+
+def close_unit(unit, reason, member=None, decision=None):
+    """Close a unit: by an approved `close_unit` council decision, or by the single worker of a one-person unit.
+
+    Returns the list of reasons that still block closing (the unit stays `closing`), or [] when it is closed.
+    """
+    if not (reason or "").strip():
+        raise UnitError(_("Please write why the unit is closing."))
+    with transaction.atomic():
+        unit = Unit.objects.select_for_update().get(pk=unit.pk)
+        by_decision = decision is not None and decision.unit_id == unit.pk and decision.status == "approved"
+        alone = (
+            member is not None
+            and workers(unit).count() == 1
+            and is_worker(member, unit)
+            and member_services.is_verified(member)
+        )
+        if not (by_decision or alone):
+            raise UnitError(_("Closing a unit needs a decision of its council."))
+        if unit.status in ("closed", "merged"):
+            return []
+        blockers = [r for check in CLOSE_CHECKS for r in check(unit)]
+        if blockers:
+            unit.status = "closing"
+            unit.save(update_fields=["status"])
+            audit.record("system", "unit.closing", unit, reason=reason, blockers=blockers)
+            return blockers
+        unit.status = "closed"
+        unit.closed_at = timezone.now()
+        unit.save(update_fields=["status", "closed_at"])
+        audit.record("system", "unit.closed", unit, reason=reason)
+        return []
+
+
+DECISION_ACTIONS["close_unit"] = lambda decision: close_unit(
+    decision.unit, decision.text or decision.title, decision=decision
+)

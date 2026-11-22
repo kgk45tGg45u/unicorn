@@ -45,6 +45,7 @@ class Unit(models.Model):
     kind = models.CharField(max_length=16, choices=KINDS)
     mode = models.CharField(max_length=12, choices=MODES, default="continuous")
     status = models.CharField(max_length=10, choices=STATUSES, default="trial")
+    status_note = models.CharField(max_length=120, blank=True)
     trade_code = models.CharField(max_length=16, blank=True)
     description = models.TextField(blank=True)
 

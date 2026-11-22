@@ -3,6 +3,7 @@
 {% block title %}{% translate "Units" %} · Unicorn{% endblock %}
 {% block content %}
 <h1>{% translate "Units" %}</h1>
+<p><a class="btn btn-primary" href="{% url 'units:open' %}">{% translate "Open a unit" %}</a></p>
 <ul class="list-group">
 {% for u in units %}
   <li class="list-group-item"><a href="{% url 'units:unit' u.slug %}">{{ u.name }}</a> <span class="text-muted">{{ u.get_kind_display }} · {{ u.get_status_display }}</span></li>
