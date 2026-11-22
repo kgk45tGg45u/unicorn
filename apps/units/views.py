@@ -93,3 +93,52 @@ def sign_rules(request, slug):
     except council_rules.RulesError as e:
         messages.error(request, str(e))
     return redirect("units:rules", slug=slug)
+
+
+@login_required
+def decision_list(request, slug):
+    unit = get_object_or_404(Unit, slug=slug)
+    can_open = services.can_decide_joins(request.member, unit)
+    if request.method == "POST":
+        if not can_open:
+            messages.error(request, _("Only the unit's council can open a decision."))
+        else:
+            decision = services.open_decision(
+                request.member,
+                unit,
+                request.POST.get("title", "")[:120] or _("Untitled"),
+                request.POST.get("text", ""),
+                request.POST.get("kind", "other")
+                if request.POST.get("kind") in ("production", "admission", "outside_prices", "other")
+                else "other",
+            )
+            return redirect("units:decision", pk=decision.pk)
+    return render(
+        request,
+        "units/decisions.html",
+        {"unit": unit, "decisions": unit.decisions.order_by("-opens_at"), "can_open": can_open},
+    )
+
+
+@login_required
+def decision_page(request, pk):
+    from .models import CouncilDecision
+
+    decision = get_object_or_404(CouncilDecision, pk=pk)
+    voted = decision.votes.filter(member=request.member).first()
+    can_vote = decision.status == "open" and services.is_council_member(request.member, decision.unit) and voted is None
+    return render(request, "units/decision.html", {"d": decision, "voted": voted, "can_vote": can_vote})
+
+
+@sensitive_action
+@require_POST
+def decision_vote(request, pk):
+    from .models import CouncilDecision
+
+    decision = get_object_or_404(CouncilDecision, pk=pk)
+    try:
+        services.vote(decision, request.member, request.POST.get("vote", ""))
+        messages.success(request, _("Your vote was recorded."))
+    except services.UnitError as e:
+        messages.error(request, str(e))
+    return redirect("units:decision", pk=pk)

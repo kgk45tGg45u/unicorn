@@ -81,7 +81,7 @@
 
 ---
 
-### - [ ] P03.T04 — Council decisions
+### - [x] P03.T04 — Council decisions
 
 **Read:** docs/05 section 6 ("Decisions").
 **Files:** `apps/units/models.py` (CouncilDecision, CouncilVote), `apps/units/services.py`, `apps/units/templates/units/decision*.html`, `apps/units/tests/test_decisions.py`

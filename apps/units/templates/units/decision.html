@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ d.title }} · Unicorn{% endblock %}
+{% block content %}
+<h1>{{ d.title }}</h1>
+<p class="text-muted">{{ d.unit.name }} · {{ d.get_status_display }} · {% blocktranslate with when=d.closes_at|date:"Y-m-d H:i" %}open until {{ when }}{% endblocktranslate %}</p>
+{% for message in messages %}<div class="alert alert-info">{{ message }}</div>{% endfor %}
+<p style="white-space: pre-line">{{ d.text }}</p>
+{% if d.status != "open" %}
+  <p>{% blocktranslate with y=d.result.yes n=d.result.no a=d.result.abstain %}Yes: {{ y }}, no: {{ n }}, abstained: {{ a }}.{% endblocktranslate %}</p>
+{% endif %}
+{% if voted %}<p>{% translate "You have voted." %}</p>{% endif %}
+{% if can_vote %}
+<form method="post" action="{% url 'units:decision_vote' d.pk %}" class="d-flex gap-2">{% csrf_token %}
+  <button class="btn btn-primary" name="vote" value="yes">{% translate "Yes" %}</button>
+  <button class="btn btn-outline-primary" name="vote" value="no">{% translate "No" %}</button>
+  <button class="btn btn-outline-secondary" name="vote" value="abstain">{% translate "Abstain" %}</button>
+</form>
+{% endif %}
+<p class="mt-3"><a href="{% url 'units:decisions' d.unit.slug %}">{% translate "All decisions of this unit" %}</a></p>
+{% endblock %}

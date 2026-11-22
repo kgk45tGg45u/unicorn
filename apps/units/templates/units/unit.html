@@ -9,6 +9,7 @@
 <h2 class="h5">{% translate "Workers" %}</h2>
 <ul>{% for w in workers %}<li>{{ w.display_name }}</li>{% empty %}<li>{% translate "Nobody works here yet." %}</li>{% endfor %}</ul>
 {% if is_worker %}
+  <p><a href="{% url 'units:rules' unit.slug %}">{% translate "Council rules" %}</a> · <a href="{% url 'units:decisions' unit.slug %}">{% translate "Council decisions" %}</a></p>
   <form method="post" action="{% url 'units:leave' unit.slug %}">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit">{% translate "Leave this unit" %}</button></form>
 {% elif can_join %}
   <form method="post" action="{% url 'units:join' unit.slug %}" class="mb-3">{% csrf_token %}

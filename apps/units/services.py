@@ -145,3 +145,120 @@ def _default_rules_hook(unit):
 
 
 SECOND_WORKER_HOOKS.append(_default_rules_hook)
+
+
+# --- Council decisions ---
+
+# kind -> function(decision) run when a decision of that kind is approved. P03.T06 adds close_unit.
+DECISION_ACTIONS: dict = {}
+
+
+def _apply_rules_change(decision):
+    from . import council_rules
+
+    council_rules.new_version(decision.unit, decision.payload, decision)
+
+
+DECISION_ACTIONS["rules_change"] = _apply_rules_change
+
+
+def open_decision(member, unit, title, text="", kind="other", payload=None):
+    """A council member opens a decision. In a one-person unit there is nothing to vote on: it takes effect at once."""
+    from datetime import timedelta
+
+    from . import council_rules
+    from .models import CouncilDecision
+
+    if not member_services.is_verified(member) or not can_decide_joins(member, unit):
+        raise UnitError(_("Only the unit's council can open a decision."))
+    rules = council_rules.current(unit)
+    days = rules.vote_days if rules else get_param("governance.council.vote_days")
+    now = timezone.now()
+    with transaction.atomic():
+        decision = CouncilDecision.objects.create(
+            unit=unit,
+            title=title,
+            text=text,
+            kind=kind,
+            payload=payload or {},
+            opened_by=member,
+            opens_at=now,
+            closes_at=now + timedelta(days=days),
+        )
+        audit.record(member.number, "unit.decision_opened", decision, kind=kind)
+        if not has_council(unit):
+            _finish(decision, approved=True, result={"one_person_unit": True})
+        return decision
+
+
+def vote(decision, member, choice):
+    from .models import CouncilVote
+
+    if choice not in ("yes", "no", "abstain"):
+        raise UnitError(_("Please answer yes, no or abstain."))
+    with transaction.atomic():
+        from .models import CouncilDecision
+
+        decision = CouncilDecision.objects.select_for_update().get(pk=decision.pk)
+        if decision.status != "open" or timezone.now() >= decision.closes_at:
+            raise UnitError(_("This decision is closed."))
+        if not member_services.is_verified(member) or not is_council_member(member, decision.unit):
+            raise UnitError(_("Only council members can vote."))
+        if CouncilVote.objects.filter(decision=decision, member=member).exists():
+            raise UnitError(_("You have already voted."))
+        CouncilVote.objects.create(decision=decision, member=member, vote=choice)
+        audit.record(member.number, "unit.decision_voted", decision)
+        council_ids = set(council_members(decision.unit).values_list("member_id", flat=True))
+        voted = set(decision.votes.values_list("member_id", flat=True))
+        if council_ids <= voted:
+            tally(decision)
+        return decision
+
+
+def tally(decision):
+    """Count the votes of the current council and close the decision. Safe to call twice."""
+    from fractions import Fraction
+
+    from . import council_rules
+    from .models import CouncilDecision
+
+    with transaction.atomic():
+        decision = CouncilDecision.objects.select_for_update().get(pk=decision.pk)
+        if decision.status != "open":
+            return decision
+        council_ids = set(council_members(decision.unit).values_list("member_id", flat=True))
+        votes = [v.vote for v in decision.votes.all() if v.member_id in council_ids]
+        yes, no, abstain = votes.count("yes"), votes.count("no"), votes.count("abstain")
+        rules = council_rules.current(decision.unit)
+        rule = rules.decision_rule if rules else get_param("governance.council.decision_rule")
+        quorum = rules.quorum if rules else get_param("governance.council.quorum")
+        result = {"yes": yes, "no": no, "abstain": abstain, "council_size": len(council_ids), "rule": rule}
+        if len(votes) < quorum * len(council_ids) or not votes:
+            approved, result["reason"] = False, "quorum"
+        elif rule == "majority":
+            approved = yes > no
+        elif rule == "two_thirds":
+            approved = yes + no > 0 and Fraction(yes, yes + no) >= Fraction(2, 3)
+        else:
+            approved = no == 0 and yes >= 1
+        return _finish(decision, approved, result)
+
+
+def _finish(decision, approved, result):
+    decision.status = "approved" if approved else "rejected"
+    decision.result = result
+    decision.save(update_fields=["status", "result"])
+    audit.record("system", "unit.decision_closed", decision, status=decision.status)
+    if approved and decision.kind in DECISION_ACTIONS:
+        DECISION_ACTIONS[decision.kind](decision)
+    return decision
+
+
+def close_due_decisions(now=None):
+    from .models import CouncilDecision
+
+    count = 0
+    for d in CouncilDecision.objects.filter(status="open", closes_at__lte=now or timezone.now()):
+        tally(d)
+        count += 1
+    return count
