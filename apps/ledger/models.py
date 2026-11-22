@@ -1,0 +1,67 @@
+from django.db import models
+from django.db.models import Q
+from django.utils.translation import gettext_lazy as _
+
+
+class Account(models.Model):
+    """A UNIQ account: a member's, a member's retirement account, or one of the two funds."""
+
+    MEMBER, RETIREMENT, FUND1, FUND2 = "member", "retirement", "fund1", "fund2"
+    KINDS = [
+        (MEMBER, _("member")),
+        (RETIREMENT, _("retirement")),
+        (FUND1, _("Fund 1")),
+        (FUND2, _("Fund 2")),
+    ]
+
+    kind = models.CharField(max_length=12, choices=KINDS)
+    member = models.ForeignKey(
+        "members.Member", on_delete=models.PROTECT, null=True, blank=True, related_name="accounts"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["kind", "member"], name="unique_account_per_kind_member"),
+            models.CheckConstraint(
+                condition=(Q(kind__in=["member", "retirement"], member__isnull=False))
+                | (Q(kind__in=["fund1", "fund2"], member__isnull=True)),
+                name="account_member_matches_kind",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.kind} {self.member.number}" if self.member_id else self.get_kind_display()
+
+
+class AccountBalance(models.Model):
+    """A cache of an account's balance. Only `post()` changes it; the nightly audit checks it."""
+
+    account = models.OneToOneField(Account, on_delete=models.PROTECT, related_name="balance_row")
+    balance = models.DecimalField(max_digits=18, decimal_places=4, default=0)
+
+    def __str__(self):
+        return f"{self.account}: {self.balance}"
+
+
+class Period(models.Model):
+    """A calendar month in Europe/Berlin."""
+
+    OPEN, CLOSING, CLOSED = "open", "closing", "closed"
+    STATUSES = [(OPEN, "open"), (CLOSING, "closing"), (CLOSED, "closed")]
+
+    year = models.PositiveIntegerField()
+    month = models.PositiveIntegerField()
+    status = models.CharField(max_length=8, choices=STATUSES, default=OPEN)
+    tax_rate = models.DecimalField(max_digits=6, decimal_places=4)
+    next_tax_rate = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)  # set by P09
+    planned_hours = models.DecimalField(max_digits=18, decimal_places=4, default=0)
+    opened_at = models.DateTimeField(auto_now_add=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["year", "month"], name="unique_period")]
+        ordering = ["-year", "-month"]
+
+    def __str__(self):
+        return f"{self.year}-{self.month:02d}"

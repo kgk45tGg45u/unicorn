@@ -5,7 +5,7 @@
 
 ---
 
-### - [ ] P02.T01 — Accounts and periods
+### - [x] P02.T01 — Accounts and periods
 
 **Files:** `apps/ledger/` (new app), `apps/ledger/models.py`, `apps/ledger/services.py`, `apps/ledger/migrations/0002_funds.py` (data migration), `apps/ledger/tests/test_accounts.py`
 
