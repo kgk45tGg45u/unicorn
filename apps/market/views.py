@@ -2,6 +2,7 @@ import io
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -81,3 +82,58 @@ def pay(request, code):
     if sale is not None and sale.status == "open" and services.needs_recent_sign_in(sale):
         return sensitive_action(_pay)(request, code)
     return _pay(request, code)
+
+
+# --- Reviews ---
+
+
+def _review(request, kind, pk):
+    from .models import Booking, OrderLine
+
+    if kind == "line":
+        thing = get_object_or_404(OrderLine.objects.select_related("offer__item", "offer__unit", "order"), pk=pk)
+        if thing.order.buyer_id != request.member.pk:
+            raise Http404
+        offer, args = thing.offer, {"order_line": thing}
+    else:
+        thing = get_object_or_404(Booking.objects.select_related("slot__offer__item", "slot__offer__unit"), pk=pk)
+        if thing.customer_id != request.member.pk:
+            raise Http404
+        offer, args = thing.slot.offer, {"booking": thing}
+    if request.method == "POST":
+        try:
+            services.write_review(
+                request.member,
+                stars=request.POST.get("stars"),
+                text=request.POST.get("text", ""),
+                as_thanks=bool(request.POST.get("as_thanks")),
+                **args,
+            )
+        except services.MarketError as e:
+            messages.error(request, str(e))
+        else:
+            messages.success(request, _("Thank you for your review."))
+            return redirect("catalogue:offer", pk=offer.pk)
+    return render(request, "market/review_form.html", {"offer": offer})
+
+
+@login_required
+def review_line(request, pk):
+    return _review(request, "line", pk)
+
+
+@login_required
+def review_booking(request, pk):
+    return _review(request, "booking", pk)
+
+
+@login_required
+def unit_reviews(request, slug):
+    from apps.units.models import Unit
+
+    unit = get_object_or_404(Unit, slug=slug)
+    try:
+        reviews = services.reviews_for_council(request.member, unit)
+    except services.MarketError:
+        raise PermissionDenied from None
+    return render(request, "market/unit_reviews.html", {"unit": unit, "reviews": reviews})

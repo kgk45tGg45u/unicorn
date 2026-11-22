@@ -1,0 +1,15 @@
+{% load i18n %}
+<section aria-labelledby="reviews-title" class="mt-4">
+  <h2 class="h5" id="reviews-title">{% translate "Reviews" %}</h2>
+  {% if count %}
+    <p>{% blocktranslate with avg=average|floatformat:1 n=count %}{{ avg }} out of 5 stars from {{ n }} reviews.{% endblocktranslate %}</p>
+    <ul class="list-unstyled">
+      {% for r in reviews %}
+        <li class="mb-2"><span aria-label="{% blocktranslate with s=r.stars %}{{ s }} out of 5 stars{% endblocktranslate %}">{{ r.stars }} ★</span> {{ r.text }} <span class="text-muted small">— {{ r.author.display_name }}, {{ r.created_at|date:"j M Y" }}</span></li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-muted">{% translate "No reviews yet." %}</p>
+  {% endif %}
+  <p class="small text-muted">{% translate "Reviews go to the unit's council as feedback. They never change the price, anyone's pay or the order of the list." %}{% if is_council %} <a href="{% url 'market:unit_reviews' offer.unit.slug %}">{% translate "Read all reviews" %}</a>{% endif %}</p>
+</section>

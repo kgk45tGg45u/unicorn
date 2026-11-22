@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Reviews" %} · {{ unit.name }}{% endblock %}
+{% block content %}
+<h1>{% blocktranslate with u=unit.name %}Reviews of {{ u }}{% endblocktranslate %}</h1>
+<p class="text-muted">{% translate "Only the unit's council sees all reviews. They are feedback, not a ranking." %}</p>
+<ul class="list-unstyled">
+  {% for r in reviews %}
+    <li class="mb-3"><strong>{{ r.offer.item.name }}</strong> · {{ r.stars }} ★ {{ r.text }} <span class="text-muted small">— {{ r.author.display_name }}, {{ r.created_at|date:"j M Y" }}</span></li>
+  {% empty %}
+    <li class="text-muted">{% translate "No reviews yet." %}</li>
+  {% endfor %}
+</ul>
+{% endblock %}

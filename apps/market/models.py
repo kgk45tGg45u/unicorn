@@ -359,3 +359,31 @@ class PlausibilityRecord(models.Model):
 
     def __str__(self):
         return f"{self.offer} {self.month:%Y-%m} {self.kind}: {self.value}"
+
+
+class Review(models.Model):
+    """What a buyer or customer says about an offer. It goes to the unit's council as feedback and never touches
+    prices, pay or the order in which offers are listed (HF-3, HF-10)."""
+
+    offer = models.ForeignKey("catalogue.Offer", on_delete=models.PROTECT, related_name="reviews")
+    order_line = models.OneToOneField(OrderLine, null=True, blank=True, on_delete=models.PROTECT, related_name="review")
+    booking = models.OneToOneField(Booking, null=True, blank=True, on_delete=models.PROTECT, related_name="review")
+    author = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="reviews")
+    stars = models.PositiveSmallIntegerField()
+    text = models.TextField(blank=True)
+    as_thanks = models.BooleanField(default=False)  # also shown as a thank-you on the unit page
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        constraints = [
+            models.CheckConstraint(condition=models.Q(stars__gte=1, stars__lte=5), name="review_stars_1_to_5"),
+            models.CheckConstraint(
+                condition=models.Q(order_line__isnull=False, booking__isnull=True)
+                | models.Q(order_line__isnull=True, booking__isnull=False),
+                name="review_of_one_thing",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.stars} stars for {self.offer}"

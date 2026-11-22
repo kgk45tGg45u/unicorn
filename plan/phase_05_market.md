@@ -236,7 +236,7 @@
 
 ---
 
-### - [ ] P05.T10 — Reviews
+### - [x] P05.T10 — Reviews
 
 **Read:** docs/06 section 6 ("Reviews").
 **Files:** `apps/market/models.py` (Review), `apps/market/views.py`, `apps/market/tests/test_reviews.py`

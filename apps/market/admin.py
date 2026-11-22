@@ -10,6 +10,7 @@ from .models import (
     PlausibilityRecord,
     ProductionOrder,
     PurchaseNeed,
+    Review,
     Sale,
     ServiceSlot,
     StandingOrder,
@@ -82,3 +83,8 @@ class SaleAdmin(ReadOnlyAdmin):
 @admin.register(PlausibilityRecord)
 class PlausibilityRecordAdmin(ReadOnlyAdmin):
     list_display = ("offer", "month", "kind", "value", "flagged", "notified")
+
+
+@admin.register(Review)
+class ReviewAdmin(ReadOnlyAdmin):
+    list_display = ("offer", "author", "stars", "created_at")

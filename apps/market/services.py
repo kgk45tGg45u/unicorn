@@ -23,6 +23,7 @@ from .models import (
     OrderLine,
     ProductionOrder,
     PurchaseNeed,
+    Review,
     Sale,
     ServiceSlot,
     StandingOrder,
@@ -1531,3 +1532,103 @@ def pay_sale(code, buyer) -> Sale:
 
 def expire_sales():
     return Sale.objects.filter(status="open", expires_at__lte=timezone.now()).update(status="expired")
+
+
+# --- Reviews (docs/06 section 6) ---
+
+
+def write_review(member, *, order_line=None, booking=None, stars, text="", as_thanks=False) -> Review:
+    """One review per delivered order line or confirmed booking, by the buyer or customer."""
+    from apps.core.hooks import RECOGNITION_HOOK
+
+    if (order_line is None) == (booking is None):
+        raise MarketError(_("Please choose one order or one booking to review."))
+    try:
+        stars = int(stars)
+    except (TypeError, ValueError):
+        stars = 0
+    if not 1 <= stars <= 5:
+        raise MarketError(_("Please give between 1 and 5 stars."))
+    with transaction.atomic():
+        if order_line is not None:
+            thing = OrderLine.objects.select_related("order", "offer").get(pk=order_line.pk)
+            owner_id, done, offer = thing.order.buyer_id, thing.status == OrderLine.DELIVERED, thing.offer
+        else:
+            thing = Booking.objects.select_related("slot__offer").get(pk=booking.pk)
+            owner_id, done, offer = thing.customer_id, thing.status == "confirmed", thing.slot.offer
+        if owner_id != member.pk:
+            raise MarketError(_("You can only review what you bought yourself."))
+        if not done:
+            raise MarketError(_("You can review it once you have received it."))
+        if Review.objects.filter(**({"order_line": thing} if order_line is not None else {"booking": thing})).exists():
+            raise MarketError(_("You have already reviewed this."))
+        review = Review.objects.create(
+            offer=offer,
+            order_line=thing if order_line is not None else None,
+            booking=thing if booking is not None else None,
+            author=member,
+            stars=stars,
+            text=text.strip()[:2000],
+            as_thanks=bool(as_thanks and text.strip()),
+        )
+        audit.record(member.number, "review.written", review, stars=stars)
+    if review.as_thanks:
+        RECOGNITION_HOOK(member, "thanks", review)
+    return review
+
+
+def review_summary(offer):
+    """The average stars (or None) and the number of reviews."""
+    from django.db.models import Avg, Count
+
+    row = Review.objects.filter(offer=offer).aggregate(avg=Avg("stars"), n=Count("id"))
+    return row["avg"], row["n"]
+
+
+def latest_reviews(offer, limit=10):
+    return list(Review.objects.filter(offer=offer).select_related("author")[:limit])
+
+
+def reviews_for_council(member, unit):
+    """Every review of a unit's offers, for its council. Others see the latest 10 on each offer page."""
+    if not unit_services.is_council_member(member, unit):
+        raise MarketError(_("Only the unit's council can read all its reviews."))
+    return Review.objects.filter(offer__unit=unit).select_related("author", "offer__item")
+
+
+# --- Finding offers (docs/06 section 6) ---
+
+
+def search_offers(member=None, text="", kind="", trade="", town=""):
+    """Active offers, filtered by text, kind, trade and town.
+
+    Order: the member's own area first, then alphabetical. Never by price, by stars or by anything else a
+    score could change (HF-3, HF-10). Distance replaces the area in phase 12.
+    """
+    from django.db.models import Q
+
+    offers = catalogue.Offer.objects.filter(status="active", unit__status__in=["trial", "open"]).select_related(
+        "item", "item__uom", "unit"
+    )
+    text = (text or "").strip()
+    if text:
+        offers = offers.filter(Q(item__name__icontains=text) | Q(unit__name__icontains=text))
+    if kind in ("product", "service"):
+        offers = offers.filter(item__kind=kind)
+    if trade:
+        offers = offers.filter(Q(unit__trade_code=trade) | Q(item__trade_code=trade))
+    town = (town or "").strip()
+    if town:
+        offers = offers.filter(unit__town__iexact=town)
+    postcode = (getattr(member, "postcode", "") or "").strip()
+
+    def rank(offer):
+        if town and (offer.unit.town or "").lower() == town.lower():
+            return 0
+        if postcode and offer.unit.postcode and offer.unit.postcode == postcode:
+            return 0
+        if postcode and offer.unit.postcode and offer.unit.postcode[:2] == postcode[:2]:
+            return 1
+        return 2
+
+    return sorted(offers, key=lambda o: (rank(o), o.item.name.lower(), o.unit.name.lower(), o.pk))
