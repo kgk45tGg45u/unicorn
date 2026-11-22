@@ -138,7 +138,7 @@
 
 ---
 
-### - [ ] P00.T04 — Base page, static files, translations, installable app
+### - [x] P00.T04 — Base page, static files, translations, installable app
 
 **Files:** `templates/base.html`, `templates/partials/nav.html`, `templates/offline.html`, `static/vendor/`, `static/css/unicorn.css`, `static/js/unicorn.js`, `static/manifest.webmanifest`, `static/sw.js`, `static/icons/`, `apps/core/views.py`, `apps/core/urls.py`, `apps/core/tests/test_pages.py`
 
