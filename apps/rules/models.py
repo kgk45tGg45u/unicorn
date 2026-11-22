@@ -1,5 +1,7 @@
 from django.db import models
 
+from apps.core.models import AppendOnlyModel
+
 TIER_CHOICES = [(t, t) for t in ("unit", "confirm", "plan", "referendum", "hard")]
 TYPE_CHOICES = [(t, t) for t in ("decimal", "int", "bool", "choice", "text", "list")]
 
@@ -25,7 +27,7 @@ class Parameter(models.Model):
         return f"{self.key} = {self.value}"
 
 
-class ParameterChange(models.Model):
+class ParameterChange(AppendOnlyModel):
     """One change of a parameter. Append-only."""
 
     parameter = models.ForeignKey(Parameter, on_delete=models.PROTECT, related_name="changes")
@@ -41,11 +43,3 @@ class ParameterChange(models.Model):
 
     def __str__(self):
         return f"{self.parameter.key}: {self.old_value} -> {self.new_value}"
-
-    def save(self, *args, **kwargs):
-        if self.pk:
-            raise ValueError("Parameter changes cannot be edited.")
-        super().save(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        raise ValueError("Parameter changes cannot be deleted.")

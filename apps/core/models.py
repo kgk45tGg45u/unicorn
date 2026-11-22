@@ -10,7 +10,32 @@ class TimeStamped(models.Model):
         abstract = True
 
 
-class AuditEvent(models.Model):
+class AppendOnlyQuerySet(models.QuerySet):
+    def update(self, **kwargs):
+        raise ValueError("These rows are append-only and cannot be updated.")
+
+    def delete(self):
+        raise ValueError("These rows are append-only and cannot be deleted.")
+
+
+class AppendOnlyModel(models.Model):
+    """Rows are written once and never changed or deleted (HF-7). The database triggers (P02.T05) back this up."""
+
+    objects = AppendOnlyQuerySet.as_manager()
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("This record cannot be changed.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("This record cannot be deleted.")
+
+
+class AuditEvent(AppendOnlyModel):
     """One recorded action. Append-only; holds member numbers and ids, never personal data."""
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -23,14 +48,6 @@ class AuditEvent(models.Model):
 
     def __str__(self):
         return f"{self.created_at:%Y-%m-%d %H:%M} {self.actor_ref} {self.verb}"
-
-    def save(self, *args, **kwargs):
-        if self.pk:
-            raise ValueError("Audit events cannot be changed.")
-        super().save(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        raise ValueError("Audit events cannot be deleted.")
 
 
 class Job(models.Model):

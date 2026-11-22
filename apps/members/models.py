@@ -4,6 +4,8 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from apps.core.models import AppendOnlyModel
+
 
 class UserManager(BaseUserManager):
     use_in_migrations = True
@@ -101,7 +103,7 @@ class ContractTemplate(models.Model):
         super().save(*args, **kwargs)
 
 
-class Signature(models.Model):
+class Signature(AppendOnlyModel):
     """A member signed a contract text. Append-only."""
 
     METHODS = [("passkey", "passkey"), ("code", "code"), ("click", "click")]
@@ -118,14 +120,6 @@ class Signature(models.Model):
 
     def __str__(self):
         return f"{self.member.number} signed {self.template}"
-
-    def save(self, *args, **kwargs):
-        if self.pk:
-            raise ValueError("Signatures cannot be changed.")
-        super().save(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        raise ValueError("Signatures cannot be deleted.")
 
 
 class DataKey(models.Model):
@@ -173,7 +167,7 @@ class PrivateFile(models.Model):
         return f"{self.kind} file {self.pk} of {self.owner.number}"
 
 
-class Vouch(models.Model):
+class Vouch(AppendOnlyModel):
     """A verified member says: I know this person, and this is their only account. Append-only."""
 
     voucher = models.ForeignKey(Member, on_delete=models.PROTECT, related_name="vouches_given")
@@ -187,16 +181,8 @@ class Vouch(models.Model):
     def __str__(self):
         return f"{self.voucher.number} vouches for {self.vouchee.number}"
 
-    def save(self, *args, **kwargs):
-        if self.pk:
-            raise ValueError("Vouches cannot be changed.")
-        super().save(*args, **kwargs)
 
-    def delete(self, *args, **kwargs):
-        raise ValueError("Vouches cannot be deleted.")
-
-
-class InPersonCheck(models.Model):
+class InPersonCheck(AppendOnlyModel):
     """An identity helper saw the person in person. Never holds an ID number or a copy of an ID. Append-only."""
 
     helper = models.ForeignKey(Member, on_delete=models.PROTECT, related_name="checks_made")
@@ -207,14 +193,6 @@ class InPersonCheck(models.Model):
 
     def __str__(self):
         return f"{self.member.number} seen by {self.helper.number} on {self.seen_on}"
-
-    def save(self, *args, **kwargs):
-        if self.pk:
-            raise ValueError("Identity checks cannot be changed.")
-        super().save(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        raise ValueError("Identity checks cannot be deleted.")
 
 
 class MemberHash(models.Model):

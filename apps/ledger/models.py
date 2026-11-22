@@ -2,6 +2,8 @@ from django.db import models
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
+from apps.core.models import AppendOnlyModel
+
 
 class Account(models.Model):
     """A UNIQ account: a member's, a member's retirement account, or one of the two funds."""
@@ -65,3 +67,62 @@ class Period(models.Model):
 
     def __str__(self):
         return f"{self.year}-{self.month:02d}"
+
+
+class Transaction(AppendOnlyModel):
+    """One posting in the UNIQ books. Written only by `ledger.services.post()`. Append-only and hash-chained."""
+
+    KINDS = [
+        ("hours_pay", "hours_pay"),
+        ("tax", "tax"),
+        ("purchase", "purchase"),
+        ("rent", "rent"),
+        ("transfer", "transfer"),
+        ("retirement_in", "retirement_in"),
+        ("retirement_out", "retirement_out"),
+        ("cancel", "cancel"),
+        ("correction", "correction"),
+    ]
+
+    seq = models.BigIntegerField(unique=True)
+    period = models.ForeignKey(Period, on_delete=models.PROTECT, related_name="transactions")
+    kind = models.CharField(max_length=16, choices=KINDS)
+    reason = models.TextField()
+    ref_type = models.CharField(max_length=40, blank=True)
+    ref_id = models.CharField(max_length=40, blank=True)
+    actor_ref = models.CharField(max_length=32)
+    created_at = models.DateTimeField()
+    prev_hash = models.CharField(max_length=64)
+    hash = models.CharField(max_length=64)
+
+    class Meta:
+        ordering = ["seq"]
+
+    def __str__(self):
+        return f"#{self.seq} {self.kind}"
+
+
+class Entry(AppendOnlyModel):
+    """One leg of a transaction: a signed amount on an account. Negative = debit, positive = credit."""
+
+    transaction = models.ForeignKey(Transaction, on_delete=models.PROTECT, related_name="entries")
+    account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name="entries")
+    amount = models.DecimalField(max_digits=18, decimal_places=4)
+
+    class Meta:
+        verbose_name_plural = "entries"
+        constraints = [models.CheckConstraint(condition=~Q(amount=0), name="entry_amount_not_zero")]
+
+    def __str__(self):
+        return f"{self.account} {self.amount}"
+
+
+class ChainHead(models.Model):
+    """The end of a hash chain. `post()` locks this row, which serialises all postings."""
+
+    name = models.CharField(max_length=16, primary_key=True)  # "uniq"; P08 adds "fund"
+    last_seq = models.BigIntegerField(default=0)
+    last_hash = models.CharField(max_length=64, default="0" * 64)
+
+    def __str__(self):
+        return f"{self.name} at #{self.last_seq}"

@@ -32,7 +32,7 @@
 
 ---
 
-### - [ ] P02.T02 — Transactions, entries and the chain head
+### - [x] P02.T02 — Transactions, entries and the chain head
 
 **Files:** `apps/ledger/models.py`, `apps/ledger/tests/test_models.py`
 
