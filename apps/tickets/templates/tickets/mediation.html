@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Mediation" %} · {{ ticket.number }}{% endblock %}
+{% block content %}
+<p class="text-muted mb-1">{{ ticket.number }} · <a href="{% url 'tickets:detail' ticket.number %}">{% translate "See the ticket" %}</a></p>
+<h1>{{ ticket.title }}</h1>
+<p class="text-muted">{{ ticket.status_note }}</p>
+<div>{{ ticket.brief_md|linebreaks }}</div>
+<h2 class="h5">{% translate "Private thread" %}</h2>
+<p class="small text-muted">{% translate "Only the two sides and the three mediators can read this." %}</p>
+{% for m in thread %}<div class="card mb-2"><div class="card-body py-2"><div class="small text-muted">{{ m.author.display_name }} · {{ m.created_at|date:"Y-m-d H:i" }}</div>{{ m.body|linebreaks }}</div></div>
+{% empty %}<p class="text-muted">{% translate "No messages yet." %}</p>{% endfor %}
+{% if open %}
+<form method="post" action="{% url 'tickets:mediation_action' ticket.number 'post' %}" class="mb-4">{% csrf_token %}
+  <textarea class="form-control mb-2" name="body" rows="3" aria-label="{% translate 'Your message' %}"></textarea>
+  <button class="btn btn-primary">{% translate "Send" %}</button>
+</form>
+{% if is_party %}
+<h2 class="h5">{% translate "My position" %}</h2>
+<p class="small text-muted">{% translate "At most 300 words. The panel reads both positions if there is no agreement." %}</p>
+<form method="post" action="{% url 'tickets:mediation_action' ticket.number 'position' %}" class="mb-4">{% csrf_token %}
+  <textarea class="form-control mb-2" name="text" rows="4">{{ mine }}</textarea>
+  <button class="btn btn-outline-primary">{% translate "Save my position" %}</button>
+</form>
+{% endif %}
+<h2 class="h5">{% translate "Agreement" %}</h2>
+{% if agreement %}
+<div class="card mb-2"><div class="card-body">{{ agreement|linebreaks }}</div></div>
+{% if is_party and not confirmed %}<form method="post" action="{% url 'tickets:mediation_action' ticket.number 'confirm' %}">{% csrf_token %}<button class="btn btn-success">{% translate "I agree" %}</button></form>
+{% elif confirmed %}<p>{% translate "You agreed. Waiting for the other side." %}</p>{% endif %}
+{% else %}<p class="text-muted">{% translate "No agreement has been written yet." %}</p>{% endif %}
+{% if is_mediator %}
+<form method="post" action="{% url 'tickets:mediation_action' ticket.number 'agreement' %}" class="my-3">{% csrf_token %}
+  <label class="form-label" for="agreement">{% translate "Agreement reached" %}</label>
+  <textarea class="form-control mb-2" id="agreement" name="text" rows="4"></textarea>
+  <button class="btn btn-outline-primary">{% translate "Write the agreement" %}</button>
+</form>
+<form method="post" action="{% url 'tickets:mediation_action' ticket.number 'time' %}" class="row g-2 my-3">{% csrf_token %}
+  <div class="col-auto"><label class="visually-hidden" for="minutes">{% translate "Minutes" %}</label>
+    <input class="form-control" id="minutes" name="minutes" type="number" min="1" placeholder="{% translate 'Minutes I worked' %}"></div>
+  <div class="col-auto"><button class="btn btn-outline-secondary">{% translate "Record my time" %}</button></div>
+</form>
+{% endif %}
+<form method="post" action="{% url 'tickets:mediation_action' ticket.number 'none' %}" class="mt-4">{% csrf_token %}
+  <button class="btn btn-outline-danger">{% translate "No agreement: ask a panel of 12 to decide" %}</button>
+</form>
+{% endif %}
+{% endblock %}

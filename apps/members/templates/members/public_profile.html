@@ -4,7 +4,9 @@
 {% block content %}
 <h1>{{ profile.display_name }}</h1>
 <p class="text-muted">{{ profile.number }}</p>
-{% if profile.public_profile %}
+{% if hidden %}
+  <p>{% translate "Hidden while members review a report" %}</p>
+{% elif profile.public_profile %}
   {% if skills %}
     <h2 class="h5">{% translate "Skills" %}</h2>
     <ul>{% for s in skills %}<li>{{ s.trade_name }} · {{ s.get_level_display }}</li>{% endfor %}</ul>
@@ -13,4 +15,5 @@
 {% else %}
   <p>{% translate "This member keeps their profile private." %}</p>
 {% endif %}
+{% if request.member and request.member != profile %}{% include "partials/flag_button.html" with target_type="profile" target_id=profile.pk %}{% endif %}
 {% endblock %}

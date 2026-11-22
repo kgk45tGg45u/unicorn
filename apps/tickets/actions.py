@@ -185,6 +185,25 @@ def _suspend_member(ticket):
     return {"suspended": member.number}
 
 
+def _pause_unit(ticket):
+    """A panel said a unit that opened with an amber check should not keep working: pause it, tell its workers."""
+    from apps.units import services as unit_services
+
+    from . import confirm
+
+    unit = _unit_of(ticket)
+    unit_services.pause_unit(unit, _("paused after a review (%(number)s)") % {"number": ticket.number})
+    reasons = [r["reason"] for r in confirm.reasons(ticket)]
+    when = ticket.petition_until.strftime("%Y-%m-%d") if ticket.petition_until else ""
+    text = _(
+        "The unit %(unit)s was paused after members reviewed it (%(number)s). "
+        "Anyone can start a petition for a vote of all members until %(when)s. Reasons given: %(reasons)s."
+    ) % {"unit": unit.name, "number": ticket.number, "reasons": "; ".join(reasons) or "-", "when": when}
+    for w in unit_services.workers(unit):
+        notify(w.member, text, f"/tickets/{ticket.number}/", email=True)
+    return {"unit": unit.slug, "status": "paused"}
+
+
 def _none(ticket):
     return {}
 
@@ -197,4 +216,5 @@ register("reject_licence", _reject_licence)
 register("hours_confirm", _hours_confirm)
 register("hours_correct", _hours_correct, _need("entry_id", "minutes"))
 register("suspend_member", _suspend_member, _need("newer"))
+register("pause_unit", _pause_unit, _need("unit_id"))
 register("none", _none)

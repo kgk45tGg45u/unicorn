@@ -1616,8 +1616,12 @@ def search_offers(member=None, text="", kind="", trade="", town=""):
     """
     from django.db.models import Q
 
-    offers = catalogue.Offer.objects.filter(status="active", unit__status__in=["trial", "open"]).select_related(
-        "item", "item__uom", "unit"
+    from apps.tickets.flags import hidden_ids
+
+    offers = (
+        catalogue.Offer.objects.filter(status="active", unit__status__in=["trial", "open"])
+        .exclude(pk__in=hidden_ids("offer"))  # hidden while members review a report (P06.T08)
+        .select_related("item", "item__uom", "unit")
     )
     text = (text or "").strip()
     if text:
@@ -1697,3 +1701,47 @@ def booking_actions(booking) -> set:
     if booking.status == "confirmed" and not hasattr(booking, "review"):
         actions.add("review")
     return actions
+
+
+def release_unit_orders(unit):
+    """A unit was paused: orders not yet being made and coming sessions are cancelled, and their UNIQ released."""
+    with transaction.atomic():
+        lines = OrderLine.objects.filter(
+            offer__unit=unit, status__in=[OrderLine.PLACED, OrderLine.FROM_STOCK, OrderLine.IN_PRODUCTION]
+        )
+        for line in lines:
+            line = _lock_line(line)
+            started = (
+                line.status == OrderLine.IN_PRODUCTION
+                and line.production_order_id
+                and line.production_order.status != "open"
+            )
+            if started or line.status == OrderLine.CANCELLED:
+                continue  # a batch that has started is made anyway
+            _unassign(line)
+            line.status = OrderLine.CANCELLED
+            line.save(update_fields=["status"])
+            if line.hold_id:
+                ledger.release_hold(line.hold, _("The unit was paused"))
+            audit.record("system", "order.released", line, unit=unit.pk)
+            unit_services._notify(
+                line.order.buyer,
+                _("Your order from %(unit)s was cancelled") % {"unit": unit.name},
+                _("The unit was paused while members review it. Your UNIQ are free again."),
+            )
+        for booking in Booking.objects.filter(
+            slot__offer__unit=unit, status="booked", slot__starts_at__gt=timezone.now()
+        ):
+            booking = _lock_booking(booking)
+            if booking.status != "booked":
+                continue
+            booking.status = "cancelled"
+            booking.save(update_fields=["status"])
+            _give_seat_back(booking)
+            if booking.hold_id:
+                ledger.release_hold(booking.hold, _("The unit was paused"))
+            audit.record("system", "booking.released", booking, unit=unit.pk)
+
+
+if release_unit_orders not in unit_services.PAUSE_HOOKS:
+    unit_services.PAUSE_HOOKS.append(release_unit_orders)

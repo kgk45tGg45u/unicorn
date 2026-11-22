@@ -13,8 +13,18 @@
 {% if ticket.status == "rejected" and ticket.petition_until %}
 <div class="alert alert-warning">{% blocktranslate with when=ticket.petition_until|date:"Y-m-d" %}Anyone can start a petition for a vote of all members until {{ when }}.{% endblocktranslate %}</div>
 {% endif %}
+{% if hidden %}
+<div class="alert alert-secondary">{% translate "Hidden while members review a report" %}</div>
+{% else %}
 {% if ticket.brief_md %}<h2 class="h5">{% translate "Brief" %}</h2><div>{{ ticket.brief_md|linebreaks }}</div>{% endif %}
 {% if ticket.body_md %}<div>{{ ticket.body_md|linebreaks }}</div>{% endif %}
+{% include "partials/flag_button.html" with target_type="ticket" target_id=ticket.pk %}
+{% endif %}
+{% if can_contest %}
+<form method="post" action="{% url 'tickets:contest' ticket.number %}" class="my-2">{% csrf_token %}
+  <p class="mb-1">{% translate "You can ask a panel of 12 members to look at this again." %}</p>
+  <button class="btn btn-outline-primary btn-sm">{% translate "Contest this" %}</button></form>
+{% endif %}
 {% if plan_points %}
 <h2 class="h5">{% translate "Plan check" %}</h2>
 <ul class="list-unstyled">{% for p in plan_points %}<li><span class="badge text-bg-{% if p.color == 'red' %}danger{% elif p.color == 'amber' %}warning{% else %}success{% endif %}">{{ p.color }}</span> {{ p.text }}</li>{% endfor %}</ul>
@@ -32,7 +42,13 @@
 <div class="card mb-2" style="margin-left: {{ row.depth }}rem" id="c{{ row.comment.pk }}">
   <div class="card-body py-2">
     <div class="small text-muted">{{ row.comment.author.display_name }} · {{ row.comment.created_at|date:"Y-m-d H:i" }}{% if row.comment.edited_at %} · {% translate "edited" %}{% endif %}</div>
+    {% if row.hidden and not row.mine %}
+    <div class="text-muted"><em>{% translate "Hidden while members review a report" %}</em></div>
+    {% else %}
     <div>{{ row.comment.body_md|linebreaks }}</div>
+    {% if row.hidden %}<div class="small text-danger">{% translate "This is hidden from others while members review a report:" %}
+      <ul class="mb-0">{% for reason in row.reasons %}<li>{{ reason }}</li>{% endfor %}</ul></div>{% endif %}
+    {% endif %}
     <div class="d-flex gap-2 align-items-center">
       <form method="post" action="{% url 'tickets:helpful' row.comment.pk %}">{% csrf_token %}
         <button class="btn btn-sm btn-outline-secondary" {% if row.mine %}disabled{% endif %}>{% translate "Helpful" %} ({{ row.marks }})</button></form>

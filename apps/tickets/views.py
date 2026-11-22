@@ -10,7 +10,7 @@ from django.views.decorators.http import require_POST
 from apps.core.decorators import sensitive_action
 from apps.core.models import AuditEvent
 
-from . import confirm, routing, services, types
+from . import confirm, flags, mediation, routing, services, types
 from .forms import TicketForm
 from .models import Comment, Notification, Seat, Ticket
 
@@ -72,11 +72,21 @@ def ticket_detail(request, number):
     for c in comments:
         by_parent.setdefault(c.parent_id, []).append(c)
     flat = []
+    hidden_comments = flags.hidden_ids("comment")
 
     def walk(parent_id, depth):
         for c in by_parent.get(parent_id, []):
+            hidden = c.pk in hidden_comments
+            mine = c.author_id == request.member.pk
             flat.append(
-                {"comment": c, "depth": depth, "marks": len(c.marks.all()), "mine": c.author_id == request.member.pk}
+                {
+                    "comment": c,
+                    "depth": depth,
+                    "marks": len(c.marks.all()),
+                    "mine": mine,
+                    "hidden": hidden,
+                    "reasons": flags.reasons_for("comment", c.pk) if hidden and mine else [],
+                }
             )
             walk(c.pk, min(depth + 1, 3))
 
@@ -92,6 +102,8 @@ def ticket_detail(request, number):
             "plan_points": plan.get("points", []),
             "plan_color": plan.get("color", ""),
             "now": timezone.now(),
+            "hidden": flags.is_hidden("ticket", ticket.pk) and ticket.author_id != request.member.pk,
+            "can_contest": flags.can_contest(ticket, request.member),
             "can_comment": services._can_take_part(request.member),
             "suggested": routing.suggest_answerers(ticket),
             "rounds": confirm.seat_rows(ticket),
@@ -261,3 +273,128 @@ def seat_conflict(request, pk):
     except confirm.SeatError as e:
         messages.error(request, str(e))
     return redirect("tickets:list")
+
+
+# --- Flags (P06.T08) ---
+
+
+@login_required
+@require_POST
+def flag_view(request):
+    from django.utils.http import url_has_allowed_host_and_scheme
+
+    try:
+        flags.flag(
+            request.member,
+            request.POST.get("target_type", ""),
+            int(request.POST.get("target_id") or 0),
+            request.POST.get("reason", ""),
+            request.POST.get("text", ""),
+        )
+        messages.success(request, _("Thank you. Members will look at your report."))
+    except flags.FlagError as e:
+        messages.error(request, str(e))
+    target = request.POST.get("next", "")
+    if not url_has_allowed_host_and_scheme(target, allowed_hosts={request.get_host()}):
+        target = "/tickets/"
+    return redirect(target)
+
+
+@login_required
+@require_POST
+def contest_view(request, number):
+    ticket = get_object_or_404(Ticket, number=number)
+    try:
+        new = flags.contest(ticket, request.member)
+    except flags.FlagError as e:
+        messages.error(request, str(e))
+        return redirect("tickets:detail", number=number)
+    messages.success(request, _("A panel of 12 members will look at this again."))
+    return redirect("tickets:detail", number=new.number)
+
+
+# --- Mediation (P06.T09) ---
+
+
+@login_required
+def mediation_new(request):
+    from apps.members.models import Member
+    from apps.units.models import Unit
+
+    form = TicketForm(request.POST or None, info=types.TYPES["mediation"])
+    if "unit" in form.fields:
+        del form.fields["unit"]
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        other = request.POST.get("other", "").strip()
+        member = Member.objects.filter(number=other.upper(), deleted=False).first()
+        unit = Unit.objects.filter(slug=other).first()
+        try:
+            if member is None and unit is None:
+                raise mediation.MediationError(_("We could not find that member number or unit."))
+            ticket = mediation.open_mediation(
+                request.member,
+                d["title"],
+                d.get("body", ""),
+                parties_members=[member] if member else [],
+                parties_units=[unit] if unit else [],
+                brief=d.get("brief", ""),
+                check=form.check(),
+            )
+        except (mediation.MediationError, services.TicketError) as e:
+            messages.error(request, str(e))
+        else:
+            return redirect("tickets:detail", number=ticket.number)
+    return render(request, "tickets/mediation_new.html", {"form": form})
+
+
+@login_required
+def mediation_page(request, number):
+    ticket = get_object_or_404(Ticket, number=number, type="mediation")
+    member = request.member
+    if not mediation._may_see(member, ticket):
+        from django.core.exceptions import PermissionDenied
+
+        raise PermissionDenied
+    p = ticket.action_payload
+    return render(
+        request,
+        "tickets/mediation.html",
+        {
+            "ticket": ticket,
+            "thread": mediation.messages_for(ticket, member),
+            "is_party": mediation.is_party(member, ticket),
+            "is_mediator": mediation.is_mediator_of(member, ticket),
+            "agreement": p.get("agreement", ""),
+            "confirmed": member.number in p.get("confirmed", []),
+            "positions": p.get("positions", {}),
+            "mine": p.get("positions", {}).get(member.number, ""),
+            "open": ticket.status == "confirming",
+        },
+    )
+
+
+@login_required
+@require_POST
+def mediation_action(request, number, action):
+    ticket = get_object_or_404(Ticket, number=number, type="mediation")
+    member, post = request.member, request.POST
+    try:
+        if action == "post":
+            mediation.post(ticket, member, post.get("body", ""))
+        elif action == "position":
+            mediation.write_position(ticket, member, post.get("text", ""))
+        elif action == "agreement":
+            mediation.propose_agreement(ticket, member, post.get("text", ""))
+        elif action == "confirm":
+            mediation.confirm_agreement(ticket, member)
+        elif action == "none":
+            mediation.no_agreement(ticket, member)
+        elif action == "time":
+            mediation.record_time(ticket, member, int(post.get("minutes") or 0))
+        else:
+            raise mediation.MediationError(_("This is not possible."))
+        messages.success(request, _("Done."))
+    except (mediation.MediationError, ValueError) as e:
+        messages.error(request, str(e))
+    return redirect("tickets:mediation", number=number)

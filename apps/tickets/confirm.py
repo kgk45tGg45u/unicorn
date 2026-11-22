@@ -36,7 +36,8 @@ def start_confirmers(ticket):
     if not drawing.eligible(ticket):
         ticket_services.set_status(ticket, "open", _("Waiting until members can be drawn to look at this ticket."))
         return None
-    confirmation = drawing.draw(ticket, "confirmers", ticket_services.seat_count(ticket))
+    hours = get_param("governance.units.post_check_days") * 24 if ticket.type == "post_check_unit" else None
+    confirmation = drawing.draw(ticket, "confirmers", ticket_services.seat_count(ticket), deadline_hours=hours)
     ticket_services.set_status(ticket, "confirming", ticket.status_note)
     schedule_deadline_job()
     return confirmation
@@ -283,7 +284,9 @@ def reasons(ticket):
 def process_deadlines(now=None):
     """Replace silent seats, count missing votes as 'no', and send reminders. Safe to run twice."""
     now = now or timezone.now()
-    open_seats = Seat.objects.filter(vote__isnull=True, replaced=False, confirmation__status="open")
+    open_seats = Seat.objects.filter(vote__isnull=True, replaced=False, confirmation__status="open").exclude(
+        confirmation__round="mediation"
+    )
     late = 0
     for seat in open_seats.filter(deadline__lte=now).select_related("confirmation", "member"):
         if seat.confirmation.root.status != "open":
@@ -301,6 +304,9 @@ def process_deadlines(now=None):
         )
         seat.reminded_at = now
         seat.save(update_fields=["reminded_at"])
+    from . import mediation
+
+    mediation.process_deadlines(now)
     # Tickets that found nobody to draw yet are tried again.
     from .models import Ticket
 

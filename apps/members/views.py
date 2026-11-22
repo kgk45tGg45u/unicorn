@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
+from django.views.decorators.http import require_POST
 
 from . import crypto, services
 from .forms import AboutYouForm
@@ -54,10 +55,18 @@ def public_profile(request, number):
         badges = [
             {"kind": label, "key": key} for key, label in Licence.KINDS if services.has_verified_licence(member, key)
         ]
+    from apps.tickets.flags import is_hidden
+
+    hidden = is_hidden("profile", member.pk) and getattr(request, "member", None) != member
     return render(
         request,
         "members/public_profile.html",
-        {"profile": member, "skills": member.skills.all() if member.public_profile else [], "badges": badges},
+        {
+            "profile": member,
+            "skills": member.skills.all() if member.public_profile else [],
+            "badges": badges,
+            "hidden": hidden,
+        },
     )
 
 
@@ -317,3 +326,13 @@ def delete_page(request):
             messages.success(request, _("Your account is deleted."))
             return redirect("core:home")
     return render(request, "members/delete.html", {"member": member, "reasons": reasons})
+
+
+@login_required
+@require_POST
+def mediator_toggle(request):
+    """Volunteer for, or leave, the pool of mediators (P06.T09)."""
+    member = request.member
+    member.is_mediator = not member.is_mediator
+    member.save(update_fields=["is_mediator"])
+    return redirect("members:my_account")

@@ -6,5 +6,6 @@
 <p>{% translate "What do you want to do?" %}</p>
 <div class="list-group">
   {% for t in types %}<a class="list-group-item list-group-item-action" href="{% url 'tickets:new_form' t.key %}">{{ t.label }}</a>{% endfor %}
+  <a class="list-group-item list-group-item-action" href="{% url 'tickets:mediation_new' %}">{% translate "Ask for mediation" %}</a>
 </div>
 {% endblock %}

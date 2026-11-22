@@ -33,6 +33,12 @@ def route(ticket):
             _start_council(ticket)
         elif method == "confirmers":
             confirm.start_confirmers(ticket)
+        elif method == "panel":
+            confirm.start_panel(ticket)
+        elif method == "mediation":
+            from . import mediation
+
+            mediation.start(ticket)
         elif method == "auto":
             rule = AUTO_RULES.get(ticket.type)
             if rule is not None and rule(ticket):

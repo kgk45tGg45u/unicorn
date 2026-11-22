@@ -203,3 +203,64 @@ class Seat(models.Model):
 
     def __str__(self):
         return f"seat {self.pk} of {self.member.number} on {self.confirmation.ticket.number}"
+
+
+class Flag(models.Model):
+    """One member's report of something wrong (docs/05 section 9). Flags on the same thing share one ticket."""
+
+    TARGETS = [(t, t) for t in ("offer", "comment", "ticket", "profile", "hours", "payment", "review")]
+    REASONS = [
+        ("illegal", _("illegal")),
+        ("wrong_data", _("wrong data or fraud")),
+        ("harassment", _("harassment")),
+        ("privacy", _("privacy")),
+        ("other", _("other")),
+    ]
+
+    target_type = models.CharField(max_length=10, choices=TARGETS)
+    target_id = models.PositiveIntegerField()
+    reason = models.CharField(max_length=12, choices=REASONS)
+    text = models.CharField(max_length=500, blank=True)
+    created_by = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="flags")
+    created_at = models.DateTimeField(auto_now_add=True)
+    ticket = models.ForeignKey(Ticket, on_delete=models.PROTECT, related_name="flags")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["target_type", "target_id", "created_by"], name="one_flag_each"),
+        ]
+        indexes = [models.Index(fields=["target_type", "target_id"])]
+
+    def __str__(self):
+        return f"flag on {self.target_type} {self.target_id}"
+
+
+class Hidden(models.Model):
+    """Something hidden while members review a report. It is shown again when `until` is set."""
+
+    target_type = models.CharField(max_length=10)
+    target_id = models.PositiveIntegerField()
+    since = models.DateTimeField(auto_now_add=True)
+    ticket = models.ForeignKey(Ticket, on_delete=models.PROTECT, related_name="hidden")
+    until = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["target_type", "target_id", "until"])]
+
+    def __str__(self):
+        return f"{self.target_type} {self.target_id} hidden"
+
+
+class MediationMessage(models.Model):
+    """A message in the private thread of a mediation: only the parties and the mediators can read it."""
+
+    ticket = models.ForeignKey(Ticket, on_delete=models.PROTECT, related_name="mediation_messages")
+    author = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="mediation_messages")
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+
+    def __str__(self):
+        return f"message {self.pk} in {self.ticket.number}"

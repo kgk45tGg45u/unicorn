@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n ticket_tags %}
 {% block title %}{% translate "Reviews" %} · {{ unit.name }}{% endblock %}
 {% block content %}
 <h1>{% blocktranslate with u=unit.name %}Reviews of {{ u }}{% endblocktranslate %}</h1>
 <p class="text-muted">{% translate "Only the unit's council sees all reviews. They are feedback, not a ranking." %}</p>
 <ul class="list-unstyled">
   {% for r in reviews %}
-    <li class="mb-3"><strong>{{ r.offer.item.name }}</strong> · {{ r.stars }} ★ {{ r.text }} <span class="text-muted small">— {{ r.author.display_name }}, {{ r.created_at|date:"j M Y" }}</span></li>
+    <li class="mb-3">{% if r|is_hidden %}<em>{% translate "Hidden while members review a report" %}</em>{% else %}<strong>{{ r.offer.item.name }}</strong> · {{ r.stars }} ★ {{ r.text }} <span class="text-muted small">— {{ r.author.display_name }}, {{ r.created_at|date:"j M Y" }}</span> {% include "partials/flag_button.html" with target_type="review" target_id=r.pk %}{% endif %}</li>
   {% empty %}
     <li class="text-muted">{% translate "No reviews yet." %}</li>
   {% endfor %}

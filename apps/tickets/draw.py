@@ -60,6 +60,9 @@ def eligible(ticket, round="confirmers") -> list[Member]:
         )
     members = members.exclude(number__in=(ticket.action_payload or {}).get("members", []))
     members = members.exclude(seats__confirmation__ticket=ticket)
+    contested = (ticket.action_payload or {}).get("contest_of")
+    if contested:  # a panel that looks again never includes the first deciders
+        members = members.exclude(seats__confirmation__ticket__number=contested)
     members = members.exclude(conflicts__ticket=ticket)
     members = members.filter(Q(draw_pause_until__isnull=True) | Q(draw_pause_until__lt=timezone.localdate()))
     if ticket.scope == "local" and ticket.scope_area:
@@ -83,7 +86,9 @@ def _seed(ticket_number, round, draw_no, fingerprint_hash):
     return sha256_hex(f"{ticket_number}:{round}:{draw_no}:{fingerprint_hash}")
 
 
-def draw(ticket, round, k, *, parent=None, only=None, replaces=None, deadline_hours=None) -> Confirmation:
+def draw(
+    ticket, round, k, *, parent=None, only=None, replaces=None, deadline_hours=None, needs_check=True
+) -> Confirmation:
     """Draw up to `k` members and seat them. `only` limits the pool (mediators)."""
     members = eligible(ticket, round)
     if only is not None:
@@ -115,7 +120,7 @@ def draw(ticket, round, k, *, parent=None, only=None, replaces=None, deadline_ho
             drawn_order=i,
             deadline=deadline,
             replaces=replaces,
-            check_passed=not ticket.check_question,
+            check_passed=not (needs_check and ticket.check_question),
         )
         seat.notified_at = timezone.now()
         seat.save(update_fields=["notified_at"])

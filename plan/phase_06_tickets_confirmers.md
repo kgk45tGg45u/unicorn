@@ -207,7 +207,7 @@
 
 ---
 
-### - [ ] P06.T08 — Flags
+### - [x] P06.T08 — Flags
 
 **Read:** docs/05 section 9 ("Flags").
 **Files:** `apps/tickets/models.py` (Flag, Hidden), `apps/tickets/services.py`, `templates/partials/flag_button.html`, `apps/tickets/tests/test_flags.py`
@@ -232,7 +232,7 @@
 
 ---
 
-### - [ ] P06.T09 — Mediation
+### - [x] P06.T09 — Mediation
 
 **Read:** docs/05 section 9 ("Mediation and judgement").
 **Files:** `apps/tickets/services.py`, `apps/tickets/templates/tickets/mediation.html`, `apps/members/models.py` (`is_mediator` on Member), `apps/tickets/tests/test_mediation.py`
@@ -252,7 +252,7 @@
 
 ---
 
-### - [ ] P06.T10 — The check after an amber opening
+### - [x] P06.T10 — The check after an amber opening
 
 **Read:** docs/05 section 9 ("Opening a unit", amber).
 **Files:** `apps/units/services.py`, `apps/tickets/tests/test_post_check.py`

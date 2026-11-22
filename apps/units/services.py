@@ -504,10 +504,12 @@ def open_unit(member, data):
             check=result.color,
             points=[{"color": p.color, "text": p.text} for p in result.points],
         )
-        if result.color == "red":
-            from apps.tickets import briefs
+        from apps.tickets import briefs
 
+        if result.color == "red":
             briefs.open_unit(unit, member, result)  # HF-15: the random confirmers decide before it opens
+        elif result.color == "amber":
+            briefs.post_check_unit(unit, member, result)  # it opened at once; random confirmers review it later
         return unit
 
 

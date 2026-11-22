@@ -62,6 +62,7 @@ class Member(models.Model):
     public_profile = models.BooleanField(default=False)
     draw_pause_until = models.DateField(null=True, blank=True)
     receives_benefits = models.BooleanField(default=False)
+    is_mediator = models.BooleanField(default=False)  # volunteers for the mediator pool (P06.T09)
     email_all_notifications = models.BooleanField(default=False)  # "email me everything" (P06.T02)
     last_active_at = models.DateTimeField(null=True, blank=True)
 

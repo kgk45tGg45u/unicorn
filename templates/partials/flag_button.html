@@ -1,1 +1,22 @@
-{# The "Report this" button: filled in by P06.T08. #}
+{% load i18n %}
+{# Include with target_type and target_id. Members report; random members decide (P06.T08). #}
+{% if request.member %}
+<details class="d-inline-block">
+  <summary class="small text-muted">{% translate "Report" %}</summary>
+  <form method="post" action="{% url 'tickets:flag' %}" class="border rounded p-2 mt-1" style="max-width: 22rem">{% csrf_token %}
+    <input type="hidden" name="target_type" value="{{ target_type }}">
+    <input type="hidden" name="target_id" value="{{ target_id }}">
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <label class="form-label small" for="flag-reason-{{ target_type }}-{{ target_id }}">{% translate "What is wrong?" %}</label>
+    <select class="form-select form-select-sm mb-1" id="flag-reason-{{ target_type }}-{{ target_id }}" name="reason">
+      <option value="illegal">{% translate "It is illegal" %}</option>
+      <option value="wrong_data">{% translate "The data is wrong, or it is fraud" %}</option>
+      <option value="harassment">{% translate "It is harassment" %}</option>
+      <option value="privacy">{% translate "It shows private data" %}</option>
+      <option value="other">{% translate "Something else" %}</option>
+    </select>
+    <input class="form-control form-control-sm mb-1" name="text" maxlength="500" aria-label="{% translate 'A few words' %}" placeholder="{% translate 'A few words (optional)' %}">
+    <button class="btn btn-sm btn-outline-danger">{% translate "Send report" %}</button>
+  </form>
+</details>
+{% endif %}

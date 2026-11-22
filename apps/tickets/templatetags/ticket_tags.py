@@ -12,3 +12,12 @@ def unread_notifications(context):
     if member is None:
         return 0
     return Notification.objects.filter(member=member, read_at__isnull=True).count()
+
+
+@register.filter
+def is_hidden(obj):
+    """True while members review a report about this thing: `{% if not obj|is_hidden %}`."""
+    from apps.tickets import flags
+
+    target = flags.CLASS_TO_TARGET.get(obj.__class__.__name__)
+    return bool(target) and flags.is_hidden(target, obj.pk)

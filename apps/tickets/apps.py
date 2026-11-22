@@ -10,7 +10,7 @@ class TicketsConfig(AppConfig):
         from apps.core.management.commands import daily
         from apps.units import services as unit_services
 
-        from . import actions, hooks, jobs, services  # noqa: F401
+        from . import actions, flags, hooks, jobs, mediation, services  # noqa: F401
 
         if hooks.decision_opened not in unit_services.DECISION_OPENED_HOOKS:
             unit_services.DECISION_OPENED_HOOKS.append(hooks.decision_opened)

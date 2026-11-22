@@ -1,11 +1,11 @@
-{% load i18n %}
+{% load i18n ticket_tags %}
 <section aria-labelledby="reviews-title" class="mt-4">
   <h2 class="h5" id="reviews-title">{% translate "Reviews" %}</h2>
   {% if count %}
     <p>{% blocktranslate with avg=average|floatformat:1 n=count %}{{ avg }} out of 5 stars from {{ n }} reviews.{% endblocktranslate %}</p>
     <ul class="list-unstyled">
       {% for r in reviews %}
-        <li class="mb-2"><span aria-label="{% blocktranslate with s=r.stars %}{{ s }} out of 5 stars{% endblocktranslate %}">{{ r.stars }} ★</span> {{ r.text }} <span class="text-muted small">— {{ r.author.display_name }}, {{ r.created_at|date:"j M Y" }}</span></li>
+        {% if not r|is_hidden %}<li class="mb-2"><span aria-label="{% blocktranslate with s=r.stars %}{{ s }} out of 5 stars{% endblocktranslate %}">{{ r.stars }} ★</span> {{ r.text }} <span class="text-muted small">— {{ r.author.display_name }}, {{ r.created_at|date:"j M Y" }}</span></li>{% endif %}
       {% endfor %}
     </ul>
   {% else %}
