@@ -55,7 +55,7 @@
 
 ---
 
-### - [ ] P02.T03 — `post()`: the only way to move UNIQ
+### - [x] P02.T03 — `post()`: the only way to move UNIQ
 
 **Read:** docs/03 section 2 (the table of events); docs/01 HF-1, HF-5, HF-6.
 **Files:** `apps/ledger/services.py`, `apps/ledger/tests/test_post.py`
