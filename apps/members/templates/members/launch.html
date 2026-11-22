@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block content %}
+<h1>{% translate "Unicorn launches" %}</h1>
+{% if state.launched_at %}
+  <div class="alert alert-success">{% translate "Unicorn has launched." %}</div>
+{% else %}
+  <p>{% blocktranslate %}Unicorn launches when every founder has clicked the button below. Clicks so far: {{ clicks }} of {{ founders }}.{% endblocktranslate %}</p>
+  {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+  {% if clicked %}
+    <p>{% translate "You have clicked. Waiting for the other founders." %}</p>
+  {% else %}
+    <form method="post">{% csrf_token %}<button class="btn btn-primary btn-lg" type="submit">{% translate "Unicorn launches" %}</button></form>
+  {% endif %}
+{% endif %}
+{% endblock %}

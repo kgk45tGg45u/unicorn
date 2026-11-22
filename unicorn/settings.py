@@ -163,7 +163,8 @@ MFA_WEBAUTHN_ALLOW_INSECURE_ORIGIN = DEBUG
 SESSION_COOKIE_AGE = 14 * 24 * 3600
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
-LOGIN_REDIRECT_URL = "/"
+LOGIN_REDIRECT_URL = "/me/"
+ACCOUNT_SIGNUP_REDIRECT_URL = "/join/"
 
 # allauth declares conditional unique constraints that MySQL ignores; allauth also checks them in code.
 SILENCED_SYSTEM_CHECKS = ["models.W036"]

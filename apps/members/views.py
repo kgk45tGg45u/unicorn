@@ -6,16 +6,18 @@ from django.http import FileResponse, Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
 from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 
 from . import crypto, services
-from .models import ContractTemplate, Member, PrivateFile, Signature
+from .forms import AboutYouForm
+from .models import ContractTemplate, LaunchClick, Member, PrivateFile, Signature, SiteState
 
 
 @login_required
 def my_account(request):
     member = request.member
     if member is None:
-        return redirect("core:home")
+        return redirect("members:join_about")
     missing = []
     if member.status == Member.APPLICANT:
         if member.joined_at is None:
@@ -62,7 +64,7 @@ def contract(request):
         if all(request.POST.get(f"accept_{i}") for i in range(len(parts))):
             services.sign(member, template, "click")
             messages.success(request, _("Thank you. You have signed the contract."))
-            return redirect("members:my_account")
+            return redirect("members:join_next")
         error = True
     return render(
         request,
@@ -126,3 +128,76 @@ def identity_check_page(request):
                 messages.success(request, _("The check is recorded."))
                 return redirect("members:identity_check")
     return render(request, "members/identity_check.html", {"error": error})
+
+
+NOTICE_FOREIGN = gettext_lazy(
+    "The laws of your country apply to your work, your sales and the money you hold: "
+    "taxes, VAT, labour law and licences. Unicorn starts as a German association, and members abroad are welcome."
+)
+NOTICE_BENEFITS = gettext_lazy(
+    "Income from Unicorn can count against means-tested benefits. We will warn you again when you pass 15 hours a week."
+)
+
+
+@login_required
+def join_about(request):
+    if request.member is not None:
+        return redirect("members:join_next")
+    state_trial = services.in_trial_year()
+    if state_trial:
+        ends = services.trial_ends_at()
+        if request.method == "POST" and request.POST.get("waitlist"):
+            services.add_to_waitlist(request.user.email)
+            messages.success(request, _("You are on the waiting list. We will email you when Unicorn opens."))
+            return redirect("core:home")
+        return render(request, "members/join_trial.html", {"ends": ends})
+    form = AboutYouForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            services.create_member_from_about(request.user, form.cleaned_data)
+        except services.TooYoung as e:
+            form.add_error("birth_date", str(e))
+        else:
+            return redirect("members:contract")
+    return render(request, "members/join_about.html", {"form": form})
+
+
+@login_required
+def join_next(request):
+    member = request.member
+    if member is None:
+        return redirect("members:join_about")
+    notices = []
+    if member.country != "DE":
+        notices.append(NOTICE_FOREIGN)
+    if member.receives_benefits:
+        notices.append(NOTICE_BENEFITS)
+    return render(request, "members/join_next.html", {"member": member, "notices": notices})
+
+
+@login_required
+def launch(request):
+    member = request.member
+    state = SiteState.get()
+    if member is None or not member.is_founder:
+        return HttpResponseForbidden(_("Only founders can launch Unicorn."))
+    error = None
+    if request.method == "POST":
+        try:
+            state = services.record_launch_click(member)
+        except services.IdentityError as e:
+            error = str(e)
+        else:
+            messages.success(request, _("Your click is recorded."))
+            return redirect("members:launch")
+    return render(
+        request,
+        "members/launch.html",
+        {
+            "state": state,
+            "error": error,
+            "clicked": LaunchClick.objects.filter(member=member).exists(),
+            "clicks": LaunchClick.objects.count(),
+            "founders": Member.objects.filter(is_founder=True, status=Member.MEMBER).count(),
+        },
+    )

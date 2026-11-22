@@ -228,3 +228,37 @@ class MemberHash(models.Model):
 
     def __str__(self):
         return f"{self.kind} hash of {self.member.number}"
+
+
+class SiteState(models.Model):
+    """A single row: when Unicorn launched. Until then it is in its founding phase."""
+
+    launched_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"launched at {self.launched_at}" if self.launched_at else "not launched yet"
+
+    @classmethod
+    def get(cls):
+        return cls.objects.get_or_create(pk=1)[0]
+
+
+class LaunchClick(models.Model):
+    """A founder's click on "Unicorn launches". Unicorn launches when every founder has clicked (until P07)."""
+
+    member = models.OneToOneField(Member, on_delete=models.PROTECT, related_name="launch_click")
+    clicked_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.member.number} clicked launch"
+
+
+class Waitlist(models.Model):
+    """An email waiting for the end of the founders' trial year. Deleted after the invitation or 24 months."""
+
+    email = models.EmailField(unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    invited_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"waitlist {self.pk}"

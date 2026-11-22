@@ -150,7 +150,7 @@
 
 ---
 
-### - [ ] P01.T06 — Joining: sign-up flow, trial year, notices
+### - [x] P01.T06 — Joining: sign-up flow, trial year, notices
 
 **Read:** docs/02 section 3 (25 founders, trial year); `config/defaults.yaml` `membership.*`.
 **Files:** `apps/members/models.py` (SiteState, Waitlist), `apps/members/views.py`, `apps/members/forms.py`, `apps/members/templates/members/join_*.html`, `apps/members/tests/test_join.py`

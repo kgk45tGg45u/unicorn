@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block content %}
+<h1>{% translate "What happens next" %}</h1>
+{% for notice in notices %}<div class="alert alert-warning">{{ notice }}</div>{% endfor %}
+<p>{% blocktranslate with number=member.number %}Your member number is {{ number }}.{% endblocktranslate %}</p>
+<ol>
+  <li>{% translate "Ask two verified members who know you to vouch for you. They need your member number." %}</li>
+  <li>{% translate "Meet an identity helper in person, with an official ID. The helper records only that they saw you, never your ID number." %}</li>
+  <li>{% translate "When both are done, you become a verified member." %}</li>
+</ol>
+<a class="btn btn-primary" href="{% url 'members:my_account' %}">{% translate "Go to my account" %}</a>
+{% endblock %}

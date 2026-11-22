@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block content %}
+<h1>{% translate "Unicorn is in its founders' trial year" %}</h1>
+<p>{% blocktranslate with date=ends|date:"j F Y" %}Unicorn is in its founders' trial year until {{ date }}. After that, new members can join.{% endblocktranslate %}</p>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="waitlist" value="1">
+  <button class="btn btn-primary" type="submit">{% translate "Put me on the waiting list" %}</button>
+</form>
+<p class="small text-muted mt-3">{% translate "We keep only your email, and delete it after your invitation or after 24 months." %}</p>
+{% endblock %}

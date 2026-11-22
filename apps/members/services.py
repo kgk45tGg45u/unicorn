@@ -1,3 +1,4 @@
+import calendar
 import json
 import secrets
 from pathlib import Path
@@ -59,6 +60,9 @@ def sign(member, template, method, context=None):
             context=context or {},
         )
         audit.record(member.number, "contract.signed", signature, kind=template.kind, version=template.version)
+        if template.kind == "membership" and member.joined_at is None:
+            member.joined_at = signature.signed_at
+            member.save(update_fields=["joined_at"])
         return signature
 
 
@@ -275,3 +279,108 @@ def update_hashes(member):
                 audit.record("system", "duplicate_suspected", member, kind=kind)
                 if member.status != Member.MEMBER:
                     Member.objects.filter(pk=member.pk).update(status=Member.APPLICANT)
+
+
+# --- Joining (docs/02 section 3: founders, then a trial year) ---
+
+
+class TooYoung(ValueError):
+    pass
+
+
+def age_on(birth_date, today):
+    return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+
+
+def _add_months(moment, months):
+    month_index = moment.month - 1 + months
+    year, month = moment.year + month_index // 12, month_index % 12 + 1
+    last_day = calendar.monthrange(year, month)[1]
+    return moment.replace(year=year, month=month, day=min(moment.day, last_day))
+
+
+def trial_ends_at():
+    """When the founders' trial year ends, or None if Unicorn has not launched."""
+    from apps.rules.services import get_param
+
+    from .models import SiteState
+
+    launched = SiteState.get().launched_at
+    if launched is None:
+        return None
+    return _add_months(launched, get_param("membership.trial_months"))
+
+
+def in_trial_year(now=None) -> bool:
+    from django.utils import timezone
+
+    ends = trial_ends_at()
+    return ends is not None and (now or timezone.now()) < ends
+
+
+def create_member_from_about(user, data):
+    """Create the applicant and store the private fields. Raises TooYoung for people under the minimum age."""
+    from django.utils import timezone
+
+    from apps.rules.services import get_param
+
+    if age_on(data["birth_date"], timezone.localdate()) < get_param("membership.min_age"):
+        raise TooYoung(_("You must be 18 or older to join."))
+    with transaction.atomic():
+        member = create_applicant(user, data["display_name"], data["country"], data["currency"], data["postcode"])
+        member.receives_benefits = data["receives_benefits"]
+        member.save(update_fields=["receives_benefits"])
+        private = {"legal_name": data["legal_name"], "birth_date": data["birth_date"].isoformat()}
+        if data.get("phone"):
+            private["phone"] = data["phone"]
+        set_private(member, **private)
+    return member
+
+
+def add_to_waitlist(email):
+    from .models import Waitlist
+
+    return Waitlist.objects.get_or_create(email=email.strip().lower())[0]
+
+
+def purge_waitlist(now=None):
+    """Delete waitlist entries that were invited, or are older than 24 months."""
+    from django.utils import timezone
+
+    from .models import Waitlist
+
+    now = now or timezone.now()
+    old = Waitlist.objects.filter(created_at__lt=_add_months(now, -24))
+    invited = Waitlist.objects.filter(invited_at__isnull=False)
+    count = old.count() + invited.exclude(pk__in=old).count()
+    old.delete()
+    invited.delete()
+    return count
+
+
+def record_launch_click(member):
+    """A founder clicks "Unicorn launches". Unicorn launches once every founder has clicked."""
+    from django.utils import timezone
+
+    from apps.core import audit
+    from apps.rules.services import get_param
+
+    from .models import LaunchClick, Member, SiteState
+
+    if not member.is_founder:
+        raise IdentityError(_("Only founders can launch Unicorn."))
+    with transaction.atomic():
+        state = SiteState.objects.select_for_update().get_or_create(pk=1)[0]
+        if state.launched_at:
+            return state
+        founders = Member.objects.filter(is_founder=True, status=Member.MEMBER)
+        if founders.count() < get_param("membership.founders_target"):
+            raise IdentityError(_("Unicorn can launch when all founders are verified."))
+        LaunchClick.objects.get_or_create(member=member)
+        audit.record(member.number, "launch.click")
+        clicked = LaunchClick.objects.filter(member__in=founders).count()
+        if clicked == founders.count():
+            state.launched_at = timezone.now()
+            state.save()
+            audit.record("system", "launched")
+        return state

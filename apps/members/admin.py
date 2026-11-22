@@ -2,7 +2,17 @@ from django.contrib import admin
 
 from apps.core.admin import ReadOnlyAdmin
 
-from .models import ContractTemplate, InPersonCheck, Member, MemberHash, PrivateFile, Signature, Vouch
+from .models import (
+    ContractTemplate,
+    InPersonCheck,
+    Member,
+    MemberHash,
+    PrivateFile,
+    Signature,
+    SiteState,
+    Vouch,
+    Waitlist,
+)
 
 
 @admin.register(Member)
@@ -40,3 +50,14 @@ class InPersonCheckAdmin(ReadOnlyAdmin):
 @admin.register(MemberHash)
 class MemberHashAdmin(ReadOnlyAdmin):
     list_display = ("member", "kind")
+
+
+@admin.register(SiteState)
+class SiteStateAdmin(ReadOnlyAdmin):
+    list_display = ("launched_at",)
+
+
+@admin.register(Waitlist)
+class WaitlistAdmin(ReadOnlyAdmin):
+    list_display = ("created_at", "invited_at")
+    exclude = ("email",)
