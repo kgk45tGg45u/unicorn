@@ -128,7 +128,7 @@
 
 ---
 
-### - [ ] P02.T05 — Append-only in the database
+### - [x] P02.T05 — Append-only in the database
 
 **Read:** docs/08 section 5; docs/09 section 2 (the trigger privilege).
 **Files:** `apps/core/sql.py`, `apps/ledger/migrations/0003_append_only_triggers.py`, `apps/ledger/tests/test_triggers.py`
