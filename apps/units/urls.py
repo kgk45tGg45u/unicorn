@@ -20,6 +20,7 @@ urlpatterns = [
     path("<slug:slug>/rules/sign/", views.sign_rules, name="sign_rules"),
     path("<slug:slug>/decline-turn/", views.decline_turn, name="decline_turn"),
     path("<slug:slug>/reopen/", views.reopen, name="reopen"),
+    path("<slug:slug>/approve/", views.approve_page, name="approve"),
     path("<slug:slug>/hours/", views.unit_hours, name="unit_hours"),
     path("<slug:slug>/leave/", views.leave, name="leave"),
 ]

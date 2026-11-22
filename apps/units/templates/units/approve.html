@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Approve hours" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% blocktranslate with name=unit.name %}Hours waiting for approval at {{ name }}{% endblocktranslate %}</h1>
+<p>{% translate "You cannot approve your own hours. Hours over the weekly limit need two approvals, each with a reason." %}</p>
+{% for message in messages %}<div class="alert alert-info">{{ message }}</div>{% endfor %}
+{% if entries %}
+<form method="post">{% csrf_token %}
+  <div class="table-responsive"><table class="table">
+    <thead><tr><th></th><th>{% translate "Day" %}</th><th>{% translate "Worker" %}</th><th>{% translate "Time" %}</th><th>{% translate "Note" %}</th></tr></thead>
+    <tbody>{% for e in entries %}<tr>
+      <td><input class="form-check-input" type="checkbox" name="entry" value="{{ e.pk }}" aria-label="{% translate 'Select' %}"></td>
+      <td>{{ e.date|date:"Y-m-d" }}</td><td>{{ e.member.display_name }}</td><td>{{ e.minutes }} min{% if e.needs_extra_approval %} · <strong>{% translate "over the weekly limit" %}</strong>{% endif %}</td><td>{{ e.note }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <label class="form-label" for="reason">{% translate "Reason (needed for hours over the limit, and to reject)" %}</label>
+  <input class="form-control mb-2" id="reason" name="reason" maxlength="300">
+  <button class="btn btn-primary" name="answer" value="approve">{% translate "Approve the ticked hours" %}</button>
+  <button class="btn btn-outline-secondary" name="answer" value="reject">{% translate "Reject the ticked hours" %}</button>
+</form>
+{% else %}<p>{% translate "Nothing is waiting for you." %}</p>{% endif %}
+<p class="mt-3"><a href="{% url 'units:unit' unit.slug %}">{% translate "Back to the unit" %}</a></p>
+{% endblock %}

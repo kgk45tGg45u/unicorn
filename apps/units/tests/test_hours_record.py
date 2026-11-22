@@ -27,7 +27,7 @@ def today():
 def test_hours_are_submitted_with_the_period():
     a, unit = worker()
     e = services.record_hours(a, unit, today(), 150, activity="shift")
-    assert e.status == "submitted" and e.period.status == "open" and e.submitted_at
+    assert e.status == "paid" and e.period.status == "open" and e.submitted_at  # one-person unit
     assert not e.needs_extra_approval
 
 

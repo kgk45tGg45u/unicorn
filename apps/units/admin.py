@@ -6,6 +6,7 @@ from .models import (
     CouncilDecision,
     CouncilRules,
     CouncilVote,
+    HoursApproval,
     HoursEntry,
     JoinRequest,
     Responsibility,
@@ -58,3 +59,8 @@ class HoursEntryAdmin(ReadOnlyAdmin):
 @admin.register(TimerSession)
 class TimerSessionAdmin(ReadOnlyAdmin):
     list_display = ("member", "unit", "started_at")
+
+
+@admin.register(HoursApproval)
+class HoursApprovalAdmin(ReadOnlyAdmin):
+    list_display = ("entry", "approver", "approved_at")

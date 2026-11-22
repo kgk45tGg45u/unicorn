@@ -219,7 +219,7 @@
 
 ---
 
-### - [ ] P03.T08 — Approving and paying hours
+### - [x] P03.T08 — Approving and paying hours
 
 **Read:** docs/06 section 3 ("Approving", "Paying"); docs/03 section 2; docs/01 HF-2, HF-20.
 **Files:** `apps/units/models.py` (HoursApproval), `apps/units/services.py`, `apps/units/views.py`, `apps/units/templates/units/approve.html`, `apps/units/tests/test_hours_pay.py`

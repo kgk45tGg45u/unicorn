@@ -277,3 +277,17 @@ class TimerSession(models.Model):
 
     def __str__(self):
         return f"{self.member.number} timer for {self.unit.name}"
+
+
+class HoursApproval(models.Model):
+    """One approval of an hours entry. `approver` is empty when the system approved (one-person, coordination)."""
+
+    entry = models.ForeignKey(HoursEntry, on_delete=models.PROTECT, related_name="approvals")
+    approver = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="hours_approvals"
+    )
+    approved_at = models.DateTimeField()
+    reason = models.CharField(max_length=300, blank=True)
+
+    def __str__(self):
+        return f"approval of entry {self.entry_id}"

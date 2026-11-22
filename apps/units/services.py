@@ -645,6 +645,9 @@ def submit_hours(entry):
         entry.save()
         touch(entry.unit)
         audit.record(entry.member.number, "hours.submitted", entry, minutes=entry.minutes, unit=entry.unit_id)
+        if _approved_by_system(entry.unit):
+            approve_hours(entry)
+            entry.refresh_from_db()
         return entry
 
 
@@ -677,3 +680,159 @@ def stop_timer(member, now=None):
         entry = create_draft(member, timer.unit, day, minutes, note=_("Recorded with the timer"))
         timer.delete()
         return entry
+
+
+# --- Approving and paying hours (HF-20) ---
+
+
+def _approved_by_system(unit) -> bool:
+    return unit.kind == "coordination" or workers(unit).count() == 1
+
+
+def _approvals_needed(entry, approvals) -> bool:
+    """True when the approvals so far are enough under the council's rules."""
+    from . import council_rules
+
+    rules = council_rules.current(entry.unit)
+    rule = rules.hours_approval if rules else get_param("governance.council.hours_approval")
+    count = len(approvals)
+    if entry.needs_extra_approval:
+        return count >= 2 and all(a.reason.strip() for a in approvals)
+    if rule == "any_other_member":
+        return count >= 1
+    if rule == "two_members":
+        return count >= 2
+    boss = responsible(entry.unit)  # responsible_or_other
+    if boss is not None and any(a.approver_id == boss.member_id for a in approvals):
+        return True
+    return count >= 2
+
+
+def approve_hours(entry, approver=None, reason=""):
+    """Record an approval; pay when enough approvals exist. Never lets a member approve their own hours (HF-20)."""
+    from .models import HoursApproval, HoursEntry
+
+    with transaction.atomic():
+        entry = HoursEntry.objects.select_for_update().get(pk=entry.pk)
+        if entry.status != "submitted":
+            raise UnitError(_("These hours are not waiting for approval."))
+        unit = entry.unit
+        if approver is None:
+            if not _approved_by_system(unit):
+                raise UnitError(_("The unit's council must approve these hours."))
+            if entry.needs_extra_approval:
+                # OWNER-CHECK: a one-person unit has no council to approve hours over the weekly limit.
+                return entry
+            HoursApproval.objects.create(entry=entry, approver=None, approved_at=timezone.now())
+            return _finish_approval(entry)
+        if approver.pk == entry.member_id:
+            raise UnitError(_("You cannot approve your own hours."))
+        if not member_services.is_verified(approver) or not is_council_member(approver, unit):
+            raise UnitError(_("Only council members of the unit can approve its hours."))
+        if _approved_by_system(unit):
+            raise UnitError(_("These hours are approved automatically."))
+        if entry.approvals.filter(approver=approver).exists():
+            raise UnitError(_("You have already approved these hours."))
+        if entry.needs_extra_approval and not reason.strip():
+            raise UnitError(_("These hours are over the weekly limit. Please write a reason to approve them."))
+        HoursApproval.objects.create(
+            entry=entry, approver=approver, approved_at=timezone.now(), reason=reason.strip()[:300]
+        )
+        audit.record(approver.number, "hours.approved", entry)
+        if _approvals_needed(entry, list(entry.approvals.all())):
+            return _finish_approval(entry)
+        return entry
+
+
+def _finish_approval(entry):
+    entry.status = "approved"
+    entry.save(update_fields=["status"])
+    if entry.activity == "own_initiative":
+        entry.status = "pending_sale"  # paid in P05 when the products sell
+        entry.save(update_fields=["status"])
+        return entry
+    return pay_hours(entry)
+
+
+def _hm(minutes):
+    return f"{minutes // 60}:{minutes % 60:02d}"
+
+
+def pay_hours(entry):
+    """Pay approved hours: gross from Fund 2, then the flat tax back to Fund 2 (HF-1, HF-2, HF-9)."""
+    from decimal import Decimal
+
+    from apps.core.money import minutes_to_uniq, uniq
+    from apps.ledger import services as ledger
+
+    from .models import HoursEntry
+
+    with transaction.atomic():
+        entry = HoursEntry.objects.select_for_update().get(pk=entry.pk)
+        if entry.transaction_id or entry.status not in ("approved", "pending_sale"):
+            raise UnitError(_("These hours cannot be paid now."))
+        if not entry.approvals.exists():  # HF-20: no approval, no payment
+            raise UnitError(_("Hours are only paid after they are approved."))
+        assert not get_param("economy.shortage_bonus.enabled")  # the bonus is built in phase 16
+        gross = uniq(minutes_to_uniq(entry.minutes) * Decimal(str(get_param("economy.uniq_per_hour"))))
+        account = ledger.member_account(entry.member)
+        period = entry.period
+        tx = ledger.post(
+            "hours_pay",
+            _("Paid for %(time)s at %(unit)s on %(date)s")
+            % {"time": _hm(entry.minutes), "unit": entry.unit.name, "date": entry.date.isoformat()},
+            [ledger.Leg(ledger.fund2(), -gross), ledger.Leg(account, gross)],
+            ref=entry,
+            period=period,
+        )
+        tax = uniq(gross * period.tax_rate)
+        if tax:
+            ledger.post(
+                "tax",
+                _("Flat tax %(rate)s%%") % {"rate": (period.tax_rate * 100).normalize()},
+                [ledger.Leg(account, -tax), ledger.Leg(ledger.fund2(), tax)],
+                ref=entry,
+                period=period,
+            )
+        entry.transaction = tx
+        entry.status = "paid"
+        entry.save(update_fields=["transaction", "status"])
+        audit.record("system", "hours.paid", entry, gross=str(gross), tax=str(tax))
+        return entry
+
+
+def reject_hours(entry, approver, reason):
+    from .models import HoursEntry
+
+    if not (reason or "").strip():
+        raise UnitError(_("Please write why you are rejecting these hours."))
+    with transaction.atomic():
+        entry = HoursEntry.objects.select_for_update().get(pk=entry.pk)
+        if entry.status != "submitted":
+            raise UnitError(_("These hours are not waiting for approval."))
+        if approver.pk == entry.member_id or not is_council_member(approver, entry.unit):
+            raise UnitError(_("Only other council members of the unit can reject its hours."))
+        entry.status = "rejected"
+        entry.rejection_reason = reason.strip()[:300]
+        entry.save(update_fields=["status", "rejection_reason"])
+        audit.record(approver.number, "hours.rejected", entry)
+        _notify(
+            entry.member,
+            _("Your hours at %(unit)s were not approved") % {"unit": entry.unit.name},
+            _("Reason: %(reason)s") % {"reason": entry.rejection_reason},
+        )
+        return entry
+
+
+def waiting_for(member, unit):
+    """Submitted hours of the unit that this council member may approve."""
+    from .models import HoursEntry
+
+    if not is_council_member(member, unit):
+        return HoursEntry.objects.none()
+    return (
+        HoursEntry.objects.filter(unit=unit, status="submitted")
+        .exclude(member=member)
+        .exclude(approvals__approver=member)
+        .select_related("member")
+    )

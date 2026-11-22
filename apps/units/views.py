@@ -270,3 +270,31 @@ def unit_hours(request, slug):
         "units/unit_hours.html",
         {"unit": unit, "entries": unit.hours.exclude(status="draft").select_related("member")[:200]},
     )
+
+
+@sensitive_action
+def approve_page(request, slug):
+    unit = get_object_or_404(Unit, slug=slug)
+    if not services.is_council_member(request.member, unit):
+        messages.error(request, _("Only council members can approve hours."))
+        return redirect("units:unit", slug=slug)
+    if request.method == "POST":
+        from .models import HoursEntry
+
+        done = 0
+        reason = request.POST.get("reason", "")
+        for entry in HoursEntry.objects.filter(
+            unit=unit, pk__in=[int(x) for x in request.POST.getlist("entry") if x.isdigit()]
+        ):
+            try:
+                if request.POST.get("answer") == "reject":
+                    services.reject_hours(entry, request.member, reason)
+                else:
+                    services.approve_hours(entry, request.member, reason)
+                done += 1
+            except services.UnitError as e:
+                messages.error(request, f"{entry.member.display_name}, {entry.date}: {e}")
+        if done:
+            messages.success(request, _("Done."))
+        return redirect("units:approve", slug=slug)
+    return render(request, "units/approve.html", {"unit": unit, "entries": services.waiting_for(request.member, unit)})
