@@ -211,7 +211,7 @@
 
 ---
 
-### - [ ] P05.T09 — Measured hours, supply weights, plausibility, close checks
+### - [x] P05.T09 — Measured hours, supply weights, plausibility, close checks
 
 **Read:** docs/04 section 6 ("Declared and measured hours"), section 10 ("Plausibility checks"); docs/06 section 3 ("Checks").
 **Files:** `apps/market/measure.py`, `apps/market/jobs.py`, `apps/market/tests/test_measure.py`

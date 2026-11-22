@@ -339,3 +339,23 @@ class Sale(models.Model):
 
     def __str__(self):
         return f"sale {self.code} of {self.quantity} {self.offer} ({self.status})"
+
+
+class PlausibilityRecord(models.Model):
+    """One monthly check of an offer: do the hours paid and the inputs ordered fit the output delivered?"""
+
+    KINDS = [("hours", _("hours against output")), ("inputs", _("inputs against output"))]
+
+    offer = models.ForeignKey("catalogue.Offer", on_delete=models.CASCADE, related_name="plausibility")
+    month = models.DateField()  # the first of the month
+    kind = models.CharField(max_length=8, choices=KINDS)
+    value = models.DecimalField(max_digits=12, decimal_places=4)  # the gap (hours) or the ratio (inputs)
+    flagged = models.BooleanField(default=False)
+    notified = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-month", "offer"]
+        constraints = [models.UniqueConstraint(fields=["offer", "month", "kind"], name="one_plausibility_per_month")]
+
+    def __str__(self):
+        return f"{self.offer} {self.month:%Y-%m} {self.kind}: {self.value}"

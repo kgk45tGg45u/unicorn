@@ -9,7 +9,9 @@ class MarketConfig(AppConfig):
     def ready(self):
         from apps.core.management.commands import daily
 
-        from . import jobs, services  # noqa: F401
+        from . import jobs, measure, services  # noqa: F401
+
+        measure.register()
 
         for entry in (
             ("market.write_offs", {}),
@@ -17,6 +19,7 @@ class MarketConfig(AppConfig):
             ("market.auto_confirm_bookings", {}),
             ("market.standing_orders", {}),
             ("market.expire_sales", {}),
+            ("market.plausibility", {}),
         ):
             if entry not in daily.DAILY_JOBS:
                 daily.DAILY_JOBS.append(entry)

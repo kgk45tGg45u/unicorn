@@ -454,7 +454,11 @@ def ask_own_free(today=None):
 
 # --- Computing values (the only code that writes an offer's value fields: HF-3) ---
 
-SUPPLY_WEIGHTS_HOOK = None  # P05 sets this to a function (item ids) -> {item_id: {offer_id: share}} from deliveries
+# The market sets these two (P05.T09), so that the catalogue never imports it:
+# SUPPLY_WEIGHTS_HOOK(offers_by_item) -> {item_id: {offer_id: share}} from the deliveries of the last months;
+# MEASURED_HOURS_HOOK(offer) -> hours per unit measured from approved hours and deliveries, or None.
+SUPPLY_WEIGHTS_HOOK = None
+MEASURED_HOURS_HOOK = None
 
 
 def _equal_weights(offers_by_item):
@@ -523,13 +527,18 @@ def recompute_values():
                         changed = True
         data = []
         for o in alive.values():
+            if MEASURED_HOURS_HOOK is not None:
+                measured = MEASURED_HOURS_HOOK(o)
+                if measured != o.measured_hours_per_unit:
+                    o.measured_hours_per_unit = measured
+                    o.save(update_fields=["measured_hours_per_unit"])
             use_measured = o.measured_hours_per_unit is not None
             hours = float(o.measured_hours_per_unit if use_measured else declared_hours(o))
             data.append(_offer_data(o, hours, _quantity(o)))
         by_item = {}
         for o in alive.values():
             by_item.setdefault(o.item_id, []).append(o)
-        weights = SUPPLY_WEIGHTS_HOOK(list(by_item)) if SUPPLY_WEIGHTS_HOOK else _equal_weights(by_item)
+        weights = SUPPLY_WEIGHTS_HOOK(by_item) if SUPPLY_WEIGHTS_HOOK else _equal_weights(by_item)
         info = {}
         results = engine.solve(data, weights, info)
         run = ValueRun.objects.create(

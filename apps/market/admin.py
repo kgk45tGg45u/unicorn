@@ -7,6 +7,7 @@ from .models import (
     InputRequest,
     Order,
     OrderLine,
+    PlausibilityRecord,
     ProductionOrder,
     PurchaseNeed,
     Sale,
@@ -76,3 +77,8 @@ class StandingOrderAdmin(ReadOnlyAdmin):
 @admin.register(Sale)
 class SaleAdmin(ReadOnlyAdmin):
     list_display = ("code", "offer", "quantity", "amount_uniq", "status", "expires_at")
+
+
+@admin.register(PlausibilityRecord)
+class PlausibilityRecordAdmin(ReadOnlyAdmin):
+    list_display = ("offer", "month", "kind", "value", "flagged", "notified")

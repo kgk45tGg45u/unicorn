@@ -1,6 +1,6 @@
 from apps.core.jobs import job
 
-from . import services
+from . import measure, services
 
 
 @job("market.write_offs")
@@ -42,3 +42,12 @@ def standing_orders(payload):
 @job("market.expire_sales")
 def expire_sales(payload):
     services.expire_sales()
+
+
+@job("market.plausibility")
+def plausibility(payload):
+    """Monthly (queued daily): checks the last full month. Safe to run twice: each offer and month has one record."""
+    from datetime import date
+
+    month = date.fromisoformat(payload["month"] + "-01") if payload.get("month") else None
+    measure.run_plausibility(month)
