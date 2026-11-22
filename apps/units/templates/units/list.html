@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Units" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Units" %}</h1>
+<ul class="list-group">
+{% for u in units %}
+  <li class="list-group-item"><a href="{% url 'units:unit' u.slug %}">{{ u.name }}</a> <span class="text-muted">{{ u.get_kind_display }} · {{ u.get_status_display }}</span></li>
+{% empty %}
+  <li class="list-group-item">{% translate "There are no units yet." %}</li>
+{% endfor %}
+</ul>
+{% endblock %}

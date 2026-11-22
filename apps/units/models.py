@@ -74,3 +74,45 @@ class Unit(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class UnitMembership(models.Model):
+    """A member works in a unit. Active while `left_at` is empty."""
+
+    unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name="memberships")
+    member = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="unit_memberships")
+    is_council = models.BooleanField(default=True)
+    joined_at = models.DateTimeField()
+    left_at = models.DateTimeField(null=True, blank=True)
+    # The member id while active, empty after leaving: with the unique constraint, only one active row.
+    active_key = models.PositiveIntegerField(null=True, blank=True, editable=False)
+
+    class Meta:
+        ordering = ["joined_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["unit", "member", "active_key"], name="unique_active_membership"),
+        ]
+
+    def __str__(self):
+        return f"{self.member.number} in {self.unit.name}"
+
+    def save(self, *args, **kwargs):
+        self.active_key = self.member_id if self.left_at is None else None
+        super().save(*args, **kwargs)
+
+
+class JoinRequest(models.Model):
+    STATUSES = [("open", _("open")), ("accepted", _("accepted")), ("declined", _("declined"))]
+
+    unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name="join_requests")
+    member = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="join_requests")
+    message = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=STATUSES, default="open")
+    created_at = models.DateTimeField(auto_now_add=True)
+    decided_by = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="join_decisions"
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.member.number} asks to join {self.unit.name} ({self.status})"

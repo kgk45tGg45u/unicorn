@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ unit.name }} · Unicorn{% endblock %}
+{% block content %}
+<h1>{{ unit.name }}</h1>
+<p class="text-muted">{{ unit.get_kind_display }} · {{ unit.get_status_display }}</p>
+{% if unit.description %}<p>{{ unit.description }}</p>{% endif %}
+{% for message in messages %}<div class="alert alert-info">{{ message }}</div>{% endfor %}
+<h2 class="h5">{% translate "Workers" %}</h2>
+<ul>{% for w in workers %}<li>{{ w.display_name }}</li>{% empty %}<li>{% translate "Nobody works here yet." %}</li>{% endfor %}</ul>
+{% if is_worker %}
+  <form method="post" action="{% url 'units:leave' unit.slug %}">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit">{% translate "Leave this unit" %}</button></form>
+{% elif can_join %}
+  <form method="post" action="{% url 'units:join' unit.slug %}" class="mb-3">{% csrf_token %}
+    <label class="form-label" for="message">{% translate "A few words for the council (optional)" %}</label>
+    <input class="form-control mb-2" id="message" name="message" maxlength="500">
+    <button class="btn btn-primary" type="submit">{% translate "Request to join" %}</button>
+  </form>
+{% endif %}
+{% if requests %}
+  <h2 class="h5">{% translate "People asking to join" %}</h2>
+  {% for r in requests %}
+    <form method="post" action="{% url 'units:decide_join' r.pk %}" class="d-flex gap-2 align-items-center mb-2">{% csrf_token %}
+      <span>{{ r.member.display_name }}{% if r.message %} — {{ r.message }}{% endif %}</span>
+      <button class="btn btn-sm btn-primary" name="answer" value="accept">{% translate "Accept" %}</button>
+      <button class="btn btn-sm btn-outline-secondary" name="answer" value="decline">{% translate "Decline" %}</button>
+    </form>
+  {% endfor %}
+{% endif %}
+{% endblock %}

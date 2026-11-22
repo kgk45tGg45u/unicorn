@@ -27,7 +27,7 @@
 
 ---
 
-### - [ ] P03.T02 — Workers and the working council
+### - [x] P03.T02 — Workers and the working council
 
 **Read:** docs/05 section 6 ("Members", "Members of several units").
 **Files:** `apps/units/models.py` (UnitMembership, JoinRequest), `apps/units/services.py`, `apps/units/views.py`, `apps/units/templates/units/*.html`, `apps/units/tests/test_workers.py`

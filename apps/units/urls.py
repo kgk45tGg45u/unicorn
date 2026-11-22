@@ -1,0 +1,13 @@
+from django.urls import path
+
+from . import views
+
+app_name = "units"
+
+urlpatterns = [
+    path("", views.unit_list, name="list"),
+    path("requests/<int:pk>/decide/", views.decide_join, name="decide_join"),
+    path("<slug:slug>/", views.unit_page, name="unit"),
+    path("<slug:slug>/join/", views.request_join, name="join"),
+    path("<slug:slug>/leave/", views.leave, name="leave"),
+]
