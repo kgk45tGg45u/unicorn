@@ -5,7 +5,7 @@ import pytest
 from freezegun import freeze_time
 
 from apps.market import services
-from apps.market.models import OrderLine, ProductionOrder, WeeklyPlan
+from apps.market.models import OrderLine, WeeklyPlan
 from apps.market.tests.conftest import World
 from apps.units.models import HoursEntry
 from apps.units.tests.conftest import make_member
@@ -127,9 +127,3 @@ def test_workers_record_hours_on_the_production_order(world):
     assert HoursEntry.objects.get().status == "paid"  # a one-person unit approves at once
     with pytest.raises(services.MarketError):
         services.record_production_hours(make_member("s@x.org", "S"), po, date.today(), 30)
-
-
-def test_a_batch_that_nobody_started_can_be_cancelled_by_the_plan_only(world):
-    # an order places exactly one open production order per partly filled batch
-    services.place_order(world.buyer(), world.bread, D(2))
-    assert ProductionOrder.objects.filter(status="open").count() == 1

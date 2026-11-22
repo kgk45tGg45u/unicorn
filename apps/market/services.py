@@ -15,7 +15,7 @@ from apps.ledger import services as ledger
 from apps.rules.services import get_param
 from apps.units import services as unit_services
 
-from .models import Order, OrderLine, ProductionOrder, WeeklyPlan
+from .models import InputRequest, Order, OrderLine, ProductionOrder, PurchaseNeed, WeeklyPlan
 
 BERLIN = ZoneInfo("Europe/Berlin")
 
@@ -158,19 +158,26 @@ def cancel_line(line, member):
 
 
 def _unassign(line):
-    """Take a line out of its production order. An empty open batch made only for orders is cancelled."""
+    """Take a line out of its production order."""
     po_id = line.production_order_id
     if po_id is None:
         return
-    po = ProductionOrder.objects.select_for_update().get(pk=po_id)
-    po.quantity_assigned = max(Decimal("0"), po.quantity_assigned - line.quantity)
-    if po.week_start is None and po.origin in SHARED_ORIGINS:
-        po.quantity = max(Decimal("0"), po.quantity - line.quantity)
-    if po.status == "open" and po.week_start is None and po.origin in SHARED_ORIGINS and po.quantity <= 0:
-        po.status = "cancelled"
-    po.save(update_fields=["quantity_assigned", "quantity", "status"])
+    _release(po_id, line.quantity)
     line.production_order = None
     line.save(update_fields=["production_order"])
+
+
+def _release(po_id, quantity):
+    """Give back `quantity` of a production order. An open batch shrinks; one that has started is made anyway."""
+    po = ProductionOrder.objects.select_for_update().get(pk=po_id)
+    po.quantity_assigned = max(Decimal("0"), po.quantity_assigned - quantity)
+    if po.status == "open" and po.week_start is None and po.origin in SHARED_ORIGINS:
+        po.quantity = max(Decimal("0"), po.quantity - quantity)
+        if po.quantity <= 0:
+            po.status = "cancelled"
+    po.save(update_fields=["quantity_assigned", "quantity", "status"])
+    if po.status in ("open", "cancelled"):
+        _shrink_inputs(po)
 
 
 # --- Production orders and batches ---
@@ -232,7 +239,7 @@ def _shared_batch(offer, quantity, due_date):
     return ProductionOrder.objects.create(offer=offer, quantity=0, due_date=due_date)
 
 
-def assign_quantity(offer, quantity, due_date, origin="orders") -> ProductionOrder:
+def assign_quantity(offer, quantity, due_date, origin="orders", _depth=0) -> ProductionOrder:
     """Reserve `quantity` of an offer in a production order and return it. Caller holds the transaction."""
     po = None
     if offer.unit.mode == "continuous":
@@ -244,7 +251,7 @@ def assign_quantity(offer, quantity, due_date, origin="orders") -> ProductionOrd
             po.origin = origin
     po.quantity_assigned += quantity
     po.save(update_fields=["quantity", "quantity_assigned", "origin"])
-    explode(po)
+    explode(po, _depth)
     return po
 
 
@@ -262,8 +269,181 @@ def assign_to_batch(line):
         return line
 
 
-def explode(po):
-    """Order the inputs a production order needs down the chain. Built in P05.T03."""
+MAX_CHAIN_DEPTH = 10
+
+
+def _inputs_needed(po, row) -> Decimal:
+    return row.quantity_per_batch * (po.quantity / batch_size(po.offer))
+
+
+def _live_requests(po, row):
+    return po.input_requests.exclude(status="cancelled").filter(offer_input=row)
+
+
+def _pick_supplier(row, consumer):
+    """The preferred supplier; else an active offer in the same town; else the one with the fewest open batches."""
+    from django.db.models import Count, Q
+
+    if row.preferred_supplier_id and row.preferred_supplier.status == "active":
+        return row.preferred_supplier
+    offers = (
+        catalogue.Offer.objects.filter(item=row.item, status="active", unit__status__in=["trial", "open"])
+        .select_related("unit")
+        .annotate(open_batches=Count("production_orders", filter=Q(production_orders__status__in=["open", "started"])))
+    )
+    town = (consumer.unit.town or "").strip().lower()
+    nearby = [o for o in offers if town and (o.unit.town or "").strip().lower() == town]
+    pool = nearby or list(offers)
+    return min(pool, key=lambda o: (o.open_batches, o.pk), default=None)
+
+
+def _purchase_need_for(po, row, due):
+    month = catalogue.first_of_month(due - timedelta(days=get_param("market.outside_input_days")))
+    need = (
+        PurchaseNeed.objects.select_for_update()
+        .filter(unit=po.offer.unit, item=row.item, month=month, status="open", currency=row.currency)
+        .first()
+    )
+    return need or PurchaseNeed.objects.create(unit=po.offer.unit, item=row.item, month=month, currency=row.currency)
+
+
+def _refresh_need(need):
+    from apps.core.money import cur
+
+    live = list(need.requests.exclude(status="cancelled"))
+    need.quantity = sum((r.quantity for r in live), Decimal("0"))
+    need.euro_estimate = cur(sum((r.quantity * (r.euro_each or 0) for r in live), Decimal("0")))
+    need.save(update_fields=["quantity", "euro_estimate"])
+
+
+def explode(po, _depth=0):
+    """Order the inputs a production order needs, down the chain (docs/04 section 8). No UNIQ move (HF-5).
+
+    Runs whenever an order is created or grows; what earlier requests already cover is subtracted.
+    """
+    if po.status not in ("open", "started"):
+        return
+    if _depth >= MAX_CHAIN_DEPTH:
+        audit.record("system", "input chain too deep", po, depth=_depth)
+        return
+    for row in po.offer.inputs.select_related("item", "preferred_supplier"):
+        covered = sum((r.quantity for r in _live_requests(po, row)), Decimal("0"))
+        extra = (_inputs_needed(po, row) - covered).quantize(Decimal("0.0001"))
+        if extra <= 0:
+            continue
+        _request_input(po, row, extra, _depth)
+
+
+def _request_input(po, row, quantity, depth):
+    request = InputRequest(
+        production_order=po,
+        offer_input=row,
+        item=row.item,
+        quantity=quantity,
+        source=row.source,
+        currency=row.currency,
+        due_date=po.due_date,
+    )
+    if row.source == "unicorn":
+        supplier = _pick_supplier(row, po.offer)
+        if supplier is None:
+            audit.record("system", "input.no_supplier", po, item=row.item_id)
+            request.due_date = po.due_date
+            request.save()
+            return
+        request.supplier_offer = supplier
+        request.due_date = max(today(), po.due_date - timedelta(days=catalogue.lead_time_days(supplier)))
+        request.save()
+        child = assign_quantity(supplier, quantity, request.due_date, "input_request", depth + 1)
+        request.child_production_order = child
+        request.save(update_fields=["child_production_order"])
+    elif row.source == "own_free":
+        request.provided_by = row.provided_by
+        request.save()
+    else:  # buy_outside: it goes onto the unit's purchase list for the month
+        due = max(today(), po.due_date - timedelta(days=get_param("market.outside_input_days")))
+        request.due_date = due
+        request.euro_each = row.euro_price_estimate
+        request.purchase_need = _purchase_need_for(po, row, po.due_date)
+        request.save()
+        _refresh_need(request.purchase_need)
+
+
+def _shrink_inputs(po):
+    """A batch got smaller or was cancelled: give back the inputs it no longer needs, newest first."""
+    for row in po.offer.inputs.all():
+        needed = _inputs_needed(po, row) if po.status != "cancelled" else Decimal("0")
+        live = list(_live_requests(po, row).order_by("-id"))
+        covered = sum((r.quantity for r in live), Decimal("0"))
+        for request in live:
+            if request.status in ("delivered", "received"):
+                continue  # already in the unit's hands
+            if covered - request.quantity < needed:
+                break
+            covered -= request.quantity
+            _cancel_request(request)
+
+
+def _cancel_request(request):
+    request.status = "cancelled"
+    request.save(update_fields=["status"])
+    if request.child_production_order_id:
+        _release(request.child_production_order_id, request.quantity)
+    if request.purchase_need_id:
+        _refresh_need(request.purchase_need)
+
+
+# --- Handing inputs between units ---
+
+
+def _lock_request(request):
+    return InputRequest.objects.select_for_update().select_related("production_order__offer__unit").get(pk=request.pk)
+
+
+def confirm_input(request, member):
+    """The member who provides an input free confirms they will bring it."""
+    with transaction.atomic():
+        request = _lock_request(request)
+        if request.source != "own_free" or request.provided_by_id != member.pk:
+            raise MarketError(_("Only the member who provides this input can confirm it."))
+        if request.status != "open":
+            raise MarketError(_("This input was already answered."))
+        request.status = "confirmed"
+        request.save(update_fields=["status"])
+        audit.record(member.number, "input.confirmed", request)
+        return request
+
+
+def mark_delivered(request, member):
+    """The supplying unit says it has handed the input over."""
+    with transaction.atomic():
+        request = _lock_request(request)
+        if request.source != "unicorn" or request.child_production_order_id is None:
+            raise MarketError(_("This input is not made by another unit."))
+        _need_worker(member, request.supplier_offer.unit)
+        if request.status not in ("open", "confirmed"):
+            raise MarketError(_("This input was already handed over or cancelled."))
+        request.status = "delivered"
+        request.delivered_at = timezone.now()
+        request.save(update_fields=["status", "delivered_at"])
+        audit.record(member.number, "input.delivered", request)
+        unit_services.touch(request.supplier_offer.unit)
+        return request
+
+
+def mark_received(request, member):
+    """The unit that needs the input says it arrived."""
+    with transaction.atomic():
+        request = _lock_request(request)
+        _need_worker(member, request.production_order.offer.unit)
+        ready = request.status == "delivered" or (request.source == "own_free" and request.status == "confirmed")
+        if not ready:
+            raise MarketError(_("This input has not been handed over yet."))
+        request.status = "received"
+        request.received_at = timezone.now()
+        request.save(update_fields=["status", "received_at"])
+        audit.record(member.number, "input.received", request)
+        return request
 
 
 def _need_worker(member, unit):
@@ -295,8 +475,11 @@ def _notify_ready(line):
 
 
 def _input_quantity(po) -> Decimal:
-    """What a batch has promised to other units as inputs. Built in P05.T03."""
-    return Decimal("0")
+    """What a batch has promised to other units as inputs."""
+    from django.db.models import Sum
+
+    total = po.serves_requests.exclude(status="cancelled").aggregate(t=Sum("quantity"))["t"]
+    return total or Decimal("0")
 
 
 def _stock_remainder(po, remainder):

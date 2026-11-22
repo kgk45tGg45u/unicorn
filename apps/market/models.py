@@ -110,3 +110,73 @@ class WeeklyPlan(models.Model):
 
     def __str__(self):
         return f"{self.quantity_per_week} a week of {self.offer} from {self.valid_from}"
+
+
+class PurchaseNeed(models.Model):
+    """What a unit must buy from outside in a month for its recipes. Phase 08 turns these into purchase requests."""
+
+    STATUSES = [("open", _("open")), ("requested", _("requested")), ("covered", _("covered"))]
+
+    unit = models.ForeignKey("units.Unit", on_delete=models.PROTECT, related_name="purchase_needs")
+    item = models.ForeignKey("catalogue.Item", on_delete=models.PROTECT, related_name="purchase_needs")
+    month = models.DateField()  # the first of the month
+    quantity = models.DecimalField(max_digits=14, decimal_places=4, default=0)
+    euro_estimate = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    currency = models.CharField(max_length=3, default="EUR")
+    status = models.CharField(max_length=10, choices=STATUSES, default="open")
+
+    class Meta:
+        ordering = ["month", "unit", "item"]
+        indexes = [models.Index(fields=["unit", "item", "month", "status"])]
+
+    def __str__(self):
+        return f"{self.quantity} {self.item.name} for {self.unit.name} in {self.month:%Y-%m}"
+
+
+class InputRequest(models.Model):
+    """One input a production order needs, and where it comes from. No UNIQ move between units (HF-5)."""
+
+    SOURCES = [
+        ("unicorn", _("made in Unicorn")),
+        ("own_free", _("provided free by a member")),
+        ("buy_outside", _("bought from outside")),
+    ]
+    STATUSES = [
+        ("open", _("open")),
+        ("confirmed", _("confirmed")),
+        ("delivered", _("delivered")),
+        ("received", _("received")),
+        ("cancelled", _("cancelled")),
+    ]
+
+    production_order = models.ForeignKey(ProductionOrder, on_delete=models.PROTECT, related_name="input_requests")
+    offer_input = models.ForeignKey(
+        "catalogue.OfferInput", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    item = models.ForeignKey("catalogue.Item", on_delete=models.PROTECT, related_name="+")
+    quantity = models.DecimalField(max_digits=14, decimal_places=4)
+    source = models.CharField(max_length=12, choices=SOURCES)
+    supplier_offer = models.ForeignKey(
+        "catalogue.Offer", null=True, blank=True, on_delete=models.PROTECT, related_name="supplies"
+    )
+    child_production_order = models.ForeignKey(
+        ProductionOrder, null=True, blank=True, on_delete=models.PROTECT, related_name="serves_requests"
+    )
+    provided_by = models.ForeignKey("members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    purchase_need = models.ForeignKey(
+        PurchaseNeed, null=True, blank=True, on_delete=models.PROTECT, related_name="requests"
+    )
+    euro_each = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    currency = models.CharField(max_length=3, default="EUR")
+    status = models.CharField(max_length=10, choices=STATUSES, default="open")
+    due_date = models.DateField()
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    received_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["due_date", "id"]
+        indexes = [models.Index(fields=["production_order", "status"])]
+
+    def __str__(self):
+        return f"{self.quantity} {self.item.name} for production order {self.production_order_id} ({self.status})"

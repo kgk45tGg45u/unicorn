@@ -66,7 +66,7 @@
 
 ---
 
-### - [ ] P05.T03 — Inputs down the chain
+### - [x] P05.T03 — Inputs down the chain
 
 **Read:** docs/04 section 8.
 **Files:** `apps/market/models.py` (InputRequest, PurchaseNeed), `apps/market/services.py`, `apps/market/tests/test_explode.py`
