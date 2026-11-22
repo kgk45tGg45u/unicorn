@@ -10,6 +10,7 @@ from django.utils.translation import gettext as _
 
 from apps.catalogue import services as catalogue
 from apps.core import audit
+from apps.core.jobs import enqueue
 from apps.core.money import uniq
 from apps.ledger import services as ledger
 from apps.rules.services import get_param
@@ -837,3 +838,139 @@ def _notify_written_off(lot, left):
             _("Unsold %(item)s written off") % {"item": lot.offer.item.name},
             body % {"qty": left.normalize(), "item": lot.offer.item.name},
         )
+
+
+# --- Handing over and paying (docs/06 section 5, items 4 and 5) ---
+
+DISPUTE_REASONS = {"not_received": _("Not received"), "damaged": _("Damaged")}
+
+
+def hand_over(line, worker):
+    """A worker of the unit gives the product to the buyer (pickup in this phase)."""
+    with transaction.atomic():
+        line = _lock_line(line)
+        _need_worker(worker, line.offer.unit)
+        if line.status not in (OrderLine.READY, OrderLine.FROM_STOCK):
+            raise MarketError(_("This order is not ready to be handed over."))
+        line.status = OrderLine.HANDED_OVER
+        line.handed_over_at = timezone.now()
+        line.save(update_fields=["status", "handed_over_at"])
+        audit.record(worker.number, "order.handed_over", line)
+        hours = get_param("market.delivery_confirm_hours")
+        enqueue(
+            "market.auto_confirm_line",
+            {"line": line.pk},
+            run_after=line.handed_over_at + timedelta(hours=hours),
+            dedupe_key=f"market.auto_confirm_line:{line.pk}",
+        )
+        unit_services._notify(
+            line.order.buyer,
+            _("Please confirm you received your %(item)s") % {"item": line.offer.item.name},
+            _(
+                "%(unit)s says it handed over %(qty)s %(item)s to you. Please confirm that you got it. "
+                "If you do not answer within %(hours)s hours, it counts as received."
+            )
+            % {
+                "unit": line.offer.unit.name,
+                "qty": line.quantity.normalize(),
+                "item": line.offer.item.name,
+                "hours": hours,
+            },
+        )
+        return line
+
+
+def _deliver(line, actor_ref):
+    """The held UNIQ go to Fund 1, and a line served from the shelf draws its stock. Caller holds the lock."""
+    ledger.capture_hold(
+        line.hold,
+        _("Bought %(qty)s %(item)s from %(unit)s")
+        % {"qty": line.quantity.normalize(), "item": line.offer.item.name, "unit": line.offer.unit.name},
+    )
+    if line.stock_lot_id:
+        draw_stock(line.stock_lot, line.quantity)
+    line.status = OrderLine.DELIVERED
+    line.delivered_at = timezone.now()
+    line.save(update_fields=["status", "delivered_at"])
+    audit.record(actor_ref, "order.delivered", line, total=str(line.total_uniq))
+    unit_services.touch(line.offer.unit)
+    return line
+
+
+def confirm_received(line, buyer):
+    with transaction.atomic():
+        line = _lock_line(line)
+        if line.order.buyer_id != buyer.pk:
+            raise MarketError(_("This is not your order."))
+        if line.status == OrderLine.DELIVERED:
+            return line
+        if line.status not in (OrderLine.READY, OrderLine.FROM_STOCK, OrderLine.HANDED_OVER):
+            raise MarketError(_("This order is not ready yet."))
+        return _deliver(line, buyer.number)
+
+
+def auto_confirm_deliveries(now=None):
+    """Handed-over lines with no answer after `market.delivery_confirm_hours` count as received."""
+    cutoff = (now or timezone.now()) - timedelta(hours=get_param("market.delivery_confirm_hours"))
+    count = 0
+    for line in OrderLine.objects.filter(
+        status=OrderLine.HANDED_OVER, disputed_at__isnull=True, handed_over_at__lte=cutoff
+    ):
+        with transaction.atomic():
+            line = _lock_line(line)
+            if line.status == OrderLine.HANDED_OVER and line.disputed_at is None:
+                _deliver(line, "system")
+                count += 1
+    return count
+
+
+def refuse(line, buyer):
+    """The buyer does not want the product. After the batch started the order was binding: the buyer still pays."""
+    with transaction.atomic():
+        line = _lock_line(line)
+        if line.order.buyer_id != buyer.pk:
+            raise MarketError(_("This is not your order."))
+        po = line.production_order
+        binding = (
+            line.status in (OrderLine.READY, OrderLine.HANDED_OVER)
+            and po is not None
+            and po.status in ("started", "done")
+        )
+        if not binding:
+            return cancel_line(line, buyer)  # nothing was made for this order alone: it can simply be cancelled
+        ledger.capture_hold(
+            line.hold,
+            _("Refused after production started: %(qty)s %(item)s from %(unit)s")
+            % {"qty": line.quantity.normalize(), "item": line.offer.item.name, "unit": line.offer.unit.name},
+        )
+        line.status = OrderLine.REFUSED
+        line.save(update_fields=["status"])
+        make_lot(line.offer, line.quantity, "refused", po)
+        audit.record(buyer.number, "order.refused", line, total=str(line.total_uniq))
+        unit_services._notify(
+            buyer,
+            _("You refused your %(item)s") % {"item": line.offer.item.name},
+            _(
+                "The batch had already been started when you refused, so the order was binding and the %(total)s UNIQ "
+                "were charged. The %(item)s goes on the unit's shelf for other members to buy."
+            )
+            % {"total": line.total_uniq.normalize(), "item": line.offer.item.name},
+        )
+        return line
+
+
+def dispute(line, buyer, reason, text=""):
+    """'Not received' or 'damaged'. The UNIQ stay held. Until tickets exist (P06) it is recorded in the audit log."""
+    if reason not in DISPUTE_REASONS:
+        raise MarketError(_("Please say what went wrong."))
+    with transaction.atomic():
+        line = _lock_line(line)
+        if line.order.buyer_id != buyer.pk:
+            raise MarketError(_("This is not your order."))
+        if line.status not in (OrderLine.READY, OrderLine.FROM_STOCK, OrderLine.HANDED_OVER):
+            raise MarketError(_("There is nothing to report about this order now."))
+        line.disputed_at = timezone.now()
+        line.dispute_text = f"{reason}: {text}".strip()[:300]
+        line.save(update_fields=["disputed_at", "dispute_text"])
+        audit.record(buyer.number, "order.disputed", line, reason=reason)  # P06 turns this into a flag ticket
+        return line

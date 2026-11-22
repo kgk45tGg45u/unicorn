@@ -128,7 +128,7 @@
 
 ---
 
-### - [ ] P05.T05 — Handing over and paying
+### - [x] P05.T05 — Handing over and paying
 
 **Read:** docs/06 section 5 (items 4–5).
 **Files:** `apps/market/services.py`, `apps/market/jobs.py`, `apps/market/tests/test_delivery.py`

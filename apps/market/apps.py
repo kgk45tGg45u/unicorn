@@ -11,6 +11,6 @@ class MarketConfig(AppConfig):
 
         from . import jobs, services  # noqa: F401
 
-        for entry in (("market.write_offs", {}),):
+        for entry in (("market.write_offs", {}), ("market.auto_confirm", {})):
             if entry not in daily.DAILY_JOBS:
                 daily.DAILY_JOBS.append(entry)

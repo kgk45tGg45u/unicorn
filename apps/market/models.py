@@ -27,12 +27,13 @@ class OrderLine(models.Model):
     """One offer, one quantity, one price. The price is fixed at ordering (HF-3)."""
 
     PLACED, FROM_STOCK, IN_PRODUCTION, READY = "placed", "from_stock", "in_production", "ready"
-    DELIVERED, REFUSED, CANCELLED = "delivered", "refused", "cancelled"
+    HANDED_OVER, DELIVERED, REFUSED, CANCELLED = "handed_over", "delivered", "refused", "cancelled"
     STATUSES = [
         (PLACED, _("placed")),
         (FROM_STOCK, _("taken from the shelf")),
         (IN_PRODUCTION, _("being made")),
         (READY, _("ready")),
+        (HANDED_OVER, _("handed over")),
         (DELIVERED, _("delivered")),
         (REFUSED, _("refused")),
         (CANCELLED, _("cancelled")),
@@ -50,7 +51,10 @@ class OrderLine(models.Model):
         "ProductionOrder", null=True, blank=True, on_delete=models.PROTECT, related_name="lines"
     )
     stock_lot = models.ForeignKey("StockLot", null=True, blank=True, on_delete=models.PROTECT, related_name="lines")
+    handed_over_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
+    disputed_at = models.DateTimeField(null=True, blank=True)
+    dispute_text = models.CharField(max_length=300, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
