@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Council rules" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% blocktranslate with name=unit.name %}Council rules of {{ name }}{% endblocktranslate %}</h1>
+{% for message in messages %}<div class="alert alert-info">{{ message }}</div>{% endfor %}
+{% if not rules %}
+  <p>{% translate "This unit has no council yet. It gets its rules when a second worker joins." %}</p>
+{% else %}
+  <p class="text-muted">{% blocktranslate with v=rules.version %}Version {{ v }}{% endblocktranslate %}</p>
+  <dl class="row">
+    <dt class="col-sm-4">{% translate "How decisions are made" %}</dt><dd class="col-sm-8">{{ rules.get_decision_rule_display }}</dd>
+    <dt class="col-sm-4">{% translate "Share of the council that must take part" %}</dt><dd class="col-sm-8">{{ rules.quorum }}</dd>
+    <dt class="col-sm-4">{% translate "Days a vote stays open" %}</dt><dd class="col-sm-8">{{ rules.vote_days }}</dd>
+    <dt class="col-sm-4">{% translate "Months before the responsible changes" %}</dt><dd class="col-sm-8">{{ rules.rotation_months }}</dd>
+    <dt class="col-sm-4">{% translate "Who approves hours" %}</dt><dd class="col-sm-8">{{ rules.get_hours_approval_display }}</dd>
+    <dt class="col-sm-4">{% translate "How new workers join" %}</dt><dd class="col-sm-8">{{ rules.get_admission_display }}</dd>
+  </dl>
+  {% if rules.clauses_md %}<h2 class="h5">{% translate "Our own clauses" %}</h2><p style="white-space: pre-line">{{ rules.clauses_md }}</p>{% endif %}
+  <h2 class="h5">{% translate "Who has signed" %}</h2>
+  <ul>{% for m in signed %}<li>{{ m.display_name }} ✓</li>{% endfor %}</ul>
+  {% if unsigned %}
+    <p>{% translate "Still to sign:" %} {% for m in unsigned %}{{ m.display_name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+  {% endif %}
+  {% if can_sign %}
+    <form method="post" action="{% url 'units:sign_rules' unit.slug %}">{% csrf_token %}<button class="btn btn-primary" type="submit">{% translate "I agree to these rules" %}</button></form>
+  {% endif %}
+{% endif %}
+<p class="mt-3"><a href="{% url 'units:unit' unit.slug %}">{% translate "Back to the unit" %}</a></p>
+{% endblock %}

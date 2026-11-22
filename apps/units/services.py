@@ -49,7 +49,10 @@ def has_council(unit) -> bool:
 
 def admission_rule(unit) -> str:
     """How new workers join. The unit's council rules decide (P03.T03); until then, the default."""
-    return get_param("governance.council.admission")
+    from . import council_rules
+
+    rules = council_rules.current(unit)
+    return rules.admission if rules else get_param("governance.council.admission")
 
 
 def _add_worker(unit, member):
@@ -133,3 +136,12 @@ def leave_unit(member, unit):
         membership.left_at = timezone.now()
         membership.save()
         audit.record(member.number, "unit.worker_left", unit)
+
+
+def _default_rules_hook(unit):
+    from . import council_rules
+
+    council_rules.create_default(unit)
+
+
+SECOND_WORKER_HOOKS.append(_default_rules_hook)

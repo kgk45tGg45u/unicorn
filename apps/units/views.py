@@ -66,3 +66,30 @@ def leave(request, slug):
     except services.UnitError as e:
         messages.error(request, str(e))
     return redirect("units:unit", slug=slug)
+
+
+def rules_page(request, slug):
+    from . import council_rules
+
+    unit = get_object_or_404(Unit, slug=slug)
+    rules = council_rules.current(unit)
+    ctx = {"unit": unit, "rules": rules}
+    if rules:
+        ctx["signed"], ctx["unsigned"] = council_rules.signers(unit)
+        member = request.member if request.user.is_authenticated else None
+        ctx["can_sign"] = bool(member) and member in ctx["unsigned"]
+    return render(request, "units/rules.html", ctx)
+
+
+@sensitive_action
+@require_POST
+def sign_rules(request, slug):
+    from . import council_rules
+
+    unit = get_object_or_404(Unit, slug=slug)
+    try:
+        council_rules.sign_current(request.member, unit)
+        messages.success(request, _("You signed the rules."))
+    except council_rules.RulesError as e:
+        messages.error(request, str(e))
+    return redirect("units:rules", slug=slug)

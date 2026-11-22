@@ -54,7 +54,7 @@
 
 ---
 
-### - [ ] P03.T03 — Council rules: the optional custom internal contract
+### - [x] P03.T03 — Council rules: the optional custom internal contract
 
 **Read:** docs/05 section 6 (the table of rules).
 **Files:** `apps/units/models.py` (CouncilRules), `apps/units/council_rules.py`, `apps/units/templates/units/rules.html`, `apps/units/tests/test_rules.py`

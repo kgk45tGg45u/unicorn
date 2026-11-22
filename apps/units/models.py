@@ -116,3 +116,80 @@ class JoinRequest(models.Model):
 
     def __str__(self):
         return f"{self.member.number} asks to join {self.unit.name} ({self.status})"
+
+
+class CouncilDecision(models.Model):
+    KINDS = [
+        ("production", _("production")),
+        ("admission", _("admission")),
+        ("rules_change", _("change of council rules")),
+        ("outside_prices", _("outside prices")),
+        ("close_unit", _("close the unit")),
+        ("other", _("other")),
+    ]
+    STATUSES = [("open", _("open")), ("approved", _("approved")), ("rejected", _("rejected"))]
+
+    unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name="decisions")
+    title = models.CharField(max_length=120)
+    text = models.TextField(blank=True)
+    kind = models.CharField(max_length=16, choices=KINDS, default="other")
+    payload = models.JSONField(default=dict, blank=True)
+    status = models.CharField(max_length=10, choices=STATUSES, default="open")
+    opened_by = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="decisions_opened"
+    )
+    opens_at = models.DateTimeField()
+    closes_at = models.DateTimeField()
+    result = models.JSONField(default=dict, blank=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.status})"
+
+
+class CouncilVote(models.Model):
+    VOTES = [("yes", _("yes")), ("no", _("no")), ("abstain", _("abstain"))]
+
+    decision = models.ForeignKey(CouncilDecision, on_delete=models.PROTECT, related_name="votes")
+    member = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="council_votes")
+    vote = models.CharField(max_length=8, choices=VOTES)
+    voted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["decision", "member"], name="one_vote_per_decision")]
+
+    def __str__(self):
+        return f"{self.member.number}: {self.vote}"
+
+
+class CouncilRules(models.Model):
+    """A unit's own rules (the optional custom internal contract). The highest version is the current one."""
+
+    DECISION_RULES = [("consensus", _("consensus")), ("majority", _("majority")), ("two_thirds", _("two thirds"))]
+    HOURS_APPROVAL = [
+        ("any_other_member", _("any other member")),
+        ("two_members", _("two members")),
+        ("responsible_or_other", _("the responsible, or two others")),
+    ]
+    ADMISSION = [("open", _("open")), ("council_approves", _("the council approves"))]
+
+    unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name="rules")
+    version = models.PositiveIntegerField()
+    decision_rule = models.CharField(max_length=12, choices=DECISION_RULES)
+    quorum = models.DecimalField(max_digits=4, decimal_places=3)
+    vote_days = models.PositiveIntegerField()
+    rotation_months = models.PositiveIntegerField()
+    hours_approval = models.CharField(max_length=24, choices=HOURS_APPROVAL)
+    admission = models.CharField(max_length=20, choices=ADMISSION)
+    clauses_md = models.TextField(blank=True)
+    adopted_at = models.DateTimeField()
+    adopted_by = models.ForeignKey(CouncilDecision, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    template = models.ForeignKey(
+        "members.ContractTemplate", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+
+    class Meta:
+        ordering = ["unit", "-version"]
+        constraints = [models.UniqueConstraint(fields=["unit", "version"], name="unique_rules_version")]
+
+    def __str__(self):
+        return f"Rules of {self.unit.name}, version {self.version}"
