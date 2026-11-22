@@ -475,3 +475,9 @@ def delete_account(member):
         member.save(update_fields=["deleted"])
         audit.record(member.number, "member.deleted", member)
         return Member.objects.get(pk=member.pk)
+
+
+def has_reached_pension_age(member) -> bool:
+    """Whether the member has reached pension age. A stub until P09 reads the birth date."""
+    # OWNER-CHECK: which pension age applies to members outside Germany, and what if the birth date is missing?
+    return False

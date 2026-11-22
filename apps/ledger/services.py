@@ -302,3 +302,46 @@ def release_hold(hold, reason):
         hold.save(update_fields=["status", "closed_at"])
         audit.record(hold.account.member.number, "hold.released", hold, reason=reason)
         return hold
+
+
+# --- The retirement account (docs/03 section 5) ---
+
+
+def to_retirement(member, amount, actor_ref=None):
+    amount = uniq(amount)
+    if amount <= 0:
+        raise LedgerError("The amount must be more than zero")
+    return post(
+        "retirement_in",
+        "Moved into my retirement account",
+        [Leg(member_account(member), -amount), Leg(retirement_account(member), amount)],
+        actor_ref=actor_ref or member.number,
+    )
+
+
+def from_retirement(member, amount, actor_ref=None):
+    """Move UNIQ back. Before pension age, at most a share of the start-of-month balance a month."""
+    from apps.members.services import has_reached_pension_age
+
+    amount = uniq(amount)
+    if amount <= 0:
+        raise LedgerError("The amount must be more than zero")
+    account = retirement_account(member)
+    with transaction.atomic():
+        if not has_reached_pension_age(member):
+            this_month = Entry.objects.filter(account=account, transaction__period=current_period())
+            net = this_month.aggregate(t=Sum("amount"))["t"] or Decimal("0")
+            out = this_month.filter(amount__lt=0).aggregate(t=Sum("amount"))["t"] or Decimal("0")
+            start_balance, withdrawn = balance(account) - net, -out
+            limit = uniq(start_balance * get_param("economy.retirement.early_withdrawal_max_share_per_month"))
+            if withdrawn + amount > limit:
+                raise LedgerError(
+                    "Before pension age you can take out only a part of your retirement account each month. "
+                    f"This month you can still take out {max(limit - withdrawn, Decimal('0'))}."
+                )
+        return post(
+            "retirement_out",
+            "Moved out of my retirement account",
+            [Leg(account, -amount), Leg(member_account(member), amount)],
+            actor_ref=actor_ref or member.number,
+        )

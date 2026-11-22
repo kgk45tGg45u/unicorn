@@ -8,6 +8,8 @@ from django.shortcuts import redirect, render
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
+from apps.core.decorators import sensitive_action
+
 from . import services
 from .models import Account, Entry
 
@@ -139,3 +141,42 @@ def open_books_csv(request):
         t = _period_totals(period)
         writer.writerow([t["period"], t["status"], t["tax_rate"], t["issued"], t["tax"], t["spent"]])
     return response
+
+
+@login_required
+@sensitive_action(allow_get=True)
+def retirement(request):
+    from decimal import Decimal, InvalidOperation
+
+    from django.contrib import messages
+
+    member = _member_or_none(request)
+    if member is None:
+        return render(request, "ledger/no_account.html")
+    error = None
+    if request.method == "POST":
+        try:
+            amount = Decimal(request.POST.get("amount", "").replace(",", "."))
+        except InvalidOperation:
+            amount = None
+        try:
+            if amount is None:
+                raise services.LedgerError(_("Please enter the amount as a number."))
+            if request.POST.get("direction") == "out":
+                services.from_retirement(member, amount)
+            else:
+                services.to_retirement(member, amount)
+        except services.LedgerError as e:
+            error = str(e)
+        else:
+            messages.success(request, _("Done."))
+            return redirect("ledger:retirement")
+    return render(
+        request,
+        "ledger/retirement.html",
+        {
+            "error": error,
+            "balance": services.balance(services.member_account(member)),
+            "retirement": services.balance(services.retirement_account(member)),
+        },
+    )

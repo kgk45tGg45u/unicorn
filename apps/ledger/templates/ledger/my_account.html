@@ -11,7 +11,7 @@
   <div class="col-6 col-md-3"><div class="card"><div class="card-body"><div class="small text-muted">{% translate "Retirement account" %}</div><div class="fs-4">{{ retirement }}</div></div></div></div>
 </div>
 <p>{% blocktranslate with rate=tax_rate %}This month's flat tax rate: {{ rate }}{% endblocktranslate %}</p>
-<p><a href="{% url 'ledger:my_uniq_csv' %}">{% translate "Download CSV" %}</a></p>
+<p><a href="{% url 'ledger:retirement' %}">{% translate "Retirement account" %}</a> · <a href="{% url 'ledger:my_uniq_csv' %}">{% translate "Download CSV" %}</a></p>
 <div class="table-responsive">
 <table class="table table-sm">
   <thead><tr><th>{% translate "Date" %}</th><th>{% translate "What" %}</th><th>{% translate "Reason" %}</th><th class="text-end">{% translate "Amount" %}</th><th class="text-end">{% translate "Balance" %}</th></tr></thead>

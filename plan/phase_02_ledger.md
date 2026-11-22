@@ -218,7 +218,7 @@
 
 ---
 
-### - [ ] P02.T09 — The retirement account
+### - [x] P02.T09 — The retirement account
 
 **Read:** docs/03 section 5.
 **Files:** `apps/ledger/services.py`, `apps/ledger/views.py`, `apps/ledger/templates/ledger/retirement.html`, `apps/ledger/tests/test_retirement.py`

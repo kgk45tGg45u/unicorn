@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Retirement account" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Retirement account" %}</h1>
+<p>{% translate "This is your own locked savings. It is always yours. You can move UNIQ in at any time. Before pension age you can take out only a small part each month; after pension age you can take it out as you need it." %}</p>
+{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+<p>{% blocktranslate with b=balance r=retirement %}In your UNIQ account: {{ b }}. In your retirement account: {{ r }}.{% endblocktranslate %}</p>
+<form method="post" class="row g-2 align-items-end">
+  {% csrf_token %}
+  <div class="col-12 col-md-3"><label class="form-label" for="amount">{% translate "Amount in UNIQ" %}</label><input class="form-control" id="amount" name="amount" required></div>
+  <div class="col-6 col-md-3"><label class="form-label" for="direction">{% translate "What to do" %}</label>
+    <select class="form-select" id="direction" name="direction"><option value="in">{% translate "Move into retirement account" %}</option><option value="out">{% translate "Take out of retirement account" %}</option></select></div>
+  <div class="col-6 col-md-2"><button class="btn btn-primary w-100" type="submit">{% translate "Do it" %}</button></div>
+</form>
+<p class="mt-3"><a href="{% url 'ledger:my_uniq' %}">{% translate "Back to my UNIQ account" %}</a></p>
+{% endblock %}
