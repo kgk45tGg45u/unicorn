@@ -4,6 +4,7 @@ from apps.core.admin import ReadOnlyAdmin
 
 from .models import (
     Booking,
+    DemandSignal,
     InputRequest,
     Order,
     OrderLine,
@@ -12,9 +13,11 @@ from .models import (
     PurchaseNeed,
     Review,
     Sale,
+    SearchMiss,
     ServiceSlot,
     StandingOrder,
     StockLot,
+    WaitingListEntry,
     WasteRecord,
     WeeklyPlan,
 )
@@ -88,3 +91,18 @@ class PlausibilityRecordAdmin(ReadOnlyAdmin):
 @admin.register(Review)
 class ReviewAdmin(ReadOnlyAdmin):
     list_display = ("offer", "author", "stars", "created_at")
+
+
+@admin.register(WaitingListEntry)
+class WaitingListEntryAdmin(ReadOnlyAdmin):
+    list_display = ("member", "item", "quantity", "created_at", "fulfilled_at")
+
+
+@admin.register(SearchMiss)
+class SearchMissAdmin(ReadOnlyAdmin):
+    list_display = ("text", "area", "month", "count")
+
+
+@admin.register(DemandSignal)
+class DemandSignalAdmin(ReadOnlyAdmin):
+    list_display = ("offer", "month", "demand", "supply", "ratio", "flag")

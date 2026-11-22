@@ -387,3 +387,56 @@ class Review(models.Model):
 
     def __str__(self):
         return f"{self.stars} stars for {self.offer}"
+
+
+class WaitingListEntry(models.Model):
+    """'Tell me when it is available.' Shown on the needs board as wanted."""
+
+    member = models.ForeignKey("members.Member", on_delete=models.CASCADE, related_name="waiting")
+    item = models.ForeignKey("catalogue.Item", on_delete=models.PROTECT, related_name="waiting")
+    quantity = models.DecimalField(max_digits=14, decimal_places=4)
+    created_at = models.DateTimeField(auto_now_add=True)
+    fulfilled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["item", "fulfilled_at"])]
+
+    def __str__(self):
+        return f"{self.member.number} waits for {self.item.name}"
+
+
+class SearchMiss(models.Model):
+    """A search with no result, counted by area and text. The searcher is never stored (docs/06 section 7)."""
+
+    area = models.CharField(max_length=2)  # the first two digits of the searcher's postcode
+    text = models.CharField(max_length=120)  # lower case, trimmed
+    month = models.DateField()  # the first of the month
+    count = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        ordering = ["-month", "-count"]
+        constraints = [models.UniqueConstraint(fields=["area", "text", "month"], name="one_miss_row_per_month")]
+
+    def __str__(self):
+        return f"{self.text} in {self.area} ({self.count})"
+
+
+class DemandSignal(models.Model):
+    """Members' demand against supply for one offer in one month (docs/03 section 9). Only a suggestion (HF-15)."""
+
+    FLAGS = [("", ""), ("wanted", _("wanted")), ("less", _("consider making less ahead"))]
+
+    offer = models.ForeignKey("catalogue.Offer", on_delete=models.CASCADE, related_name="demand_signals")
+    month = models.DateField()  # the first of the month
+    demand = models.DecimalField(max_digits=14, decimal_places=4)  # ordered + waiting
+    supply = models.DecimalField(max_digits=14, decimal_places=4)  # made ahead + made
+    ratio = models.DecimalField(max_digits=10, decimal_places=4)
+    flag = models.CharField(max_length=8, choices=FLAGS, blank=True, default="")
+
+    class Meta:
+        ordering = ["-month", "offer"]
+        constraints = [models.UniqueConstraint(fields=["offer", "month"], name="one_signal_per_offer_month")]
+
+    def __str__(self):
+        return f"{self.offer} {self.month:%Y-%m}: {self.ratio}"

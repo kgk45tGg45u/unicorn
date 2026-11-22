@@ -1,6 +1,6 @@
 from apps.core.jobs import job
 
-from . import measure, services
+from . import measure, needs, services
 
 
 @job("market.write_offs")
@@ -51,3 +51,12 @@ def plausibility(payload):
 
     month = date.fromisoformat(payload["month"] + "-01") if payload.get("month") else None
     measure.run_plausibility(month)
+
+
+@job("market.demand_signals")
+def demand_signals(payload):
+    """Monthly (queued daily): the signal of the last full month. Safe to run twice: one row per offer and month."""
+    from datetime import date
+
+    month = date.fromisoformat(payload["month"] + "-01") if payload.get("month") else None
+    needs.run_demand_signals(month)

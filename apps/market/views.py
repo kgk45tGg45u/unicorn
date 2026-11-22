@@ -14,7 +14,7 @@ from apps.catalogue.models import Offer
 from apps.core.decorators import sensitive_action
 from apps.units import services as unit_services
 
-from . import services
+from . import needs, services
 
 
 def _qr_svg(text):
@@ -163,6 +163,8 @@ def market_index(request):
     town = request.GET.get("town", "")
     offers = services.search_offers(request.member, q, kind, trade, town)
     cards = [_card(o) for o in offers[:60]]
+    if q and not offers:
+        needs.record_search_miss(request.member, q)  # counted by area; the searcher is never stored
     trades = sorted(
         set(
             Offer.objects.filter(status="active")
@@ -439,3 +441,33 @@ def unit_work_action(request, slug, action):
     else:
         messages.success(request, _("Done."))
     return redirect("market:work", slug=unit.slug)
+
+
+# --- The needs board ---
+
+
+def needs_board(request):
+    board = needs.needs_board(request.member)
+    return render(
+        request,
+        "market/needs.html",
+        {**board, "my_units": needs.my_units(request.member), "member": request.member},
+    )
+
+
+@login_required
+@require_POST
+def join_waiting_list(request, pk):
+    from apps.catalogue.models import Item
+
+    item = get_object_or_404(Item, pk=pk)
+    try:
+        if request.POST.get("leave"):
+            needs.leave_waiting_list(request.member, item)
+            messages.success(request, _("You are off the waiting list."))
+        else:
+            needs.join_waiting_list(request.member, item, request.POST.get("quantity") or 1)
+            messages.success(request, _("We will tell you when it is available."))
+    except services.MarketError as e:
+        messages.error(request, str(e))
+    return redirect("catalogue:item", pk=item.pk)

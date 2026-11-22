@@ -1,0 +1,17 @@
+{% load i18n %}
+{% if show %}
+<section aria-labelledby="wait-title" class="my-4 p-3 border rounded">
+  <h2 class="h5" id="wait-title">{% translate "Tell me when it is available" %}</h2>
+  <p>{% translate "Nobody can deliver this within 30 days. Put yourself on the waiting list: it shows the units that this is wanted. Nobody is told to make it." %}</p>
+  {% if entry %}
+    <form method="post" action="{% url 'market:wait' item.pk %}">{% csrf_token %}<input type="hidden" name="leave" value="1">
+      <p>{% blocktranslate with q=entry.quantity|floatformat:"-4" %}You are on the waiting list for {{ q }}.{% endblocktranslate %} <button class="btn btn-sm btn-outline-secondary" type="submit">{% translate "Take me off" %}</button></p></form>
+  {% elif can_buy %}
+    <form method="post" action="{% url 'market:wait' item.pk %}" class="row g-2 align-items-end">{% csrf_token %}
+      <div class="col-6 col-md-3"><label class="form-label" for="wait-q">{% translate "How many?" %}</label><input class="form-control" id="wait-q" name="quantity" inputmode="decimal" value="1"></div>
+      <div class="col-6 col-md-3"><button class="btn btn-primary" type="submit">{% translate "Tell me" %}</button></div>
+    </form>
+  {% elif not member %}<p class="small text-muted mb-0"><a href="{% url 'account_login' %}">{% translate "Sign in" %}</a> {% translate "to join the waiting list." %}</p>
+  {% else %}<p class="small text-muted mb-0">{% translate "Only members can join a waiting list." %}</p>{% endif %}
+</section>
+{% endif %}

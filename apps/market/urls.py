@@ -6,6 +6,8 @@ app_name = "market"
 
 urlpatterns = [
     path("market/", views.market_index, name="index"),
+    path("needs/", views.needs_board, name="needs"),
+    path("items/<int:pk>/wait/", views.join_waiting_list, name="wait"),
     path("offers/<int:pk>/order/", views.order_offer, name="order"),
     path("slots/<int:pk>/book/", views.book_slot, name="book"),
     path("me/orders/", views.my_orders, name="my_orders"),

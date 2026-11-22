@@ -50,3 +50,24 @@ def qty(value):
         return format(Decimal(str(value)).normalize(), "f")
     except Exception:
         return value
+
+
+@register.inclusion_tag("market/_waiting_box.html", takes_context=True)
+def waiting_list_box(context, item):
+    """'Tell me when it is available', offered when no offer can deliver within 30 days."""
+    from apps.market import needs
+    from apps.market.models import WaitingListEntry
+
+    request = context.get("request")
+    member = getattr(request, "member", None)
+    entry = (
+        WaitingListEntry.objects.filter(member=member, item=item, fulfilled_at__isnull=True).first() if member else None
+    )
+    return {
+        "item": item,
+        "member": member,
+        "show": item.status != "retired" and not needs.deliverable(item),
+        "entry": entry,
+        "can_buy": bool(member) and services.can_buy(member),
+        "request": request,
+    }

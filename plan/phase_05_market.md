@@ -271,7 +271,7 @@
 
 ---
 
-### - [ ] P05.T12 — The needs board
+### - [x] P05.T12 — The needs board
 
 **Read:** docs/06 section 7.
 **Files:** `apps/market/models.py` (WaitingListEntry, SearchMiss, DemandSignal), `apps/market/jobs.py`, `apps/market/views.py`, `apps/market/templates/market/needs.html`, `apps/market/tests/test_needs.py`

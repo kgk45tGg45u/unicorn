@@ -1,0 +1,21 @@
+{% load i18n market_tags %}
+<div class="col">
+  <div class="card h-100"><div class="card-body">
+    <h3 class="h5 card-title"><a href="{% url 'catalogue:item' c.item.pk %}">{{ c.item.name }}</a>
+      {% if c.placeholder %}<span class="badge text-bg-secondary">{% translate "not made in Unicorn" %}</span>{% endif %}
+      {% if c.marked %}<span class="badge text-bg-info">{% translate "wanted" %}</span>{% endif %}</h3>
+    {% if c.people or c.quantity %}<p class="mb-1">{% blocktranslate count n=c.people with q=c.quantity|qty %}{{ n }} person wants {{ q }}{% plural %}{{ n }} people want {{ q }} together{% endblocktranslate %}</p>{% endif %}
+    {% if c.hours is not None %}<p class="mb-1 small">{% blocktranslate with h=c.hours %}It would give about {{ h }} hours of work a month.{% endblocktranslate %}</p>{% endif %}
+    {% if c.euros_per_month is not None %}<p class="mb-1 small">{% blocktranslate count n=c.units with e=c.euros_per_month %}Unicorn spends about €{{ e }} a month on it, in {{ n }} unit.{% plural %}Unicorn spends about €{{ e }} a month on it, in {{ n }} units.{% endblocktranslate %}</p>{% endif %}
+    {% if c.makers %}<p class="mb-1 small text-muted">{% translate "Made near you by:" %} {% for o in c.makers %}<a href="{% url 'catalogue:offer' o.pk %}">{{ o.unit.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+    {% if member %}
+      <div class="mt-2">
+        {% if my_units %}
+          {% for u in my_units %}<a class="btn btn-sm btn-outline-primary me-1 mb-1" href="{% url 'catalogue:offer_new' u.slug %}?item={{ c.item.pk }}">{% blocktranslate with name=u.name %}I can make this in {{ name }}{% endblocktranslate %}</a>{% endfor %}
+        {% else %}
+          <a class="btn btn-sm btn-outline-primary" href="{% url 'units:open' %}?item={{ c.item.pk }}">{% translate "I can make this" %}</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div></div>
+</div>

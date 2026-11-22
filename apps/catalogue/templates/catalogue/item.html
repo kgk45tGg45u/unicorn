@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n market_tags %}
 {% block title %}{{ item.name }} · Unicorn{% endblock %}
 {% block content %}
 <h1>{{ item.name }}</h1>
@@ -11,4 +11,5 @@
 {% for o in offers %}<li class="list-group-item"><a href="{% url 'catalogue:offer' o.pk %}">{{ o.unit.name }}</a>{% if o.unit.town %} · {{ o.unit.town }}{% endif %} · {{ o.value_total|floatformat:2 }} UNIQ</li>
 {% empty %}<li class="list-group-item text-muted">{% translate "Nobody makes this in Unicorn yet." %}</li>{% endfor %}
 </ul>
+{% waiting_list_box item %}
 {% endblock %}

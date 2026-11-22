@@ -248,6 +248,11 @@ def request_recompute():
     enqueue("catalogue.recompute", dedupe_key=f"catalogue.recompute:{timezone.now():%Y%m%d%H%M}")
 
 
+# Functions (offer, member) called when an offer becomes active, before a placeholder turns into a normal item.
+# The market adds one, so that the catalogue never imports it (P05.T12).
+PUBLISH_HOOKS: list = []
+
+
 def publish_offer(offer, member):
     """Check the recipe, the unit's licence and insurance (HF-17) and the plan, then make the offer active."""
     from apps.plan import check as plan_check
@@ -283,6 +288,8 @@ def publish_offer(offer, member):
         offer.status_note = ""
         offer.save(update_fields=["status", "status_note"])
         audit.record(member.number, "offer.published", offer, check=result.color)
+        for hook in PUBLISH_HOOKS:
+            hook(offer, member)
         on_publish(offer)
         request_recompute()
         return offer
