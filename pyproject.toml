@@ -10,3 +10,6 @@ select = ["E", "F", "I", "B", "UP", "DJ"]
 DJANGO_SETTINGS_MODULE = "unicorn.settings"
 python_files = ["test_*.py"]
 addopts = "-q"
+
+[tool.ruff.lint.per-file-ignores]
+"apps/rules/hard_frame.py" = ["E501"]  # long rule texts, copied from docs/01

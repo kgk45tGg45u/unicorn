@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Rules" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Rules" %}</h1>
+<h2 class="h4 mt-4">{% translate "The hard frame" %}</h2>
+<p>{% translate "These twenty rules are enforced by the code. No council, confirmer or ordinary vote can break them." %}</p>
+<ol class="list-unstyled">
+  {% for rule in rules %}
+    <li class="mb-3" id="{{ rule.id }}"><strong>{{ rule.id }} · {{ rule.title }}.</strong> {{ rule.text }}</li>
+  {% endfor %}
+</ol>
+<h2 class="h4 mt-4">{% translate "The defaults" %}</h2>
+<p>{% translate "Everything else is a default that members can change, at the level shown next to it." %}</p>
+{% for group, items in groups.items %}
+  <h3 class="h5 mt-4">{{ group }}</h3>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead><tr>
+        <th>{% translate "Setting" %}</th><th>{% translate "Value" %}</th><th>{% translate "Limits" %}</th>
+        <th>{% translate "Decided by" %}</th><th>{% translate "Source" %}</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for item in items %}
+        <tr>
+          <td><code>{{ item.param.key }}</code><br><small>{{ item.param.help }}</small></td>
+          <td>{{ item.param.value }}</td>
+          <td>{% if item.param.choices %}{{ item.param.choices|join:", " }}{% elif item.param.min_value or item.param.max_value %}{{ item.param.min_value|default:"–" }} … {{ item.param.max_value|default:"–" }}{% endif %}</td>
+          <td>{{ item.tier_words }}</td>
+          <td>{{ item.param.source }}</td>
+          <td><a href="{% url 'rules:history' item.param.key %}">{% translate "History" %}</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endfor %}
+{% endblock %}

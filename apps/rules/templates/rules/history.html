@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block content %}
+<h1 class="h3"><code>{{ param.key }}</code></h1>
+<p>{{ param.help }}</p>
+<p>{% translate "Current value" %}: <strong>{{ param.value }}</strong></p>
+<h2 class="h5">{% translate "History" %}</h2>
+<div class="table-responsive">
+<table class="table table-sm">
+  <thead><tr><th>{% translate "When" %}</th><th>{% translate "From" %}</th><th>{% translate "To" %}</th><th>{% translate "Decided by" %}</th><th>{% translate "Reason" %}</th></tr></thead>
+  <tbody>
+  {% for c in changes %}
+    <tr><td>{{ c.decided_at }}</td><td>{{ c.old_value|default_if_none:"–" }}</td><td>{{ c.new_value }}</td><td>{{ c.decided_by }} ({{ c.decided_tier }})</td><td>{{ c.reason }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<a href="{% url 'rules:index' %}">{% translate "Back to the rules" %}</a>
+{% endblock %}

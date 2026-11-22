@@ -279,7 +279,7 @@
 
 ---
 
-### - [ ] P00.T08 — The hard-frame registry and the rules page
+### - [x] P00.T08 — The hard-frame registry and the rules page
 
 **Read:** docs/01 section 1.
 **Files:** `apps/rules/hard_frame.py`, `apps/rules/views.py`, `apps/rules/urls.py`, `apps/rules/templates/rules/index.html`, `apps/rules/tests/test_hard_frame.py`, `scripts/hf_coverage.py`
