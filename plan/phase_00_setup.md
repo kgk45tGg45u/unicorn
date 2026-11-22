@@ -5,7 +5,7 @@
 
 ---
 
-### - [ ] P00.T01 — Project skeleton and the custom user model
+### - [x] P00.T01 — Project skeleton and the custom user model
 
 **Files:** `requirements.txt`, `requirements-dev.txt`, `manage.py`, `unicorn/settings.py`, `unicorn/urls.py`, `apps/__init__.py`, `apps/core/`, `apps/rules/`, `apps/members/`, `.env.example`
 
