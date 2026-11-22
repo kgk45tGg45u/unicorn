@@ -639,7 +639,7 @@ def submit_hours(entry):
         entry = HoursEntry.objects.select_for_update().get(pk=entry.pk)
         if entry.status != "draft":
             raise UnitError(_("These hours were already sent."))
-        if not is_worker(entry.member, entry.unit):
+        if entry.unit.kind != "coordination" and not is_worker(entry.member, entry.unit):
             raise UnitError(_("You can only record hours for a unit you work in."))
         if entry.date > timezone.now().astimezone(BERLIN).date():
             raise UnitError(_("You cannot record hours for a day that has not happened yet."))
@@ -662,6 +662,24 @@ def submit_hours(entry):
 
 def record_hours(member, unit, date, minutes, **kw):
     return submit_hours(create_draft(member, unit, date, minutes, **kw))
+
+
+def record_coordination(member, minutes, note, ref_type="", ref_id=""):
+    """Governance work (reviews, panels, mediation, tasks): hours of the coordination unit, approved by the system.
+
+    Anyone may do it, so the member need not be a worker of that unit (docs/05 section 1 item 4).
+    """
+    today = timezone.now().astimezone(BERLIN).date()
+    return record_hours(
+        member,
+        coordination_unit(),
+        today,
+        minutes,
+        activity="coordination",
+        note=note,
+        ref_type=ref_type,
+        ref_id=ref_id,
+    )
 
 
 def start_timer(member, unit):

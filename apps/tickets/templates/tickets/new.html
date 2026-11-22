@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "New ticket" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "New ticket" %}</h1>
+<p>{% translate "What do you want to do?" %}</p>
+<div class="list-group">
+  {% for t in types %}<a class="list-group-item list-group-item-action" href="{% url 'tickets:new_form' t.key %}">{{ t.label }}</a>{% endfor %}
+</div>
+{% endblock %}

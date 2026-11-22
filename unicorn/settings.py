@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     "apps.plan",
     "apps.catalogue",
     "apps.market",
+    "apps.tickets",
 ]
 
 MIDDLEWARE = [

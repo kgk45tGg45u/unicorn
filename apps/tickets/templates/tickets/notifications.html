@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Notifications" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Notifications" %}</h1>
+{% if unread %}<form method="post">{% csrf_token %}<button class="btn btn-outline-secondary mb-3">{% translate "Mark all as read" %}</button></form>{% endif %}
+<ul class="list-group">
+  {% for n in rows %}
+  <li class="list-group-item {% if not n.read_at %}fw-semibold{% endif %}">
+    {% if n.url %}<a href="{{ n.url }}">{{ n.text }}</a>{% else %}{{ n.text }}{% endif %}
+    <span class="text-muted small d-block">{{ n.created_at|date:"Y-m-d H:i" }}</span>
+  </li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "Nothing yet." %}</li>{% endfor %}
+</ul>
+{% endblock %}

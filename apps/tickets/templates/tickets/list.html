@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Tickets" %} · Unicorn{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center">
+  <h1>{% translate "Tickets" %}</h1>
+  <a class="btn btn-primary" href="{% url 'tickets:new' %}">{% translate "New ticket" %}</a>
+</div>
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link {% if tab == 'me' %}active{% endif %}" href="?tab=me">{% translate "For me" %}</a></li>
+  <li class="nav-item"><a class="nav-link {% if tab == 'all' %}active{% endif %}" href="?tab=all">{% translate "All" %}</a></li>
+  <li class="nav-item"><a class="nav-link {% if tab == 'search' %}active{% endif %}" href="?tab=search">{% translate "Search" %}</a></li>
+</ul>
+{% if tab == "search" %}
+<form method="get" class="row g-2 mb-3"><input type="hidden" name="tab" value="search">
+  <div class="col-sm-8"><input class="form-control" name="q" value="{{ q }}" aria-label="{% translate 'Search tickets' %}"></div>
+  <div class="col-auto"><button class="btn btn-outline-primary">{% translate "Search" %}</button></div>
+</form>
+{% endif %}
+{% if seats %}
+<div class="alert alert-info"><strong>{% translate "Waiting for your answer" %}</strong>
+  <ul class="mb-0">{% for s in seats %}
+    <li><a href="{% url 'tickets:seat' s.pk %}">{{ s.confirmation.ticket.number }} {{ s.confirmation.ticket.title }}</a>
+      · {% blocktranslate with when=s.deadline|date:"Y-m-d H:i" %}answer by {{ when }}{% endblocktranslate %}</li>
+  {% endfor %}</ul></div>
+{% endif %}
+<form method="get" class="row g-2 mb-3"><input type="hidden" name="tab" value="{{ tab }}">
+  <div class="col-sm-5"><select class="form-select" name="type" aria-label="{% translate 'Type' %}"><option value="">{% translate "Every type" %}</option>
+    {% for t in all_types %}<option value="{{ t.key }}" {% if t.key == kind %}selected{% endif %}>{{ t.label }}</option>{% endfor %}</select></div>
+  <div class="col-sm-4"><select class="form-select" name="status" aria-label="{% translate 'Status' %}"><option value="">{% translate "Every status" %}</option>
+    {% for key, label in all_statuses %}<option value="{{ key }}" {% if key == status %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <div class="col-auto"><button class="btn btn-outline-secondary">{% translate "Filter" %}</button></div>
+</form>
+<div class="list-group">
+  {% for t in page %}
+  <a class="list-group-item list-group-item-action" href="{% url 'tickets:detail' t.number %}">
+    <span class="fw-semibold">{{ t.number }}</span> {{ t.title }}
+    <span class="text-muted small d-block">{{ t.type_label }} · {{ t.get_status_display }}</span>
+  </a>
+  {% empty %}<p class="text-muted">{% translate "No tickets here yet." %}</p>{% endfor %}
+</div>
+{% if page.has_other_pages %}<p class="mt-3">
+  {% if page.has_previous %}<a href="?tab={{ tab }}&page={{ page.previous_page_number }}">{% translate "Newer" %}</a>{% endif %}
+  {% if page.has_next %}<a class="ms-3" href="?tab={{ tab }}&page={{ page.next_page_number }}">{% translate "Older" %}</a>{% endif %}</p>{% endif %}
+{% endblock %}

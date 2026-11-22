@@ -8,7 +8,7 @@
 
 ---
 
-### - [ ] P06.T01 — Tickets and their types
+### - [x] P06.T01 — Tickets and their types
 
 **Read:** docs/05 section 2.
 **Files:** `apps/tickets/` (new app), `apps/tickets/models.py` (Ticket), `apps/tickets/types.py`, `apps/tickets/services.py`, `apps/tickets/tests/test_tickets.py`
@@ -39,7 +39,7 @@
 
 ---
 
-### - [ ] P06.T02 — Comments, notifications, ticket pages
+### - [x] P06.T02 — Comments, notifications, ticket pages
 
 **Files:** `apps/tickets/models.py` (Comment, HelpfulMark, Notification), `apps/tickets/views.py`, `apps/tickets/templates/tickets/*.html`, `apps/core/notify.py`, `apps/tickets/tests/test_pages.py`
 
@@ -59,7 +59,7 @@
 
 ---
 
-### - [ ] P06.T03 — The secretariat: routing
+### - [x] P06.T03 — The secretariat: routing
 
 **Read:** docs/05 section 2 ("The secretariat").
 **Files:** `apps/tickets/routing.py`, `apps/tickets/tests/test_routing.py`
@@ -76,7 +76,7 @@
 
 ---
 
-### - [ ] P06.T04 — A random draw anyone can check
+### - [x] P06.T04 — A random draw anyone can check
 
 **Read:** docs/05 section 3 ("Who can be drawn", "A draw anyone can check").
 **Files:** `apps/tickets/models.py` (Confirmation, Seat), `apps/tickets/draw.py`, `apps/tickets/tests/test_draw.py`
@@ -118,7 +118,7 @@
 
 ---
 
-### - [ ] P06.T05 — The confirmers' steps
+### - [x] P06.T05 — The confirmers' steps
 
 **Read:** docs/05 section 3 ("The confirmers' steps"); owner 2026-11-21: all 4 must say yes.
 **Files:** `apps/tickets/services.py`, `apps/tickets/views.py`, `apps/tickets/templates/tickets/seat.html`, `apps/tickets/jobs.py`, `apps/tickets/tests/test_confirmers.py`
@@ -151,7 +151,7 @@
 
 ---
 
-### - [ ] P06.T06 — The panel of 12
+### - [x] P06.T06 — The panel of 12
 
 **Read:** docs/05 section 3 (steps 6–7).
 **Files:** `apps/tickets/services.py`, `apps/tickets/tests/test_panel.py`

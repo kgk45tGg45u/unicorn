@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ ticket.number }} · Unicorn{% endblock %}
+{% block content %}
+<p class="text-muted mb-1">{% blocktranslate with number=ticket.number %}You were drawn to look at {{ number }}{% endblocktranslate %}</p>
+<h1>{{ ticket.title }}</h1>
+<p class="text-muted">{% blocktranslate with when=seat.deadline|date:"Y-m-d H:i" %}Please answer by {{ when }}.{% endblocktranslate %}</p>
+<h2 class="h5">{% translate "Brief" %}</h2>
+<div>{{ ticket.brief_md|linebreaks }}</div>
+{% if state == "check" %}
+<h2 class="h5">{% translate "One question first" %}</h2>
+<form method="post">{% csrf_token %}
+  <p>{{ ticket.check_question }}</p>
+  {% for i, text in choices %}
+  <div class="form-check"><input class="form-check-input" type="radio" name="choice" value="{{ i }}" id="c{{ i }}" required>
+    <label class="form-check-label" for="c{{ i }}">{{ text }}</label></div>
+  {% endfor %}
+  <button class="btn btn-primary mt-2">{% translate "Check my answer" %}</button>
+</form>
+{% elif state == "vote" %}
+<form method="post" action="{% url 'tickets:seat_vote' seat.pk %}">{% csrf_token %}
+  <div class="mb-3"><label class="form-label" for="reason">{% blocktranslate with n=min_reason %}If you say no, please say why (at least {{ n }} characters){% endblocktranslate %}</label>
+    <textarea class="form-control" id="reason" name="reason" rows="3"></textarea></div>
+  <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="anonymous" id="anon">
+    <label class="form-check-label" for="anon">{% translate "Do not show my name after the decision" %}</label></div>
+  <button class="btn btn-primary" name="vote" value="yes">{% translate "Yes" %}</button>
+  <button class="btn btn-outline-danger" name="vote" value="no">{% translate "No" %}</button>
+</form>
+{% elif state == "done" %}
+<div class="alert alert-success">{% translate "Your answer was recorded. Thank you." %}</div>
+{% elif state == "late" %}
+<div class="alert alert-warning">{% translate "The time for this seat is over." %}</div>
+{% else %}
+<div class="alert alert-info">{% translate "This ticket was already decided." %}</div>
+{% endif %}
+{% if state == "check" or state == "vote" %}
+<form method="post" action="{% url 'tickets:seat_conflict' seat.pk %}" class="mt-4">{% csrf_token %}
+  <button class="btn btn-link p-0">{% translate "I have a conflict of interest" %}</button>
+</form>
+{% endif %}
+<p class="mt-3"><a href="{% url 'tickets:detail' ticket.number %}">{% translate "See the ticket and its comments" %}</a></p>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ info.label }} · Unicorn{% endblock %}
+{% block content %}
+<h1>{{ info.label }}</h1>
+<form method="post">{% csrf_token %}
+  {% for field in form %}
+  <div class="mb-3">
+    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field }}
+    {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+  </div>
+  {% endfor %}
+  <button class="btn btn-primary">{% translate "Send" %}</button>
+  <a class="btn btn-link" href="{% url 'tickets:new' %}">{% translate "Back" %}</a>
+</form>
+{% endblock %}

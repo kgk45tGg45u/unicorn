@@ -1,0 +1,18 @@
+{% load i18n %}
+{% if rounds %}
+<h2 class="h5">{% translate "Who decides" %}</h2>
+{% for r in rounds %}
+<h3 class="h6">{{ r.title }} · {{ r.confirmation.get_status_display }}</h3>
+<ul class="small">
+  {% for row in r.rows %}
+  <li>{% if row.name %}{{ row.name }}{% else %}{{ row.label }}{% endif %}
+    {% if row.vote %}· {% if row.vote == "yes" %}{% translate "yes" %}{% else %}{% translate "no" %}{% endif %}{% if row.reason %}: {{ row.reason }}{% endif %}
+    {% elif row.answered %}· {% translate "answered" %}{% else %}· {% translate "waiting" %}{% endif %}</li>
+  {% endfor %}
+</ul>
+{% endfor %}
+{% endif %}
+{% if reasons %}
+<h2 class="h5">{% translate "Reasons given against" %}</h2>
+<ul>{% for r in reasons %}<li>{{ r.reason }}{% if r.name %} ({{ r.name }}){% endif %}</li>{% endfor %}</ul>
+{% endif %}

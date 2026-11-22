@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load i18n ticket_tags %}
+{% block title %}{{ ticket.number }} · Unicorn{% endblock %}
+{% block content %}
+<p class="text-muted mb-1">{{ ticket.number }} · {{ ticket.type_label }}</p>
+<h1>{{ ticket.title }}</h1>
+<p>
+  <span class="badge text-bg-secondary">{{ ticket.get_status_display }}</span>
+  {% if ticket.scope_unit %}<span class="badge text-bg-light">{{ ticket.scope_unit.name }}</span>{% endif %}
+  {% if ticket.author %}<span class="text-muted small">{% blocktranslate with name=ticket.author.display_name %}by {{ name }}{% endblocktranslate %}</span>{% endif %}
+</p>
+{% if ticket.status_note %}<div class="alert alert-info">{{ ticket.status_note }}</div>{% endif %}
+{% if ticket.status == "rejected" and ticket.petition_until %}
+<div class="alert alert-warning">{% blocktranslate with when=ticket.petition_until|date:"Y-m-d" %}Anyone can start a petition for a vote of all members until {{ when }}.{% endblocktranslate %}</div>
+{% endif %}
+{% if ticket.brief_md %}<h2 class="h5">{% translate "Brief" %}</h2><div>{{ ticket.brief_md|linebreaks }}</div>{% endif %}
+{% if ticket.body_md %}<div>{{ ticket.body_md|linebreaks }}</div>{% endif %}
+{% if plan_points %}
+<h2 class="h5">{% translate "Plan check" %}</h2>
+<ul class="list-unstyled">{% for p in plan_points %}<li><span class="badge text-bg-{% if p.color == 'red' %}danger{% elif p.color == 'amber' %}warning{% else %}success{% endif %}">{{ p.color }}</span> {{ p.text }}</li>{% endfor %}</ul>
+{% endif %}
+{% if suggested %}
+<h2 class="h5">{% translate "Members who might know" %}</h2>
+<ul>{% for m in suggested %}<li>{{ m.display_name }}</li>{% endfor %}</ul>
+{% endif %}
+{% block ticket_extra %}{% endblock %}
+{% include "tickets/_decision.html" %}
+<h2 class="h5">{% translate "History" %}</h2>
+<ul class="small text-muted">{% for when, what in history %}<li>{{ when|date:"Y-m-d H:i" }} · {{ what }}</li>{% endfor %}</ul>
+<h2 class="h5">{% translate "Comments" %}</h2>
+{% for row in comments %}
+<div class="card mb-2" style="margin-left: {{ row.depth }}rem" id="c{{ row.comment.pk }}">
+  <div class="card-body py-2">
+    <div class="small text-muted">{{ row.comment.author.display_name }} · {{ row.comment.created_at|date:"Y-m-d H:i" }}{% if row.comment.edited_at %} · {% translate "edited" %}{% endif %}</div>
+    <div>{{ row.comment.body_md|linebreaks }}</div>
+    <div class="d-flex gap-2 align-items-center">
+      <form method="post" action="{% url 'tickets:helpful' row.comment.pk %}">{% csrf_token %}
+        <button class="btn btn-sm btn-outline-secondary" {% if row.mine %}disabled{% endif %}>{% translate "Helpful" %} ({{ row.marks }})</button></form>
+      {% include "partials/flag_button.html" with target_type="comment" target_id=row.comment.pk %}
+    </div>
+    {% if can_comment %}
+    <details class="mt-1"><summary class="small">{% translate "Reply" %}</summary>
+      <form method="post" action="{% url 'tickets:comment' ticket.number %}">{% csrf_token %}
+        <input type="hidden" name="parent" value="{{ row.comment.pk }}">
+        <textarea class="form-control mb-1" name="body" rows="2" aria-label="{% translate 'Your reply' %}"></textarea>
+        <button class="btn btn-sm btn-primary">{% translate "Reply" %}</button></form></details>
+    {% endif %}
+    {% if row.mine %}
+    <details class="mt-1"><summary class="small">{% translate "Change my comment" %}</summary>
+      <form method="post" action="{% url 'tickets:comment_edit' row.comment.pk %}">{% csrf_token %}
+        <textarea class="form-control mb-1" name="body" rows="2">{{ row.comment.body_md }}</textarea>
+        <button class="btn btn-sm btn-outline-primary">{% translate "Save" %}</button></form></details>
+    {% endif %}
+  </div>
+</div>
+{% empty %}<p class="text-muted">{% translate "No comments yet." %}</p>{% endfor %}
+{% if can_comment %}
+<form method="post" action="{% url 'tickets:comment' ticket.number %}" class="mt-3">{% csrf_token %}
+  <label class="form-label" for="body">{% translate "Write a comment" %}</label>
+  <textarea class="form-control mb-2" id="body" name="body" rows="3"></textarea>
+  <button class="btn btn-primary">{% translate "Send" %}</button>
+</form>
+{% endif %}
+{% endblock %}
