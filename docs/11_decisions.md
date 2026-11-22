@@ -32,6 +32,7 @@ The owner's decisions that shape the app, with dates. Below them, the choices ma
 | 2026-11-21 | Missing inputs and tools: the member either provides them free or asks to buy them from capitalism; the trade fund checks the plan and pays one member, or pools parts from several members to a trusted member who buys and sends the thing. | docs/04 section 5, docs/07 section 3 |
 | 2026-11-21 | The code is public on GitHub (`kgk45tGg45u/unicorn`), replacing the earlier Node.js/React prototype. The files must not expose the owner's personal details, except his name. | README |
 | 2026-11-21 | The market shows what others need and motivates people to make it; opening a unit is easy and immediate when nothing in the plan is against it. | docs/06 sections 2 and 7 |
+| 2026-11-22 | Hours of a person who works alone in a unit: confirmed by the person who received the service, if that person is in Unicorn; for production, 2 random members audit the worker's profile and confirm. | docs/12 (P03.T08); built in P05 and P06 |
 
 ## Choices made while writing, waiting for the owner
 

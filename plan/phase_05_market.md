@@ -3,6 +3,9 @@
 **Goal:** members order products (made after the order, a tenth ahead), book services (paid when performed), and buy in person. Orders turn into production orders and input requests down the chain. Unsold products are written off. The needs board shows what is missing.
 **Read first:** docs/06 sections 4–7, docs/04 section 8, docs/03 section 9, docs/01 rules HF-3, HF-5, HF-8, HF-9, HF-10.
 
+**Owner decision 2026-11-22 (docs/11):** hours of a person working alone in a unit are confirmed by the person who received the service (if in Unicorn); for production, 2 random members audit the worker's profile and confirm. Replace the automatic approval of one-person units (P03.T08) when bookings exist allows it.
+
+
 ---
 
 ### - [ ] P05.T01 — Orders for products

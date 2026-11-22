@@ -3,6 +3,9 @@
 **Goal:** every request and decision becomes a ticket. Random confirmers, all four of whom must say yes, approve actions after reading a brief. A single "no" goes to a panel of 12. Flags and mediation work. The earlier flows (red plan checks, licences, hours reviews, disputes, council decisions) move onto tickets.
 **Read first:** docs/05 sections 1–3, 5, 9; docs/01 rules HF-13, HF-15, HF-16.
 
+**Owner decision 2026-11-22 (docs/11):** hours of a person working alone in a unit are confirmed by the person who received the service (if in Unicorn); for production, 2 random members audit the worker's profile and confirm. Replace the automatic approval of one-person units (P03.T08) when random confirmers exist allows it.
+
+
 ---
 
 ### - [ ] P06.T01 — Tickets and their types
