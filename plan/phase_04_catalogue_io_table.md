@@ -105,7 +105,7 @@
 
 ---
 
-### - [ ] P04.T04 — The labour-value engine
+### - [x] P04.T04 — The labour-value engine
 
 **Read:** docs/04 sections 6–7 (formulas and worked examples).
 **Files:** `apps/catalogue/engine.py`, `apps/catalogue/tests/test_engine.py`
