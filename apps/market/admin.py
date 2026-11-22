@@ -2,7 +2,18 @@ from django.contrib import admin
 
 from apps.core.admin import ReadOnlyAdmin
 
-from .models import InputRequest, Order, OrderLine, ProductionOrder, PurchaseNeed, StockLot, WasteRecord, WeeklyPlan
+from .models import (
+    Booking,
+    InputRequest,
+    Order,
+    OrderLine,
+    ProductionOrder,
+    PurchaseNeed,
+    ServiceSlot,
+    StockLot,
+    WasteRecord,
+    WeeklyPlan,
+)
 
 
 @admin.register(Order)
@@ -43,3 +54,13 @@ class StockLotAdmin(ReadOnlyAdmin):
 @admin.register(WasteRecord)
 class WasteRecordAdmin(ReadOnlyAdmin):
     list_display = ("lot", "quantity", "hours", "period", "created_at")
+
+
+@admin.register(ServiceSlot)
+class ServiceSlotAdmin(ReadOnlyAdmin):
+    list_display = ("id", "offer", "provider", "starts_at", "capacity_left", "status")
+
+
+@admin.register(Booking)
+class BookingAdmin(ReadOnlyAdmin):
+    list_display = ("id", "slot", "customer", "price_uniq", "status")

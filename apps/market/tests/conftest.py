@@ -73,3 +73,48 @@ class World:
 @pytest.fixture
 def world():
     return World()
+
+
+class ServiceWorld:
+    """The haircut of docs/04 (1.00 UNIQ, an hour with the trip) or, with `capacity`, a class of several people."""
+
+    def __init__(self, kind="service", capacity=1, duration=40, travel=20, place="customer", email="hair@x.org"):
+        self.provider = make_member(email, "Hairdresser")
+        self.unit = unit_for(self.provider, "hair", kind=kind, insurance_confirmed=True)
+        item = cat.create_item("Haircut" if capacity == 1 else "Class", "service", "service")
+        self.offer = cat.create_offer(
+            self.provider,
+            self.unit,
+            item,
+            duration_minutes=duration,
+            capacity=capacity,
+            travel_minutes=travel,
+            place=place,
+        )
+        if capacity == 1:
+            cat.add_input(
+                self.provider, self.offer, "Shampoo", "ml", D(15), "buy_outside", euro_price_estimate=D("0.02")
+            )
+        cat.publish_offer(self.offer, self.provider)
+        cat.recompute_values()
+        self.offer.refresh_from_db()
+
+    def slot(self, days=1, hour=10):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.market import services
+
+        start = (timezone.now() + timedelta(days=days)).replace(hour=hour, minute=0, second=0, microsecond=0)
+        return services.create_slot(self.provider, self.offer, start)
+
+    def customer(self, email="cust@x.org", uniq=10):
+        m = make_member(email, "Customer")
+        fund(m, uniq)
+        return m
+
+
+@pytest.fixture
+def salon():
+    return ServiceWorld()

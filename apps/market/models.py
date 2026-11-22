@@ -217,6 +217,11 @@ class StockLot(models.Model):
     def __str__(self):
         return f"{self.quantity_left} of {self.quantity} {self.offer} ({self.status})"
 
+    def save(self, *args, **kwargs):
+        if self.offer.item.kind == "service":  # HF-9: services cannot be stored
+            raise ValueError("A service cannot be put on a shelf.")
+        super().save(*args, **kwargs)
+
 
 class WasteRecord(AppendOnlyModel):
     """Products nobody bought, written off. The next tax balance takes their hours back (HF-9)."""
@@ -229,3 +234,58 @@ class WasteRecord(AppendOnlyModel):
 
     def __str__(self):
         return f"{self.quantity} wasted ({self.hours} h)"
+
+
+class ServiceSlot(models.Model):
+    """One session of a service at a time. A service cannot be stored (HF-9): an unused hour is gone."""
+
+    STATUSES = [("open", _("open")), ("full", _("full")), ("cancelled", _("cancelled")), ("done", _("done"))]
+
+    offer = models.ForeignKey("catalogue.Offer", on_delete=models.PROTECT, related_name="slots")
+    provider = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="slots")
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField()
+    capacity_left = models.PositiveIntegerField()
+    status = models.CharField(max_length=10, choices=STATUSES, default="open")
+    hours_entry = models.ForeignKey(
+        "units.HoursEntry", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )  # the provider's hours for this session, made once
+    idle_minutes = models.PositiveIntegerField(default=0)  # the empty seats' share of the session, for the idle light
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["starts_at", "id"]
+        indexes = [models.Index(fields=["offer", "status", "starts_at"])]
+
+    def __str__(self):
+        return f"{self.offer} at {self.starts_at:%Y-%m-%d %H:%M}"
+
+
+class Booking(models.Model):
+    """A customer's seat in a slot. The price is fixed at booking (HF-3)."""
+
+    STATUSES = [
+        ("booked", _("booked")),
+        ("performed", _("performed")),
+        ("confirmed", _("confirmed")),
+        ("disputed", _("disputed")),
+        ("no_show", _("did not come")),
+        ("cancelled", _("cancelled")),
+    ]
+
+    slot = models.ForeignKey(ServiceSlot, on_delete=models.PROTECT, related_name="bookings")
+    customer = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="bookings")
+    price_uniq = models.DecimalField(max_digits=18, decimal_places=4)
+    hold = models.ForeignKey("ledger.Hold", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    status = models.CharField(max_length=10, choices=STATUSES, default="booked")
+    performed_at = models.DateTimeField(null=True, blank=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    dispute_text = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["customer", "status"])]
+
+    def __str__(self):
+        return f"{self.customer.number} in {self.slot} ({self.status})"

@@ -147,7 +147,7 @@
 
 ---
 
-### - [ ] P05.T06 — Services: bookings, performed, confirmed, paid
+### - [x] P05.T06 — Services: bookings, performed, confirmed, paid
 
 **Read:** docs/06 section 4; docs/04 section 3 (services cannot be stored).
 **Files:** `apps/market/models.py` (ServiceSlot, Booking), `apps/market/services.py`, `apps/market/jobs.py`, `apps/market/tests/test_bookings.py`

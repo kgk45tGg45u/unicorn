@@ -16,7 +16,18 @@ from apps.ledger import services as ledger
 from apps.rules.services import get_param
 from apps.units import services as unit_services
 
-from .models import InputRequest, Order, OrderLine, ProductionOrder, PurchaseNeed, StockLot, WasteRecord, WeeklyPlan
+from .models import (
+    Booking,
+    InputRequest,
+    Order,
+    OrderLine,
+    ProductionOrder,
+    PurchaseNeed,
+    ServiceSlot,
+    StockLot,
+    WasteRecord,
+    WeeklyPlan,
+)
 
 BERLIN = ZoneInfo("Europe/Berlin")
 
@@ -608,6 +619,8 @@ STOCK_RESERVING = ("from_stock", "handed_over")  # lines that have claimed a lot
 
 
 def make_lot(offer, quantity, origin, po=None) -> StockLot:
+    if offer.is_service:  # HF-9: a service is gone when its time has passed
+        raise MarketError(_("A service cannot be stored."))
     now = timezone.now()
     days = offer.item.shelf_life_days
     lot = StockLot.objects.create(
@@ -974,3 +987,317 @@ def dispute(line, buyer, reason, text=""):
         line.save(update_fields=["disputed_at", "dispute_text"])
         audit.record(buyer.number, "order.disputed", line, reason=reason)  # P06 turns this into a flag ticket
         return line
+
+
+# --- Services: slots, bookings, performed, confirmed, paid (docs/06 section 4) ---
+
+
+def _need_pay_rule():
+    if get_param("economy.services.pay_rule") != "when_performed":
+        raise NotImplementedError("see plan/phase_16_later.md")
+
+
+def _local(moment):
+    return moment.astimezone(BERLIN)
+
+
+def _day(moment) -> str:
+    return f"{_local(moment):%Y-%m-%d}"
+
+
+def _week_start(moment):
+    local = _local(moment)
+    return (local - timedelta(days=local.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def create_slot(provider, offer, starts_at) -> ServiceSlot:
+    """A worker of the unit offers one session at `starts_at`."""
+    with transaction.atomic():
+        offer = type(offer).objects.select_related("item", "unit").get(pk=offer.pk)
+        _need_worker(provider, offer.unit)
+        if not offer.is_service or offer.status != "active":
+            raise MarketError(_("Sessions can only be offered for an active service."))
+        if starts_at <= timezone.now():
+            raise MarketError(_("A session must be in the future."))
+        ends_at = starts_at + timedelta(minutes=offer.duration_minutes)
+        busy = ServiceSlot.objects.filter(
+            provider=provider, status__in=["open", "full"], starts_at__lt=ends_at, ends_at__gt=starts_at
+        )
+        if busy.exists():
+            raise MarketError(_("You already offer another session at this time."))
+        if offer.max_per_week:
+            monday = _week_start(starts_at)
+            this_week = ServiceSlot.objects.filter(
+                offer=offer, status__in=["open", "full", "done"], starts_at__gte=monday
+            ).filter(starts_at__lt=monday + timedelta(days=7))
+            count = this_week.count()
+            if count >= offer.max_per_week:
+                raise MarketError(_("This service is offered at most %(n)s times a week.") % {"n": offer.max_per_week})
+        slot = ServiceSlot.objects.create(
+            offer=offer, provider=provider, starts_at=starts_at, ends_at=ends_at, capacity_left=offer.capacity
+        )
+        audit.record(provider.number, "slot.created", slot)
+        unit_services.touch(offer.unit)
+        return slot
+
+
+def create_weekly_slots(provider, offer, first_start, weeks) -> list:
+    """'Every Tuesday 10:00 for 8 weeks': the same local time each week, also across the clock change."""
+    if not 1 <= weeks <= 52:
+        raise MarketError(_("Please choose between 1 and 52 weeks."))
+    local = _local(first_start)
+    with transaction.atomic():
+        return [create_slot(provider, offer, local + timedelta(weeks=i)) for i in range(weeks)]
+
+
+def book(customer, slot) -> Booking:
+    """Book a seat. The price is held, unless the unit is a social one, whose services are free."""
+    _need_pay_rule()
+    if not can_buy(customer):
+        raise MarketError(_("Only members can book. Please finish joining first."))
+    with transaction.atomic():
+        slot = ServiceSlot.objects.select_for_update().select_related("offer__item", "offer__unit").get(pk=slot.pk)
+        offer = slot.offer
+        if slot.status != "open" or slot.starts_at <= timezone.now() or offer.status != "active":
+            raise MarketError(_("This session cannot be booked any more."))
+        if offer.unit.status not in ("trial", "open"):
+            raise MarketError(_("This offer is not available now."))
+        if slot.provider_id == customer.pk:
+            raise MarketError(_("You cannot book your own session."))
+        if slot.bookings.filter(customer=customer).exclude(status="cancelled").exists():
+            raise MarketError(_("You have already booked this session."))
+        if offer.values_computed_at is None:
+            raise MarketError(_("This offer has no price yet."))
+        booking = Booking.objects.create(slot=slot, customer=customer, price_uniq=offer.value_total)
+        if offer.unit.kind != "social" and offer.value_total > 0:
+            try:
+                booking.hold = ledger.place_hold(
+                    customer,
+                    offer.value_total,
+                    _("Booking of %(item)s with %(unit)s on %(date)s")
+                    % {"item": offer.item.name, "unit": offer.unit.name, "date": _day(slot.starts_at)},
+                    ref=booking,
+                )
+            except ledger.LedgerError:
+                raise MarketError(_("Not enough UNIQ available")) from None
+            booking.save(update_fields=["hold"])
+        slot.capacity_left -= 1
+        if slot.capacity_left == 0:
+            slot.status = "full"
+        slot.save(update_fields=["capacity_left", "status"])
+        audit.record(customer.number, "booking.made", booking, slot=slot.pk, price=str(booking.price_uniq))
+        unit_services.touch(offer.unit)
+        return booking
+
+
+def _lock_booking(booking):
+    return (
+        Booking.objects.select_for_update()
+        .select_related("slot__offer__unit", "slot__offer__item", "customer")
+        .get(pk=booking.pk)
+    )
+
+
+def _give_seat_back(booking):
+    slot = ServiceSlot.objects.select_for_update().get(pk=booking.slot_id)
+    if slot.status in ("open", "full"):
+        slot.capacity_left += 1
+        slot.status = "open"
+        slot.save(update_fields=["capacity_left", "status"])
+
+
+def cancel_booking(booking, customer):
+    """The customer cancels before the session. The hold is released and the seat is free again."""
+    with transaction.atomic():
+        booking = _lock_booking(booking)
+        if booking.customer_id != customer.pk:
+            raise MarketError(_("This is not your booking."))
+        if booking.status != "booked" or booking.slot.starts_at <= timezone.now():
+            raise MarketError(_("This booking can no longer be cancelled."))
+        booking.status = "cancelled"
+        booking.save(update_fields=["status"])
+        _give_seat_back(booking)
+        if booking.hold_id:
+            ledger.release_hold(booking.hold, _("Booking cancelled by the customer"))
+        audit.record(customer.number, "booking.cancelled", booking)
+        return booking
+
+
+def cancel_slot(slot, provider):
+    """The provider cancels a session: every booking is cancelled and every hold released."""
+    with transaction.atomic():
+        slot = ServiceSlot.objects.select_for_update().select_related("offer__unit").get(pk=slot.pk)
+        _need_worker(provider, slot.offer.unit)
+        if slot.status not in ("open", "full") or slot.starts_at <= timezone.now():
+            raise MarketError(_("This session can no longer be cancelled."))
+        slot.status = "cancelled"
+        slot.save(update_fields=["status"])
+        for booking in slot.bookings.select_for_update().filter(status="booked"):
+            booking.status = "cancelled"
+            booking.save(update_fields=["status"])
+            if booking.hold_id:
+                ledger.release_hold(booking.hold, _("The provider cancelled the session"))
+            unit_services._notify(
+                booking.customer,
+                _("Your session was cancelled"),
+                _("%(unit)s cancelled the %(item)s on %(date)s. Your UNIQ are free again.")
+                % {"unit": slot.offer.unit.name, "item": slot.offer.item.name, "date": _day(slot.starts_at)},
+            )
+        audit.record(provider.number, "slot.cancelled", slot)
+        return slot
+
+
+def mark_performed(slot, provider):
+    """After the session: every booking that is still `booked` becomes `performed`; the customers must confirm."""
+    _need_pay_rule()
+    with transaction.atomic():
+        slot = ServiceSlot.objects.select_for_update().select_related("offer__unit", "offer__item").get(pk=slot.pk)
+        _need_worker(provider, slot.offer.unit)
+        if slot.status not in ("open", "full"):
+            raise MarketError(_("This session is already closed."))
+        if slot.starts_at > timezone.now():
+            raise MarketError(_("This session has not happened yet."))
+        now = timezone.now()
+        hours = get_param("economy.services.customer_confirm_hours")
+        for booking in slot.bookings.select_for_update().select_related("customer").filter(status="booked"):
+            booking.status = "performed"
+            booking.performed_at = now
+            booking.save(update_fields=["status", "performed_at"])
+            enqueue(
+                "market.auto_confirm_booking",
+                {"booking": booking.pk},
+                run_after=now + timedelta(hours=hours),
+                dedupe_key=f"market.auto_confirm_booking:{booking.pk}",
+            )
+            unit_services._notify(
+                booking.customer,
+                _("Please confirm your %(item)s") % {"item": slot.offer.item.name},
+                _(
+                    "%(unit)s says it performed the %(item)s on %(date)s. Please confirm that it took place. "
+                    "If you do not answer within %(hours)s hours, it counts as confirmed."
+                )
+                % {
+                    "unit": slot.offer.unit.name,
+                    "item": slot.offer.item.name,
+                    "date": _day(slot.starts_at),
+                    "hours": hours,
+                },
+            )
+        slot.status = "done"
+        slot.save(update_fields=["status"])
+        audit.record(provider.number, "slot.performed", slot)
+        unit_services.touch(slot.offer.unit)
+        return slot
+
+
+def mark_no_show(booking, provider):
+    """The customer did not come: nothing is paid (unless `economy.services.no_show_paid`), the hold is released."""
+    _need_pay_rule()
+    with transaction.atomic():
+        booking = _lock_booking(booking)
+        slot = booking.slot
+        _need_worker(provider, slot.offer.unit)
+        if booking.status not in ("booked", "performed") or slot.starts_at > timezone.now():
+            raise MarketError(_("This booking cannot be marked as a no-show."))
+        booking.status = "no_show"
+        booking.save(update_fields=["status"])
+        if booking.hold_id:
+            ledger.release_hold(booking.hold, _("The customer did not come"))
+        audit.record(provider.number, "booking.no_show", booking)
+        if get_param("economy.services.no_show_paid"):
+            _ensure_slot_hours(slot)
+        _record_idle(slot)
+        return booking
+
+
+def no_show_count(customer) -> int:
+    """For providers only: how often a customer did not come."""
+    return Booking.objects.filter(customer=customer, status="no_show").count()
+
+
+def _ensure_slot_hours(slot):
+    """The provider's hours for the session, made once, from the first confirmed booking."""
+    _need_pay_rule()
+    slot = ServiceSlot.objects.select_for_update().select_related("offer__unit", "provider").get(pk=slot.pk)
+    if slot.hours_entry_id:
+        return slot.hours_entry
+    offer = slot.offer
+    minutes = offer.duration_minutes + (offer.travel_minutes if offer.place == "customer" else 0)
+    day = min(_local(slot.starts_at).date(), today())
+    kwargs = {"activity": "booking", "ref_type": "slot", "ref_id": slot.pk, "note": offer.item.name}
+    try:
+        entry = unit_services.record_hours(slot.provider, offer.unit, day, minutes, **kwargs)
+    except unit_services.UnitError:
+        # that month is closed: the hours count from today
+        entry = unit_services.record_hours(slot.provider, offer.unit, today(), minutes, **kwargs)
+    slot.hours_entry = entry
+    slot.save(update_fields=["hours_entry"])
+    return entry
+
+
+def _record_idle(slot):
+    """The empty seats' share of the session is idle time (for the warning light, P09)."""
+    slot = ServiceSlot.objects.select_for_update().select_related("offer").get(pk=slot.pk)
+    offer = slot.offer
+    if offer.capacity and offer.capacity > 1:
+        used = slot.bookings.filter(status="confirmed").count()
+        slot.idle_minutes = round(offer.duration_minutes * (offer.capacity - used) / offer.capacity)
+        slot.save(update_fields=["idle_minutes"])
+
+
+def _finish_confirmation(booking, actor_ref):
+    _need_pay_rule()
+    if booking.hold_id:
+        ledger.capture_hold(
+            booking.hold,
+            _("Booked %(item)s with %(unit)s")
+            % {"item": booking.slot.offer.item.name, "unit": booking.slot.offer.unit.name},
+        )
+    booking.status = "confirmed"
+    booking.confirmed_at = timezone.now()
+    booking.save(update_fields=["status", "confirmed_at"])
+    _ensure_slot_hours(booking.slot)
+    _record_idle(booking.slot)
+    audit.record(actor_ref, "booking.confirmed", booking)
+    unit_services.touch(booking.slot.offer.unit)
+    return booking
+
+
+def confirm_performed(booking, customer):
+    with transaction.atomic():
+        booking = _lock_booking(booking)
+        if booking.customer_id != customer.pk:
+            raise MarketError(_("This is not your booking."))
+        if booking.status == "confirmed":
+            return booking
+        if booking.status not in ("performed", "disputed"):
+            raise MarketError(_("This session has not been marked as performed yet."))
+        return _finish_confirmation(booking, customer.number)
+
+
+def auto_confirm_bookings(now=None):
+    """Performed bookings with no answer after `economy.services.customer_confirm_hours` count as confirmed."""
+    cutoff = (now or timezone.now()) - timedelta(hours=get_param("economy.services.customer_confirm_hours"))
+    count = 0
+    for booking in Booking.objects.filter(status="performed", performed_at__lte=cutoff):
+        with transaction.atomic():
+            booking = _lock_booking(booking)
+            if booking.status == "performed":
+                _finish_confirmation(booking, "system")
+                count += 1
+    return count
+
+
+def dispute_booking(booking, customer, text=""):
+    """The customer says the session did not take place as it should. The hold stays; nothing is paid yet."""
+    with transaction.atomic():
+        booking = _lock_booking(booking)
+        if booking.customer_id != customer.pk:
+            raise MarketError(_("This is not your booking."))
+        if booking.status != "performed":
+            raise MarketError(_("There is nothing to report about this booking now."))
+        booking.status = "disputed"
+        booking.dispute_text = text.strip()[:300]
+        booking.save(update_fields=["status", "dispute_text"])
+        audit.record(customer.number, "booking.disputed", booking)  # P06 turns this into a flag ticket
+        return booking
