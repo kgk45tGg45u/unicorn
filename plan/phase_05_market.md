@@ -38,7 +38,7 @@
 
 ---
 
-### - [ ] P05.T02 — Production orders and batches
+### - [x] P05.T02 — Production orders and batches
 
 **Read:** docs/04 sections 4 and 8; docs/06 section 5 ("Continuous units").
 **Files:** `apps/market/models.py` (ProductionOrder, WeeklyPlan), `apps/market/services.py`, `apps/market/tests/test_production.py`

@@ -44,6 +44,9 @@ class OrderLine(models.Model):
     hold = models.ForeignKey("ledger.Hold", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
     status = models.CharField(max_length=14, choices=STATUSES, default=PLACED)
     due_date = models.DateField(null=True, blank=True)
+    production_order = models.ForeignKey(
+        "ProductionOrder", null=True, blank=True, on_delete=models.PROTECT, related_name="lines"
+    )
     delivered_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -54,3 +57,56 @@ class OrderLine(models.Model):
 
     def __str__(self):
         return f"{self.quantity} x {self.offer} ({self.status})"
+
+
+class ProductionOrder(models.Model):
+    """One batch (or one week of a continuous unit) that a unit makes for orders, the shelf or other units."""
+
+    ORIGINS = [
+        ("orders", _("orders")),
+        ("advance", _("made ahead")),
+        ("own_initiative", _("own initiative")),
+        ("input_request", _("input for another unit")),
+    ]
+    STATUSES = [
+        ("open", _("not started")),
+        ("started", _("being made")),
+        ("done", _("done")),
+        ("cancelled", _("cancelled")),
+    ]
+
+    offer = models.ForeignKey("catalogue.Offer", on_delete=models.PROTECT, related_name="production_orders")
+    quantity = models.DecimalField(max_digits=14, decimal_places=4)  # what the batch will make
+    quantity_assigned = models.DecimalField(max_digits=14, decimal_places=4, default=0)  # promised to lines and units
+    origin = models.CharField(max_length=14, choices=ORIGINS, default="orders")
+    status = models.CharField(max_length=10, choices=STATUSES, default="open")
+    due_date = models.DateField()
+    week_start = models.DateField(null=True, blank=True)  # the Monday, for a continuous unit's weekly order
+    started_at = models.DateTimeField(null=True, blank=True)
+    done_at = models.DateTimeField(null=True, blank=True)
+    quantity_done = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["due_date", "id"]
+        indexes = [models.Index(fields=["offer", "status"])]
+
+    def __str__(self):
+        return f"{self.quantity} x {self.offer} due {self.due_date} ({self.status})"
+
+
+class WeeklyPlan(models.Model):
+    """How much a continuous unit makes each week of an offer, as its council decided."""
+
+    offer = models.ForeignKey("catalogue.Offer", on_delete=models.PROTECT, related_name="weekly_plans")
+    quantity_per_week = models.DecimalField(max_digits=14, decimal_places=4)
+    set_by = models.ForeignKey(
+        "units.CouncilDecision", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    valid_from = models.DateField()
+
+    class Meta:
+        ordering = ["offer", "-valid_from", "-id"]
+
+    def __str__(self):
+        return f"{self.quantity_per_week} a week of {self.offer} from {self.valid_from}"

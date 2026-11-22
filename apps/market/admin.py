@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from apps.core.admin import ReadOnlyAdmin
 
-from .models import Order, OrderLine
+from .models import Order, OrderLine, ProductionOrder, WeeklyPlan
 
 
 @admin.register(Order)
@@ -13,3 +13,13 @@ class OrderAdmin(ReadOnlyAdmin):
 @admin.register(OrderLine)
 class OrderLineAdmin(ReadOnlyAdmin):
     list_display = ("id", "order", "offer", "quantity", "total_uniq", "status")
+
+
+@admin.register(ProductionOrder)
+class ProductionOrderAdmin(ReadOnlyAdmin):
+    list_display = ("id", "offer", "quantity", "origin", "status", "due_date")
+
+
+@admin.register(WeeklyPlan)
+class WeeklyPlanAdmin(ReadOnlyAdmin):
+    list_display = ("offer", "quantity_per_week", "valid_from")
