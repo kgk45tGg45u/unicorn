@@ -81,3 +81,5 @@ Tick those tasks when done. Then continue with phase 10, and do the rest of phas
 - 2026-11-22, P01: all nine tasks done; make check passes; hf_coverage lists tests for HF-8, HF-13 and HF-14. Not walked through in a browser yet (passkey needs a real device); see docs/12 for the open points.
 
 - 2026-11-22, P02: all nine tasks done; make check passes; HF-1, 4, 5, 6, 7, 8 each have tests; audit_books --full is clean and the triggers exist on the local MySQL (needs log_bin_trust_function_creators=1, see docs/12).
+- 2026-11-22, P01: all tasks done and `make check` passes; test-covered by the `test_hf13_`/`test_hf14_` tests.
+- 2026-11-22, P02: acceptance check passed (make check, `audit_books --full` says the books are in order, append-only triggers exist, open-books page built).
