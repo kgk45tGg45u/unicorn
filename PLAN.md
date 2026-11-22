@@ -83,3 +83,4 @@ Tick those tasks when done. Then continue with phase 10, and do the rest of phas
 - 2026-11-22, P02: all nine tasks done; make check passes; HF-1, 4, 5, 6, 7, 8 each have tests; audit_books --full is clean and the triggers exist on the local MySQL (needs log_bin_trust_function_creators=1, see docs/12).
 - 2026-11-22, P01: all tasks done and `make check` passes; test-covered by the `test_hf13_`/`test_hf14_` tests.
 - 2026-11-22, P02: acceptance check passed (make check, `audit_books --full` says the books are in order, append-only triggers exist, open-books page built).
+- 2026-11-22, P03: acceptance check passed (make check; all test_hf02_, hf09_, hf15_, hf17_, hf20_ tests pass; own hours cannot be self-approved; 2 h 30 min pays 2.5000 UNIQ gross with the period's tax). One open question in docs/12 (hours over the weekly limit in a one-person unit).
