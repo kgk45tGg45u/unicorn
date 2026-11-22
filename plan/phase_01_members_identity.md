@@ -61,7 +61,7 @@
 
 ---
 
-### - [ ] P01.T03 — The one digital contract
+### - [x] P01.T03 — The one digital contract
 
 **Read:** docs/00 ("The legal frame"); `../Unicorn-simulation/docs/real_world/4_legal_frame.md` section 1 items 1–3.
 **Files:** `apps/members/models.py` (ContractTemplate, Signature), `apps/members/fixtures/contracts.json`, `apps/members/services.py`, `apps/members/templates/members/contract.html`, `apps/members/tests/test_contract.py`

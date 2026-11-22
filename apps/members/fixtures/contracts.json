@@ -1,0 +1,15 @@
+[
+  {
+    "model": "members.contracttemplate",
+    "pk": 1,
+    "fields": {
+      "kind": "membership",
+      "version": 1,
+      "title": "Unicorn membership contract",
+      "body_md": "## 1. Statute of the association (the post box)\n\n**DRAFT — to be written with lawyers (docs/12, section 2)**\n\nUnicorn e.V. is a registered association that acts only as a post box. It holds no money and no assets, has no bank account and sells nothing. It acts only when the members have voted for it in the app, and it signs only what a vote has approved. Every person with a Unicorn account is a member, and nobody else. A small board of unpaid signers, elected and replaceable by vote, signs where the law needs a name. You must be at least 18 years old.\n\n## 2. Trust agreement for the trade fund\n\n**DRAFT — to be written with lawyers (docs/12, section 2)**\n\nThe trade fund is the euros that members hold for the group in their own bank accounts. Held euros belong to the group, not to the holder, and are passed on when the members' decision asks for it. Holders may hold only up to their cap. Unicorn never moves money and never reads bank accounts: it shows payment requests, and the payer and the receiver confirm them. A holder who leaves first passes their part to other holders. Donations never earn UNIQ.\n\n## 3. Consent to the tax paperwork\n\n**DRAFT — to be written with lawyers (docs/12, section 2)**\n\nUnicorn pays taxes as the law requires. By signing, you agree that the group may prepare the tax statements that your sales to outside customers and your held euros make necessary, and that the data needed for them is used for that purpose only.\n\n## 4. Privacy notice\n\n**DRAFT — to be written with lawyers (docs/12, section 2)**\n\nUnicorn keeps only the personal data it needs. Your legal name, address, phone, date of birth and bank details are stored encrypted with a key of your own, apart from your hour account, which uses only your member number. You can see and download all your data, correct it, and delete your account. Deleting destroys your key. Your member number and its history stay in the open books, because the law requires the books to be kept. There is no tracking and no advertising.\n\n## 5. Rules of the trust rating\n\n**DRAFT — to be written with lawyers (docs/12, section 2)**\n\nThe trust rating only limits how many euros you may hold for the trade fund. It never touches your work, your pay, your votes or any price. It is computed from the fund's records only. Members cannot rate each other. You can see your rating, contest it, and get a human review.",
+      "sha256": "59c35eb33c57cdb63e614a738ae4081a98e1a7e6bb751cee2d125f1ea7970365",
+      "valid_from": "2026-11-22T00:00:00Z",
+      "is_current": true
+    }
+  }
+]

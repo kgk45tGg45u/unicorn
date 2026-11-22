@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ template.title }} · Unicorn{% endblock %}
+{% block content %}
+<h1>{{ template.title }}</h1>
+<p class="text-muted small">{% translate "Version" %} {{ template.version }} · {% translate "Fingerprint" %}: <code>{{ template.sha256 }}</code></p>
+{% if already %}
+  <div class="alert alert-success">{% translate "You have already signed this version." %}</div>
+{% endif %}
+{% if error %}
+  <div class="alert alert-danger">{% translate "Please tick every box to show that you have read each part." %}</div>
+{% endif %}
+<form method="post">
+  {% csrf_token %}
+  {% for part in parts %}
+    <section class="mb-4">
+      <h2 class="h5">{{ forloop.counter }}. {{ part.title }}</h2>
+      <div style="white-space: pre-line">{{ part.text }}</div>
+      {% if not already %}
+      <div class="form-check mt-2">
+        <input class="form-check-input" type="checkbox" id="accept_{{ forloop.counter0 }}" name="accept_{{ forloop.counter0 }}" value="1">
+        <label class="form-check-label" for="accept_{{ forloop.counter0 }}">{% translate "I have read and accept this part" %}</label>
+      </div>
+      {% endif %}
+    </section>
+  {% endfor %}
+  {% if not already %}<button class="btn btn-primary btn-lg" type="submit">{% translate "Sign" %}</button>{% endif %}
+</form>
+{% endblock %}

@@ -1,3 +1,5 @@
+import hashlib
+
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -65,3 +67,62 @@ class Member(models.Model):
 
     def __str__(self):
         return f"{self.number} {self.display_name}"
+
+
+class ContractTemplate(models.Model):
+    """The text of a contract, versioned and hashed. A published version is never edited."""
+
+    KINDS = [
+        ("membership", _("Membership contract")),
+        ("holder_agreement", _("Holder agreement")),
+        ("council_rules", _("Council rules")),
+        ("mandate", _("Mandate")),
+        ("assist_consent", _("Consent to be helped")),
+        ("outside_seller", _("Outside seller terms")),
+    ]
+
+    kind = models.CharField(max_length=20, choices=KINDS)
+    version = models.PositiveIntegerField()
+    title = models.CharField(max_length=120)
+    body_md = models.TextField()
+    sha256 = models.CharField(max_length=64, blank=True)
+    valid_from = models.DateTimeField()
+    is_current = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["kind", "version"], name="unique_contract_version")]
+        ordering = ["kind", "-version"]
+
+    def __str__(self):
+        return f"{self.title} v{self.version}"
+
+    def save(self, *args, **kwargs):
+        self.sha256 = hashlib.sha256(self.body_md.encode("utf-8")).hexdigest()
+        super().save(*args, **kwargs)
+
+
+class Signature(models.Model):
+    """A member signed a contract text. Append-only."""
+
+    METHODS = [("passkey", "passkey"), ("code", "code"), ("click", "click")]
+
+    template = models.ForeignKey(ContractTemplate, on_delete=models.PROTECT, related_name="signatures")
+    member = models.ForeignKey(Member, on_delete=models.PROTECT, related_name="signatures")
+    signed_at = models.DateTimeField(auto_now_add=True)
+    text_sha256 = models.CharField(max_length=64)
+    method = models.CharField(max_length=10, choices=METHODS)
+    context = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ["-signed_at"]
+
+    def __str__(self):
+        return f"{self.member.number} signed {self.template}"
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValueError("Signatures cannot be changed.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Signatures cannot be deleted.")

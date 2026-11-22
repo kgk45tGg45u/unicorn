@@ -38,3 +38,21 @@ def is_verified(member) -> bool:
 
 def active_members():
     return Member.objects.filter(status=Member.MEMBER)
+
+
+def sign(member, template, method, context=None):
+    """Record that a member signed a contract text, with the text's hash."""
+    from apps.core import audit
+
+    from .models import Signature
+
+    with transaction.atomic():
+        signature = Signature.objects.create(
+            template=template,
+            member=member,
+            text_sha256=template.sha256,
+            method=method,
+            context=context or {},
+        )
+        audit.record(member.number, "contract.signed", signature, kind=template.kind, version=template.version)
+        return signature

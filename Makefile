@@ -21,6 +21,7 @@ run:
 
 migrate:
 	$(PY) manage.py migrate
+	$(PY) manage.py loaddata contracts
 
 defaults:
 	$(PY) manage.py load_defaults
