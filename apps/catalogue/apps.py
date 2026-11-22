@@ -11,6 +11,6 @@ class CatalogueConfig(AppConfig):
 
         from . import jobs  # noqa: F401
 
-        for entry in (("catalogue.ask_own_free", {}),):
+        for entry in (("catalogue.ask_own_free", {}), ("catalogue.join_forces", {})):
             if entry not in daily.DAILY_JOBS:
                 daily.DAILY_JOBS.append(entry)

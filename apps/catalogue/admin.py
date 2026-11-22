@@ -4,6 +4,7 @@ from apps.core.admin import ReadOnlyAdmin
 
 from .models import (
     Item,
+    JoinForcesSuggestion,
     Offer,
     OfferInput,
     OfferTool,
@@ -52,3 +53,8 @@ class ValueRunAdmin(ReadOnlyAdmin):
 @admin.register(OfferValueHistory)
 class OfferValueHistoryAdmin(ReadOnlyAdmin):
     list_display = ("run", "offer", "total")
+
+
+@admin.register(JoinForcesSuggestion)
+class JoinForcesSuggestionAdmin(ReadOnlyAdmin):
+    list_display = ("offer_high", "offer_low", "gap", "status")

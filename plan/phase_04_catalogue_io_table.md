@@ -234,7 +234,7 @@
 
 ---
 
-### - [ ] P04.T08 — "Join forces" suggestions
+### - [x] P04.T08 — "Join forces" suggestions
 
 **Read:** docs/04 section 2 (the last point); owner, 2026-11-21.
 **Files:** `apps/catalogue/models.py` (JoinForcesSuggestion), `apps/catalogue/jobs.py`, `apps/catalogue/templates/catalogue/join_forces.html`, `apps/catalogue/tests/test_join_forces.py`

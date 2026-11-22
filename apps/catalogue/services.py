@@ -8,6 +8,7 @@ from django.utils.translation import gettext as _
 
 from apps.core import audit
 from apps.core.money import uniq
+from apps.members import services as member_services
 from apps.rules.services import get_param
 from apps.units import services as unit_services
 
@@ -526,3 +527,123 @@ def lead_time_days(offer, _depth=0, _seen=None) -> int:
                 longest = max(longest, min(lead_time_days(s, _depth + 1, seen) for s in suppliers))
     extra = get_param("market.outside_input_days") if outside else 0
     return offer.cycle_days + longest + extra
+
+
+# --- "Join forces" suggestions ---
+
+JOIN_FORCES_QUIET_MONTHS = 6
+
+
+def _near(a, b) -> bool:
+    """Until P12 adds coordinates: the same town, or the same first two postcode digits."""
+    if a.town and b.town and a.town.strip().lower() == b.town.strip().lower():
+        return True
+    pa, pb = a.postcode.replace(" ", ""), b.postcode.replace(" ", "")
+    return len(pa) >= 2 and len(pb) >= 2 and pa[:2] == pb[:2]
+
+
+def make_join_forces_suggestions(now=None):
+    """For each item with offers in different, nearby units whose values differ by the set gap, suggest it once."""
+    from itertools import combinations
+
+    from django.utils import timezone
+
+    from .models import JoinForcesSuggestion
+
+    now = now or timezone.now()
+    gap_limit = Decimal(str(get_param("governance.units.join_forces_value_gap")))
+    quiet_since = member_services._add_months(now, -JOIN_FORCES_QUIET_MONTHS)
+    created = 0
+    by_item = {}
+    for offer in Offer.objects.filter(status="active", value_total__gt=0).select_related("unit", "item"):
+        by_item.setdefault(offer.item_id, []).append(offer)
+    for offers in by_item.values():
+        for a, b in combinations(offers, 2):
+            if a.unit_id == b.unit_id or not _near(a.unit, b.unit):
+                continue
+            high, low = (a, b) if a.value_total >= b.value_total else (b, a)
+            gap = (high.value_total / low.value_total - 1).quantize(Decimal("0.0001"))
+            if gap < gap_limit:  # values are stored with 4 decimals, so the gap is compared at 4 decimals
+                continue
+            pair = JoinForcesSuggestion.objects.filter(
+                offer_high__unit=high.unit, offer_low__unit=low.unit, offer_high__item=high.item
+            ) | JoinForcesSuggestion.objects.filter(
+                offer_high__unit=low.unit, offer_low__unit=high.unit, offer_high__item=high.item
+            )
+            if pair.filter(status__in=["new", "seen"]).exists():
+                continue
+            if pair.filter(status__in=["dismissed", "discussed"], decided_at__gte=quiet_since).exists():
+                continue
+            JoinForcesSuggestion.objects.create(offer_high=high, offer_low=low, gap=gap)
+            created += 1
+    return created
+
+
+def suggestions_for_unit(unit):
+    from .models import JoinForcesSuggestion
+
+    return (
+        JoinForcesSuggestion.objects.filter(status__in=["new", "seen"])
+        .filter(models_q_unit(unit))
+        .select_related("offer_high__unit", "offer_low__unit", "offer_high__item")
+    )
+
+
+def models_q_unit(unit):
+    from django.db.models import Q
+
+    return Q(offer_high__unit=unit) | Q(offer_low__unit=unit)
+
+
+def suggestion_text(s) -> str:
+    high, low = s.offer_high, s.offer_low
+    return _(
+        "%(high_unit)s and %(low_unit)s both make %(item)s; %(low_unit)s needs %(low).1f h, "
+        "%(high_unit)s %(high).1f h. You might share recipes, tools or workers, or join."
+    ) % {
+        "high_unit": high.unit.name,
+        "low_unit": low.unit.name,
+        "item": high.item.name.lower(),
+        "low": low.value_total,
+        "high": high.value_total,
+    }
+
+
+def _can_act(member, suggestion):
+    return unit_services.can_decide_joins(member, suggestion.offer_high.unit) or unit_services.can_decide_joins(
+        member, suggestion.offer_low.unit
+    )
+
+
+def dismiss_suggestion(member, suggestion):
+    from django.utils import timezone
+
+    if not _can_act(member, suggestion):
+        raise CatalogueError(_("Only the councils of the two units can answer this."))
+    suggestion.status = "dismissed"
+    suggestion.decided_at = timezone.now()
+    suggestion.save(update_fields=["status", "decided_at"])
+    audit.record(member.number, "join_forces.dismissed", suggestion)
+    return suggestion
+
+
+def start_conversation(member, suggestion):
+    """Open a council decision of kind `other` in both units (P06 turns it into a `join_forces` ticket)."""
+    from django.utils import timezone
+
+    if not _can_act(member, suggestion):
+        raise CatalogueError(_("Only the councils of the two units can answer this."))
+    text = suggestion_text(suggestion)
+    title = _("Talk with %(a)s and %(b)s about making %(item)s together") % {
+        "a": suggestion.offer_high.unit.name,
+        "b": suggestion.offer_low.unit.name,
+        "item": suggestion.offer_high.item.name.lower(),
+    }
+    with transaction.atomic():
+        for unit in (suggestion.offer_high.unit, suggestion.offer_low.unit):
+            unit_services.open_system_decision(unit, title, text, kind="other")
+        suggestion.status = "discussed"
+        suggestion.decided_at = timezone.now()
+        suggestion.save(update_fields=["status", "decided_at"])
+        audit.record(member.number, "join_forces.discussed", suggestion)
+    return suggestion

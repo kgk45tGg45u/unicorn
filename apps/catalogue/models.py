@@ -235,3 +235,27 @@ class OfferValueHistory(AppendOnlyModel):
 
     def __str__(self):
         return f"{self.offer} {self.total}"
+
+
+class JoinForcesSuggestion(models.Model):
+    """Two units make the same item and one needs many more hours. Only a suggestion, never an order (HF-10)."""
+
+    STATUSES = [
+        ("new", _("new")),
+        ("seen", _("seen")),
+        ("dismissed", _("not now")),
+        ("discussed", _("discussed")),
+    ]
+
+    offer_high = models.ForeignKey(Offer, on_delete=models.CASCADE, related_name="+")
+    offer_low = models.ForeignKey(Offer, on_delete=models.CASCADE, related_name="+")
+    gap = models.DecimalField(max_digits=10, decimal_places=4)
+    status = models.CharField(max_length=10, choices=STATUSES, default="new")
+    created_at = models.DateTimeField(auto_now_add=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.offer_high} vs {self.offer_low} ({self.status})"

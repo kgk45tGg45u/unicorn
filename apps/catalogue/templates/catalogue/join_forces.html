@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Join-forces suggestions" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% blocktranslate with name=unit.name %}Suggestions for {{ name }}{% endblocktranslate %}</h1>
+<p>{% translate "These are only ideas. Nobody has to do anything." %}</p>
+{% for message in messages %}<div class="alert alert-info">{{ message }}</div>{% endfor %}
+{% for s, text in rows %}
+  <form method="post" class="card card-body mb-3">{% csrf_token %}
+    <p>{{ text }}</p>
+    <input type="hidden" name="suggestion" value="{{ s.pk }}">
+    <div class="d-flex gap-2"><button class="btn btn-primary" name="answer" value="talk">{% translate "Start a conversation" %}</button><button class="btn btn-outline-secondary" name="answer" value="not_now">{% translate "Not now" %}</button></div>
+  </form>
+{% empty %}<p>{% translate "There are no suggestions." %}</p>{% endfor %}
+<p><a href="{% url 'units:unit' unit.slug %}">{% translate "Back to the unit" %}</a></p>
+{% endblock %}

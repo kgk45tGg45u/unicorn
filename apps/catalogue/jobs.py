@@ -13,3 +13,9 @@ def ask_own_free(payload):
 def recompute(payload):
     """Compute all labour values. Safe to run twice."""
     services.recompute_values()
+
+
+@job("catalogue.join_forces")
+def join_forces(payload):
+    """Safe to run twice: at most one open suggestion per pair, and none for 6 months after an answer."""
+    services.make_join_forces_suggestions()

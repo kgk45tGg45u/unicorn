@@ -5,6 +5,7 @@ from . import views
 app_name = "catalogue"
 
 urlpatterns = [
+    path("units/<slug:slug>/join-forces/", views.join_forces, name="join_forces"),
     path("open-books/io-table/", views.io_table, name="io_table"),
     path("open-books/io-table/offers.csv", views.io_offers_csv, name="io_offers_csv"),
     path("open-books/io-table/inputs.csv", views.io_inputs_csv, name="io_inputs_csv"),

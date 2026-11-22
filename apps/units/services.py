@@ -173,13 +173,22 @@ DECISION_ACTIONS["rules_change"] = _apply_rules_change
 
 def open_decision(member, unit, title, text="", kind="other", payload=None):
     """A council member opens a decision. In a one-person unit there is nothing to vote on: it takes effect at once."""
+    if not member_services.is_verified(member) or not can_decide_joins(member, unit):
+        raise UnitError(_("Only the unit's council can open a decision."))
+    return _create_decision(unit, member, title, text, kind, payload)
+
+
+def open_system_decision(unit, title, text="", kind="other", payload=None):
+    """A decision opened by the system for a unit's council, for example a suggestion from another part of the app."""
+    return _create_decision(unit, None, title, text, kind, payload)
+
+
+def _create_decision(unit, member, title, text, kind, payload):
     from datetime import timedelta
 
     from . import council_rules
     from .models import CouncilDecision
 
-    if not member_services.is_verified(member) or not can_decide_joins(member, unit):
-        raise UnitError(_("Only the unit's council can open a decision."))
     rules = council_rules.current(unit)
     days = rules.vote_days if rules else get_param("governance.council.vote_days")
     now = timezone.now()
@@ -194,7 +203,7 @@ def open_decision(member, unit, title, text="", kind="other", payload=None):
             opens_at=now,
             closes_at=now + timedelta(days=days),
         )
-        audit.record(member.number, "unit.decision_opened", decision, kind=kind)
+        audit.record(member.number if member else "system", "unit.decision_opened", decision, kind=kind)
         if not has_council(unit):
             _finish(decision, approved=True, result={"one_person_unit": True})
         return decision

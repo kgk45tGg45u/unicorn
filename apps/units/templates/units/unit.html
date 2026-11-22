@@ -18,7 +18,7 @@
 <h2 class="h5">{% translate "Workers" %}</h2>
 <ul>{% for w in workers %}<li>{{ w.display_name }}</li>{% empty %}<li>{% translate "Nobody works here yet." %}</li>{% endfor %}</ul>
 {% if is_worker %}
-  <p><a href="{% url 'units:rules' unit.slug %}">{% translate "Council rules" %}</a> · <a href="{% url 'units:decisions' unit.slug %}">{% translate "Council decisions" %}</a> · <a href="{% url 'units:unit_hours' unit.slug %}">{% translate "Hours" %}</a> · <a href="{% url 'units:approve' unit.slug %}">{% translate "Approve hours" %}</a> · <a href="{% url 'units:report' unit.slug %}">{% translate "Monthly report" %}</a></p>
+  <p><a href="{% url 'units:rules' unit.slug %}">{% translate "Council rules" %}</a> · <a href="{% url 'units:decisions' unit.slug %}">{% translate "Council decisions" %}</a> · <a href="{% url 'units:unit_hours' unit.slug %}">{% translate "Hours" %}</a> · <a href="{% url 'units:approve' unit.slug %}">{% translate "Approve hours" %}</a> · <a href="{% url 'units:report' unit.slug %}">{% translate "Monthly report" %}</a> · <a href="{% url 'catalogue:join_forces' unit.slug %}">{% translate "Join-forces suggestions" %}</a></p>
   <form method="post" action="{% url 'units:leave' unit.slug %}">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit">{% translate "Leave this unit" %}</button></form>
 {% elif can_join %}
   <form method="post" action="{% url 'units:join' unit.slug %}" class="mb-3">{% csrf_token %}

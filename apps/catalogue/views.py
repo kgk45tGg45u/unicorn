@@ -281,3 +281,44 @@ def io_tools_csv(request):
         for t in OfferTool.objects.filter(offer__status="active").select_related("tool_item")
     )
     return _csv("tools", ["offer_id", "tool", "source", "uses_per_batch", "lifetime_uses"], rows)
+
+
+@login_required
+def join_forces(request, slug):
+    from apps.units.models import Unit
+
+    from .models import JoinForcesSuggestion
+
+    unit = get_object_or_404(Unit, slug=slug)
+    if not unit_services_is_worker(request.member, unit):
+        raise PermissionDenied
+    if request.method == "POST":
+        s = get_object_or_404(JoinForcesSuggestion, pk=request.POST.get("suggestion"))
+        try:
+            if request.POST.get("answer") == "talk":
+                services.start_conversation(request.member, s)
+                messages.success(request, _("A decision to talk about it was opened in both units."))
+            else:
+                services.dismiss_suggestion(request.member, s)
+        except services.CatalogueError as e:
+            messages.error(request, str(e))
+        return redirect("catalogue:join_forces", slug=slug)
+    rows = []
+    for s in services.suggestions_for_unit(unit):
+        if s.status == "new" and unit_services_can_decide(request.member, unit):
+            s.status = "seen"
+            s.save(update_fields=["status"])
+        rows.append((s, services.suggestion_text(s)))
+    return render(request, "catalogue/join_forces.html", {"unit": unit, "rows": rows})
+
+
+def unit_services_is_worker(member, unit):
+    from apps.units import services as unit_services
+
+    return unit_services.is_worker(member, unit)
+
+
+def unit_services_can_decide(member, unit):
+    from apps.units import services as unit_services
+
+    return unit_services.can_decide_joins(member, unit)
