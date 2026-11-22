@@ -224,7 +224,7 @@
 
 ---
 
-### - [ ] P01.T09 — Sensitive actions and login notices
+### - [x] P01.T09 — Sensitive actions and login notices
 
 **Read:** docs/08 section 3.
 **Files:** `apps/core/decorators.py`, `apps/members/signals.py`, `apps/members/tests/test_sensitive.py`

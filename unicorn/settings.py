@@ -89,6 +89,7 @@ MIDDLEWARE = [
     "django_htmx.middleware.HtmxMiddleware",
     "allauth.account.middleware.AccountMiddleware",
     "apps.members.middleware.CurrentMemberMiddleware",
+    "apps.members.middleware.LastActiveMiddleware",
 ]
 
 ROOT_URLCONF = "unicorn.urls"

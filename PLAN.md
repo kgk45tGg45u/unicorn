@@ -77,3 +77,5 @@ Tick those tasks when done. Then continue with phase 10, and do the rest of phas
 *(One line per finished phase: date, phase, acceptance check passed, notes.)*
 
 - 2026-11-22, P00: acceptance check passed (make check, ping job runs, /rules/ shows 20 rules and all 187 defaults). Python 3.12 via Homebrew; see docs/12 section 3.
+
+- 2026-11-22, P01: all nine tasks done; make check passes; hf_coverage lists tests for HF-8, HF-13 and HF-14. Not walked through in a browser yet (passkey needs a real device); see docs/12 for the open points.
