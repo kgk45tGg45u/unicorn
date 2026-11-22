@@ -68,6 +68,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "allauth",
+    "allauth.account",
+    "allauth.mfa",
+    "django_htmx",
     "apps.core",
     "apps.rules",
     "apps.members",
@@ -82,6 +86,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
 ]
 
 ROOT_URLCONF = "unicorn.urls"
@@ -140,3 +145,23 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+
+# Accounts (docs/08 section 3): passkey or one-time email code, no passwords.
+AUTHENTICATION_BACKENDS = ["allauth.account.auth_backends.AuthenticationBackend"]
+ACCOUNT_LOGIN_METHODS = {"email"}
+ACCOUNT_SIGNUP_FIELDS = ["email*"]
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_LOGIN_BY_CODE_ENABLED = True
+ACCOUNT_REAUTHENTICATION_TIMEOUT = 900
+MFA_SUPPORTED_TYPES = ["webauthn", "recovery_codes"]
+MFA_PASSKEY_LOGIN_ENABLED = True
+MFA_PASSKEY_SIGNUP_ENABLED = False
+MFA_WEBAUTHN_ALLOW_INSECURE_ORIGIN = DEBUG
+SESSION_COOKIE_AGE = 14 * 24 * 3600
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+LOGIN_REDIRECT_URL = "/"
+
+# allauth declares conditional unique constraints that MySQL ignores; allauth also checks them in code.
+SILENCED_SYSTEM_CHECKS = ["models.W036"]

@@ -12,6 +12,7 @@
   <script src="{% static 'vendor/bootstrap.bundle.min.js' %}" defer></script>
   <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
   <script src="{% static 'js/unicorn.js' %}" defer></script>
+  {% block extra_head %}{% endblock %}
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
   {% include "partials/nav.html" %}
@@ -29,5 +30,6 @@
     <a class="me-3" href="#">{% translate "Imprint" %}</a>
     <a href="#">{% translate "Privacy" %}</a>
   </footer>
+  {% block extra_body %}{% endblock %}
 </body>
 </html>

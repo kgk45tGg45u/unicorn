@@ -5,7 +5,7 @@
 
 ---
 
-### - [ ] P01.T01 — Accounts with django-allauth: email codes and passkeys
+### - [x] P01.T01 — Accounts with django-allauth: email codes and passkeys
 
 **Read:** docs/08 section 3.
 **Files:** `unicorn/settings.py`, `unicorn/urls.py`, `templates/account/*.html`, `templates/mfa/*.html`, `apps/members/tests/test_login.py`

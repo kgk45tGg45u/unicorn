@@ -43,3 +43,4 @@ Questions that are not decided. The coding agent adds new ones at the end of sec
 *(The coding agent adds questions here: date, task number, question, the option chosen for now.)*
 
 - 2026-11-22, P00.T01/T03: Python 3.14 (the Mac's default) has no ready-made `cryptography` for this older macOS, so I installed Python 3.12 with Homebrew (`.venv` uses it). Driver: `mysqlclient` built fine, no PyMySQL needed. Local MySQL is 8.3.0.
+- 2026-11-22, P01.T01: all allauth setting names in the plan exist in the installed version (65.22). I added `MFA_PASSKEY_SIGNUP_ENABLED = False` and silenced Django check `models.W036` (MySQL ignores allauth's conditional unique constraints; allauth checks them in code). The "12 hours without activity" session end (docs/08 section 3) is not done in T01; it comes with P01.T09.

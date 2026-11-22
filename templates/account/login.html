@@ -1,0 +1,25 @@
+{% extends "account/base_entrance.html" %}
+{% load i18n allauth account %}
+{% block head_title %}{% translate "Log in" %}{% endblock head_title %}
+{% block content %}
+    {% element h1 %}{% translate "Log in to Unicorn" %}{% endelement %}
+    <div class="d-grid gap-2 my-3">
+        {% if PASSKEY_LOGIN_ENABLED %}
+            <button type="submit" form="mfa_login" id="passkey_login" class="btn btn-primary btn-lg">
+                {% translate "Log in with a passkey" %}
+            </button>
+        {% endif %}
+        {% if LOGIN_BY_CODE_ENABLED %}
+            <a href="{{ request_login_code_url }}" class="btn btn-outline-primary btn-lg">
+                {% translate "Send me a login code by email" %}
+            </a>
+        {% endif %}
+    </div>
+    <p>{% translate "New here?" %} <a href="{{ signup_url }}">{% translate "Create an account" %}</a></p>
+{% endblock content %}
+{% block extra_body %}
+    {{ block.super }}
+    {% if PASSKEY_LOGIN_ENABLED %}
+        {% include "mfa/webauthn/snippets/login_script.html" with button_id="passkey_login" %}
+    {% endif %}
+{% endblock %}
