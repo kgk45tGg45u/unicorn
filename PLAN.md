@@ -75,3 +75,5 @@ Tick those tasks when done. Then continue with phase 10, and do the rest of phas
 ## Progress
 
 *(One line per finished phase: date, phase, acceptance check passed, notes.)*
+
+- 2026-11-22, P00: acceptance check passed (make check, ping job runs, /rules/ shows 20 rules and all 187 defaults). Python 3.12 via Homebrew; see docs/12 section 3.

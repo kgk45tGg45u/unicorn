@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block content %}
+{% if user.is_authenticated %}
+<h1>{% translate "Your Unicorn" %}</h1>
+<div class="row g-3">
+  <div class="col-12 col-md-6"><div class="card"><div class="card-body"><h2 class="h5">{% translate "My work" %}</h2><p class="mb-0 text-muted">{% translate "Nothing here yet." %}</p></div></div></div>
+  <div class="col-12 col-md-6"><div class="card"><div class="card-body"><h2 class="h5">{% translate "My orders" %}</h2><p class="mb-0 text-muted">{% translate "Nothing here yet." %}</p></div></div></div>
+  <div class="col-12 col-md-6"><div class="card"><div class="card-body"><h2 class="h5">{% translate "Tickets for me" %}</h2><p class="mb-0 text-muted">{% translate "Nothing here yet." %}</p></div></div></div>
+  <div class="col-12 col-md-6"><div class="card"><div class="card-body"><h2 class="h5">{% translate "Warning lights" %}</h2><p class="mb-0 text-muted">{% translate "Nothing here yet." %}</p></div></div></div>
+</div>
+{% else %}
+<h1>{% translate "Welcome to Unicorn" %}</h1>
+<p class="lead">{% translate "Unicorn is a way for people to plan their economy together, fairly, inside the world we live in." %}</p>
+<ol>
+  <li>{% translate "Every hour of work earns one UNIQ, the same for everyone." %}</li>
+  <li>{% translate "Everything costs the hours inside it. Nobody sets a price, and no price moves because something is scarce." %}</li>
+  <li>{% translate "UNIQ are like theatre tickets, not money. They are paid out for work and cancelled when spent." %}</li>
+  <li>{% translate "Units do not pay each other. Only the final buyer pays." %}</li>
+  <li>{% translate "One flat share of every hour pays for care, tools and the people who cannot work." %}</li>
+</ol>
+<a class="btn btn-primary btn-lg" href="#">{% translate "Join" %}</a>
+{% endif %}
+{% endblock %}

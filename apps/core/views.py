@@ -1,12 +1,13 @@
 from pathlib import Path
 
 from django.conf import settings
-from django.http import HttpResponse
+from django.db import connection
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 
 
 def home(request):
-    return render(request, "home.html")
+    return render(request, "core/home.html")
 
 
 def offline(request):
@@ -19,3 +20,13 @@ def service_worker(request):
     response = HttpResponse(js, content_type="application/javascript")
     response["Service-Worker-Allowed"] = "/"
     return response
+
+
+def healthz(request):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+    except Exception:
+        return JsonResponse({"status": "error"}, status=503)
+    return JsonResponse({"status": "ok"})

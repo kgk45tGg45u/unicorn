@@ -298,7 +298,7 @@
 
 ---
 
-### - [ ] P00.T09 — Home, health check, error pages
+### - [x] P00.T09 — Home, health check, error pages
 
 **Files:** `apps/core/views.py`, `apps/core/urls.py`, `templates/core/home.html`, `templates/404.html`, `templates/500.html`, `apps/core/tests/test_pages.py`
 
