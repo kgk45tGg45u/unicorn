@@ -83,7 +83,7 @@
 
 ---
 
-### - [ ] P01.T04 — Encrypted personal data and private files
+### - [x] P01.T04 — Encrypted personal data and private files
 
 **Read:** docs/08 section 4; CLAUDE.md "Security and privacy".
 **Files:** `apps/members/crypto.py`, `apps/members/models.py` (DataKey, MemberPrivate, PrivateFile), `apps/members/services.py`, `apps/members/views.py` (file download), `apps/members/tests/test_crypto.py`

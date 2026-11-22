@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from apps.core.admin import ReadOnlyAdmin
 
-from .models import ContractTemplate, Member, Signature
+from .models import ContractTemplate, Member, PrivateFile, Signature
 
 
 @admin.register(Member)
@@ -19,3 +19,9 @@ class ContractTemplateAdmin(ReadOnlyAdmin):
 @admin.register(Signature)
 class SignatureAdmin(ReadOnlyAdmin):
     list_display = ("member", "template", "signed_at", "method")
+
+
+@admin.register(PrivateFile)
+class PrivateFileAdmin(ReadOnlyAdmin):
+    list_display = ("owner", "kind", "size", "created_at")
+    exclude = ("name_enc",)

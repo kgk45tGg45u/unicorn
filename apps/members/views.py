@@ -1,11 +1,13 @@
+import io
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import Http404
+from django.http import FileResponse, Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 
-from . import services
-from .models import ContractTemplate, Member, Signature
+from . import crypto, services
+from .models import ContractTemplate, Member, PrivateFile, Signature
 
 
 @login_required
@@ -57,3 +59,15 @@ def contract(request):
         "members/contract.html",
         {"template": template, "parts": parts, "already": already, "error": error},
     )
+
+
+@login_required
+def private_file(request, pk):
+    pf = get_object_or_404(PrivateFile, pk=pk)
+    if not services.can_view_file(request.member, pf):
+        return HttpResponseForbidden(_("You are not allowed to open this file."))
+    try:
+        name, data = services.read_private_file(pf)
+    except crypto.KeyDestroyed:
+        raise Http404 from None
+    return FileResponse(io.BytesIO(data), as_attachment=True, filename=name, content_type=pf.content_type)

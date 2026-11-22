@@ -34,6 +34,7 @@ DATABASES["default"]["OPTIONS"] = {
 }
 DATABASES["default"]["TEST"] = {"CHARSET": "utf8mb4", "COLLATION": "utf8mb4_unicode_ci"}
 DATABASES["default"]["ATOMIC_REQUESTS"] = False  # services open their own transactions
+PRIVATE_MEDIA_ROOT = env("PRIVATE_MEDIA_ROOT", default=str(BASE_DIR / "private_media"))
 UNICORN_MASTER_KEY = env("UNICORN_MASTER_KEY", default="")
 UNICORN_HMAC_KEY = env("UNICORN_HMAC_KEY", default="")
 UNICORN_BACKUP_NOTE = env("UNICORN_BACKUP_NOTE", default="")

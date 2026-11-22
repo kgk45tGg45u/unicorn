@@ -126,3 +126,48 @@ class Signature(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValueError("Signatures cannot be deleted.")
+
+
+class DataKey(models.Model):
+    """A member's own encryption key, wrapped with the server's master key (HF-14)."""
+
+    member = models.OneToOneField(Member, on_delete=models.PROTECT, related_name="data_key")
+    wrapped = models.BinaryField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    destroyed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"key of {self.member.number}"
+
+
+class MemberPrivate(models.Model):
+    """Personal data as one encrypted JSON blob: legal_name, street, city, phone, birth_date, iban, bic, bank_name."""
+
+    member = models.OneToOneField(Member, on_delete=models.PROTECT, related_name="private")
+    blob = models.BinaryField()
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"private data of {self.member.number}"
+
+
+class PrivateFile(models.Model):
+    """An uploaded file, stored encrypted outside the web root."""
+
+    KINDS = [
+        ("licence", _("licence")),
+        ("receipt", _("receipt")),
+        ("benefit_document", _("benefit document")),
+        ("other", _("other")),
+    ]
+
+    owner = models.ForeignKey(Member, on_delete=models.PROTECT, related_name="private_files")
+    kind = models.CharField(max_length=20, choices=KINDS)
+    path = models.CharField(max_length=200)  # relative to PRIVATE_MEDIA_ROOT
+    name_enc = models.BinaryField()  # the encrypted original file name
+    size = models.PositiveIntegerField()
+    content_type = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.kind} file {self.pk} of {self.owner.number}"
