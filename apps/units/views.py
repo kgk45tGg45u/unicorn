@@ -186,3 +186,87 @@ def reopen(request, slug):
     except services.UnitError as e:
         messages.error(request, str(e))
     return redirect("units:unit", slug=slug)
+
+
+@login_required
+def my_hours(request):
+    from datetime import date as date_cls
+
+    from .models import HoursEntry, TimerSession
+
+    member = request.member
+    my_units = [m.unit for m in member.unit_memberships.filter(left_at__isnull=True).select_related("unit")]
+    if request.method == "POST":
+        try:
+            unit = next(u for u in my_units if str(u.pk) == request.POST.get("unit"))
+            minutes = int(request.POST.get("hours") or 0) * 60 + int(request.POST.get("minutes") or 0)
+            day = date_cls.fromisoformat(request.POST.get("date", ""))
+            services.record_hours(
+                member,
+                unit,
+                day,
+                minutes,
+                activity=request.POST.get("activity", "other"),
+                note=request.POST.get("note", ""),
+            )
+            messages.success(request, _("Your hours were sent for approval."))
+        except (StopIteration, ValueError) as e:
+            messages.error(
+                request,
+                str(e) if isinstance(e, services.UnitError) else _("Please check the unit, the date and the time."),
+            )
+        return redirect("units:my_hours")
+    entries = list(HoursEntry.objects.filter(member=member).select_related("unit")[:100])
+    return render(
+        request,
+        "units/hours.html",
+        {
+            "units": my_units,
+            "entries": entries,
+            "timer": TimerSession.objects.filter(member=member).select_related("unit").first(),
+            "activities": HoursEntry.ACTIVITIES,
+            "today": services.timezone.now().astimezone(services.BERLIN).date().isoformat(),
+        },
+    )
+
+
+@login_required
+@require_POST
+def timer(request):
+    try:
+        if request.POST.get("action") == "start":
+            unit = get_object_or_404(Unit, pk=request.POST.get("unit"))
+            services.start_timer(request.member, unit)
+        else:
+            services.stop_timer(request.member)
+            messages.success(request, _("Your time was saved as a draft. Send it for approval below."))
+    except services.UnitError as e:
+        messages.error(request, str(e))
+    return redirect("units:my_hours")
+
+
+@login_required
+@require_POST
+def submit_draft(request, pk):
+    from .models import HoursEntry
+
+    entry = get_object_or_404(HoursEntry, pk=pk, member=request.member)
+    try:
+        services.submit_hours(entry)
+        messages.success(request, _("Your hours were sent for approval."))
+    except services.UnitError as e:
+        messages.error(request, str(e))
+    return redirect("units:my_hours")
+
+
+@login_required
+def unit_hours(request, slug):
+    unit = get_object_or_404(Unit, slug=slug)
+    if not services.is_council_member(request.member, unit) and not services.is_worker(request.member, unit):
+        messages.error(request, _("Only workers of the unit can see its hours."))
+        return redirect("units:unit", slug=slug)
+    return render(
+        request,
+        "units/unit_hours.html",
+        {"unit": unit, "entries": unit.hours.exclude(status="draft").select_related("member")[:200]},
+    )

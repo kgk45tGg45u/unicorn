@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo
+
 from django.db import transaction
 from django.utils import timezone
 from django.utils.translation import gettext as _
@@ -566,3 +568,112 @@ def close_unit(unit, reason, member=None, decision=None):
 DECISION_ACTIONS["close_unit"] = lambda decision: close_unit(
     decision.unit, decision.text or decision.title, decision=decision
 )
+
+
+# --- Recording hours ---
+
+BERLIN = ZoneInfo("Europe/Berlin")
+
+
+def period_for_date(day):
+    """The ledger period (calendar month, Europe/Berlin) that contains `day`."""
+    from datetime import datetime, time
+
+    from apps.ledger.services import current_period
+
+    return current_period(datetime.combine(day, time(12, 0), tzinfo=BERLIN))
+
+
+def _week_minutes(member, day, exclude=None):
+    from datetime import timedelta
+
+    from django.db.models import Sum
+
+    from .models import HoursEntry
+
+    monday = day - timedelta(days=day.weekday())
+    rows = HoursEntry.objects.filter(
+        member=member, date__range=(monday, monday + timedelta(days=6)), status__in=COUNTED_STATUSES
+    )
+    if exclude is not None:
+        rows = rows.exclude(pk=exclude)
+    return rows.aggregate(t=Sum("minutes"))["t"] or 0
+
+
+COUNTED_STATUSES = ("submitted", "approved", "pending_sale", "paid")
+
+
+def create_draft(member, unit, date, minutes, activity="other", note="", ref_type="", ref_id=""):
+    from .models import HoursEntry
+
+    if not isinstance(minutes, int) or not 1 <= minutes <= 1440:
+        raise UnitError(_("Please enter between 1 minute and 24 hours."))
+    if activity not in dict(HoursEntry.ACTIVITIES):
+        raise UnitError(_("Please choose what kind of work it was."))
+    return HoursEntry.objects.create(
+        member=member,
+        unit=unit,
+        date=date,
+        minutes=minutes,
+        activity=activity,
+        note=note[:300],
+        ref_type=ref_type,
+        ref_id=str(ref_id),
+    )
+
+
+def submit_hours(entry):
+    """Send a draft for approval. Checks the worker, the date, the period and the weekly limit."""
+    from .models import HoursEntry
+
+    with transaction.atomic():
+        entry = HoursEntry.objects.select_for_update().get(pk=entry.pk)
+        if entry.status != "draft":
+            raise UnitError(_("These hours were already sent."))
+        if not is_worker(entry.member, entry.unit):
+            raise UnitError(_("You can only record hours for a unit you work in."))
+        if entry.date > timezone.now().astimezone(BERLIN).date():
+            raise UnitError(_("You cannot record hours for a day that has not happened yet."))
+        period = period_for_date(entry.date)
+        if period.status != "open":
+            raise UnitError(_("That month is already closed, so hours can no longer be added to it."))
+        limit = int(get_param("membership.max_unicorn_hours_per_week") * 60)
+        entry.needs_extra_approval = _week_minutes(entry.member, entry.date, exclude=entry.pk) + entry.minutes > limit
+        entry.period = period
+        entry.status = "submitted"
+        entry.submitted_at = timezone.now()
+        entry.save()
+        touch(entry.unit)
+        audit.record(entry.member.number, "hours.submitted", entry, minutes=entry.minutes, unit=entry.unit_id)
+        return entry
+
+
+def record_hours(member, unit, date, minutes, **kw):
+    return submit_hours(create_draft(member, unit, date, minutes, **kw))
+
+
+def start_timer(member, unit):
+    from .models import TimerSession
+
+    if not is_worker(member, unit):
+        raise UnitError(_("You can only record hours for a unit you work in."))
+    with transaction.atomic():
+        if TimerSession.objects.filter(member=member).exists():
+            raise UnitError(_("Your timer is already running."))
+        return TimerSession.objects.create(member=member, unit=unit, started_at=timezone.now())
+
+
+def stop_timer(member, now=None):
+    """Stop the timer and make a draft entry with the minutes rounded to the nearest minute (at least one)."""
+    from .models import TimerSession
+
+    now = now or timezone.now()
+    with transaction.atomic():
+        timer = TimerSession.objects.select_for_update().filter(member=member).first()
+        if timer is None:
+            raise UnitError(_("Your timer is not running."))
+        minutes = max(1, min(1440, round((now - timer.started_at).total_seconds() / 60)))
+        day = timer.started_at.astimezone(BERLIN).date()
+        entry = create_draft(member, timer.unit, day, minutes, note=_("Recorded with the timer"))
+        timer.delete()
+        return entry

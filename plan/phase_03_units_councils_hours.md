@@ -190,7 +190,7 @@
 
 ---
 
-### - [ ] P03.T07 — Recording hours
+### - [x] P03.T07 — Recording hours
 
 **Read:** docs/06 section 3 ("Recording").
 **Files:** `apps/units/models.py` (HoursEntry, TimerSession), `apps/units/services.py`, `apps/units/forms.py`, `apps/units/views.py`, `apps/units/templates/units/hours*.html`, `apps/units/tests/test_hours_record.py`

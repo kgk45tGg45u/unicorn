@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "My hours" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "My hours" %}</h1>
+{% for message in messages %}<div class="alert alert-info">{{ message }}</div>{% endfor %}
+{% if not units %}
+  <p>{% translate "You do not work in a unit yet. Join a unit or open your own to record hours." %} <a href="{% url 'units:list' %}">{% translate "See the units" %}</a></p>
+{% else %}
+<h2 class="h5">{% translate "Timer" %}</h2>
+{% if timer %}
+  <form method="post" action="{% url 'units:timer' %}" class="mb-4">{% csrf_token %}
+    <p>{% blocktranslate with unit=timer.unit.name since=timer.started_at|date:"H:i" %}Your timer for {{ unit }} has been running since {{ since }}.{% endblocktranslate %}</p>
+    <button class="btn btn-primary" name="action" value="stop">{% translate "Stop" %}</button>
+  </form>
+{% else %}
+  <form method="post" action="{% url 'units:timer' %}" class="row g-2 mb-4">{% csrf_token %}
+    <div class="col-8 col-md-4"><select class="form-select" name="unit" aria-label="{% translate 'Unit' %}">{% for u in units %}<option value="{{ u.pk }}">{{ u.name }}</option>{% endfor %}</select></div>
+    <div class="col-4 col-md-2"><button class="btn btn-primary w-100" name="action" value="start">{% translate "Start" %}</button></div>
+  </form>
+{% endif %}
+<h2 class="h5">{% translate "Add hours by hand" %}</h2>
+<form method="post" class="row g-2 mb-4">{% csrf_token %}
+  <div class="col-12 col-md-3"><label class="form-label" for="unit">{% translate "Unit" %}</label><select class="form-select" id="unit" name="unit">{% for u in units %}<option value="{{ u.pk }}">{{ u.name }}</option>{% endfor %}</select></div>
+  <div class="col-12 col-md-3"><label class="form-label" for="date">{% translate "Day" %}</label><input class="form-control" type="date" id="date" name="date" value="{{ today }}" max="{{ today }}" required></div>
+  <div class="col-6 col-md-1"><label class="form-label" for="hours">{% translate "Hours" %}</label><input class="form-control" type="number" min="0" max="24" id="hours" name="hours" value="0"></div>
+  <div class="col-6 col-md-1"><label class="form-label" for="minutes">{% translate "Min." %}</label><input class="form-control" type="number" min="0" max="59" id="minutes" name="minutes" value="0"></div>
+  <div class="col-12 col-md-4"><label class="form-label" for="activity">{% translate "What kind of work?" %}</label><select class="form-select" id="activity" name="activity">{% for k, v in activities %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></div>
+  <div class="col-12 col-md-9"><label class="form-label" for="note">{% translate "Note (optional)" %}</label><input class="form-control" id="note" name="note" maxlength="300"></div>
+  <div class="col-12 col-md-3 align-self-end"><button class="btn btn-primary w-100" type="submit">{% translate "Send for approval" %}</button></div>
+</form>
+{% endif %}
+<h2 class="h5">{% translate "My entries" %}</h2>
+<div class="table-responsive"><table class="table">
+  <thead><tr><th>{% translate "Day" %}</th><th>{% translate "Unit" %}</th><th>{% translate "Time" %}</th><th>{% translate "Status" %}</th></tr></thead>
+  <tbody>
+  {% for e in entries %}
+    <tr><td>{{ e.date|date:"Y-m-d" }}</td><td>{{ e.unit.name }}</td><td>{{ e.minutes|floatformat:0 }} min</td>
+    <td>{{ e.get_status_display }}{% if e.needs_extra_approval %} · {% translate "needs extra approval" %}{% endif %}{% if e.rejection_reason %} · {{ e.rejection_reason }}{% endif %}
+    {% if e.status == "draft" %}<form method="post" action="{% url 'units:submit_draft' e.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-primary">{% translate "Send for approval" %}</button></form>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="4">{% translate "No hours yet." %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

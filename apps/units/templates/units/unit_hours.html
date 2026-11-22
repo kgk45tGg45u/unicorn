@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Hours of the unit" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% blocktranslate with name=unit.name %}Hours of {{ name }}{% endblocktranslate %}</h1>
+{% for message in messages %}<div class="alert alert-info">{{ message }}</div>{% endfor %}
+<div class="table-responsive"><table class="table">
+  <thead><tr><th>{% translate "Day" %}</th><th>{% translate "Worker" %}</th><th>{% translate "Time" %}</th><th>{% translate "Status" %}</th></tr></thead>
+  <tbody>{% for e in entries %}<tr><td>{{ e.date|date:"Y-m-d" }}</td><td>{{ e.member.display_name }}</td><td>{{ e.minutes }} min</td><td>{{ e.get_status_display }}</td></tr>
+  {% empty %}<tr><td colspan="4">{% translate "No hours yet." %}</td></tr>{% endfor %}</tbody>
+</table></div>
+<p><a href="{% url 'units:unit' unit.slug %}">{% translate "Back to the unit" %}</a></p>
+{% endblock %}

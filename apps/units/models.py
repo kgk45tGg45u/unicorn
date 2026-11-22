@@ -218,3 +218,62 @@ class Responsibility(models.Model):
 
     def __str__(self):
         return f"{self.member.number} responsible for {self.unit.name}"
+
+
+class HoursEntry(models.Model):
+    """Hours a member worked for one unit, recorded in whole minutes."""
+
+    ACTIVITIES = [
+        ("order", _("production order")),
+        ("booking", _("service performed")),
+        ("shift", _("shift")),
+        ("project", _("project")),
+        ("coordination", _("coordination")),
+        ("learning", _("learning")),
+        ("own_initiative", _("own initiative")),
+        ("other", _("other")),
+    ]
+    STATUSES = [
+        ("draft", _("draft")),
+        ("submitted", _("waiting for approval")),
+        ("approved", _("approved")),
+        ("rejected", _("rejected")),
+        ("pending_sale", _("paid when the products sell")),
+        ("paid", _("paid")),
+    ]
+
+    member = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="hours")
+    unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name="hours")
+    date = models.DateField()
+    minutes = models.PositiveIntegerField()  # 1 to 1440
+    activity = models.CharField(max_length=16, choices=ACTIVITIES, default="other")
+    ref_type = models.CharField(max_length=32, blank=True)
+    ref_id = models.CharField(max_length=32, blank=True)
+    note = models.CharField(max_length=300, blank=True)
+    status = models.CharField(max_length=14, choices=STATUSES, default="draft")
+    needs_extra_approval = models.BooleanField(default=False)
+    rejection_reason = models.CharField(max_length=300, blank=True)
+    period = models.ForeignKey("ledger.Period", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    transaction = models.ForeignKey(
+        "ledger.Transaction", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-date", "-id"]
+        indexes = [models.Index(fields=["member", "date"]), models.Index(fields=["unit", "status"])]
+
+    def __str__(self):
+        return f"{self.member.number}: {self.minutes} min for {self.unit.name} on {self.date}"
+
+
+class TimerSession(models.Model):
+    """A running start/stop timer. A member has at most one."""
+
+    member = models.OneToOneField("members.Member", on_delete=models.PROTECT, related_name="timer")
+    unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name="+")
+    started_at = models.DateTimeField()
+
+    def __str__(self):
+        return f"{self.member.number} timer for {self.unit.name}"

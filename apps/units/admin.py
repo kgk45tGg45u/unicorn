@@ -6,8 +6,10 @@ from .models import (
     CouncilDecision,
     CouncilRules,
     CouncilVote,
+    HoursEntry,
     JoinRequest,
     Responsibility,
+    TimerSession,
     Unit,
     UnitMembership,
 )
@@ -46,3 +48,13 @@ class CouncilRulesAdmin(ReadOnlyAdmin):
 @admin.register(Responsibility)
 class ResponsibilityAdmin(ReadOnlyAdmin):
     list_display = ("unit", "member", "starts_at", "ends_at", "how")
+
+
+@admin.register(HoursEntry)
+class HoursEntryAdmin(ReadOnlyAdmin):
+    list_display = ("member", "unit", "date", "minutes", "status")
+
+
+@admin.register(TimerSession)
+class TimerSessionAdmin(ReadOnlyAdmin):
+    list_display = ("member", "unit", "started_at")
