@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n market_tags %}
 {% block title %}{% translate "Pay in person" %} · Unicorn{% endblock %}
 {% block content %}
 <h1>{% translate "Pay in person" %}</h1>
@@ -8,7 +8,7 @@
 {% elif sale.status == "expired" %}
   <div class="alert alert-warning">{% translate "This payment code has expired. Please ask the seller for a new one." %}</div>
 {% else %}
-  <p class="lead">{% blocktranslate with q=sale.quantity|floatformat:"-4" item=sale.offer.item.name unit=sale.offer.unit.name %}{{ q }} × {{ item }} from {{ unit }}{% endblocktranslate %}</p>
+  <p class="lead">{% blocktranslate with q=sale.quantity|qty item=sale.offer.item.name unit=sale.offer.unit.name %}{{ q }} × {{ item }} from {{ unit }}{% endblocktranslate %}</p>
   <p class="display-6">{{ sale.amount_uniq|floatformat:2 }} UNIQ</p>
   <p class="text-muted">{% translate "The UNIQ go to the common fund (Fund 1). Nobody else receives them." %}</p>
   {% if own %}

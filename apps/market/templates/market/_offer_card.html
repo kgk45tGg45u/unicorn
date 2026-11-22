@@ -1,0 +1,20 @@
+{% load i18n %}
+<div class="col">
+  <div class="card h-100">
+    <div class="card-body">
+      <h2 class="h5 card-title"><a href="{% url 'catalogue:offer' c.offer.pk %}">{{ c.offer.item.name }}</a></h2>
+      <p class="card-subtitle text-muted mb-2">{{ c.offer.unit.name }}{% if c.offer.unit.town %} · {{ c.offer.unit.town }}{% endif %}</p>
+      <p class="mb-1"><strong>{{ c.offer.value_total|floatformat:2 }} UNIQ</strong> <span class="text-muted small">{% blocktranslate with u=c.offer.item.uom.name %}per {{ u }}{% endblocktranslate %}</span></p>
+      <p class="small mb-1">{% blocktranslate with d=c.offer.value_direct|floatformat:2 i=c.offer.value_indirect|floatformat:2 %}Direct {{ d }} h + indirect {{ i }} h{% endblocktranslate %}</p>
+      <p class="small mb-1">{% blocktranslate with e=c.offer.euro_content|floatformat:2 %}€{{ e }} bought from outside{% endblocktranslate %}</p>
+      <p class="small mb-1">
+        {% if c.offer.is_service %}
+          {% if c.expected %}{% blocktranslate with d=c.expected|date:"D j M, H:i" %}Next free session: {{ d }}{% endblocktranslate %}{% else %}{% translate "No open session yet" %}{% endif %}
+        {% else %}
+          {% blocktranslate with d=c.expected|date:"j M Y" %}Ready around {{ d }}{% endblocktranslate %}
+        {% endif %}
+      </p>
+      <p class="small text-muted mb-0">{% if c.count %}{% blocktranslate with a=c.average|floatformat:1 n=c.count %}{{ a }} ★ from {{ n }} reviews{% endblocktranslate %}{% else %}{% translate "No reviews yet" %}{% endif %}</p>
+    </div>
+  </div>
+</div>

@@ -6,10 +6,13 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.translation import gettext as _
+from django.views.decorators.http import require_POST
 
 from apps.catalogue.models import Offer
 from apps.core.decorators import sensitive_action
+from apps.units import services as unit_services
 
 from . import services
 
@@ -137,3 +140,302 @@ def unit_reviews(request, slug):
     except services.MarketError:
         raise PermissionDenied from None
     return render(request, "market/unit_reviews.html", {"unit": unit, "reviews": reviews})
+
+
+# --- The market ---
+
+
+def _card(offer):
+    average, count = services.review_summary(offer)
+    return {
+        "offer": offer,
+        "average": average,
+        "count": count,
+        "expected": services.expected_date(offer),
+    }
+
+
+def market_index(request):
+    """Search and browse offers. Never ordered by price or by stars."""
+    q = request.GET.get("q", "").strip()
+    kind = request.GET.get("kind", "")
+    trade = request.GET.get("trade", "")
+    town = request.GET.get("town", "")
+    offers = services.search_offers(request.member, q, kind, trade, town)
+    cards = [_card(o) for o in offers[:60]]
+    trades = sorted(
+        set(
+            Offer.objects.filter(status="active")
+            .exclude(unit__trade_code="")
+            .values_list("unit__trade_code", flat=True)
+        )
+    )
+    return render(
+        request,
+        "market/index.html",
+        {
+            "cards": cards,
+            "q": q,
+            "kind": kind,
+            "trade": trade,
+            "town": town,
+            "trades": trades,
+            "more": len(offers) > 60,
+        },
+    )
+
+
+@login_required
+@require_POST
+def order_offer(request, pk):
+    offer = get_object_or_404(Offer, pk=pk)
+    try:
+        line = services.place_order(request.member, offer, request.POST.get("quantity", ""))
+        every = request.POST.get("repeat", "")
+        if every in ("week", "month"):
+            first = services._next_standing_date(services.today(), every)
+            services.create_standing_order(request.member, offer, line.quantity, every, first_date=first)
+    except services.MarketError as e:
+        messages.error(request, str(e))
+        return redirect("catalogue:offer", pk=offer.pk)
+    messages.success(request, _("Your order is placed. The UNIQ are held until you receive it."))
+    return redirect("market:my_orders")
+
+
+@login_required
+@require_POST
+def book_slot(request, pk):
+    from .models import ServiceSlot
+
+    slot = get_object_or_404(ServiceSlot, pk=pk)
+    try:
+        services.book(request.member, slot)
+    except services.MarketError as e:
+        messages.error(request, str(e))
+        return redirect("catalogue:offer", pk=slot.offer_id)
+    messages.success(request, _("Booked. The UNIQ are held until the session is done."))
+    return redirect("market:my_orders")
+
+
+# --- My orders ---
+
+
+@login_required
+def my_orders(request):
+    from .models import Booking, OrderLine, StandingOrder
+
+    member = request.member
+    lines = list(
+        OrderLine.objects.filter(order__buyer=member)
+        .select_related("offer__item", "offer__unit", "production_order")
+        .order_by("-created_at", "-id")[:100]
+    )
+    for line in lines:
+        line.actions = services.line_actions(line)
+    bookings = list(
+        Booking.objects.filter(customer=member)
+        .select_related("slot__offer__item", "slot__offer__unit")
+        .order_by("-created_at", "-id")[:100]
+    )
+    for booking in bookings:
+        booking.actions = services.booking_actions(booking)
+    standing = StandingOrder.objects.filter(member=member).exclude(status="ended").select_related("offer__item")
+    return render(
+        request,
+        "market/my_orders.html",
+        {"lines": lines, "bookings": bookings, "standing": standing, "reasons": services.DISPUTE_REASONS},
+    )
+
+
+@login_required
+@require_POST
+def my_order_action(request, kind, pk, action):
+    from .models import Booking, OrderLine, StandingOrder
+
+    member = request.member
+    try:
+        if kind == "line":
+            line = get_object_or_404(OrderLine, pk=pk, order__buyer=member)
+            if action == "cancel":
+                services.cancel_line(line, member)
+            elif action == "confirm":
+                services.confirm_received(line, member)
+            elif action == "refuse":
+                services.refuse(line, member)
+            elif action == "dispute":
+                services.dispute(line, member, request.POST.get("reason", ""), request.POST.get("text", ""))
+            else:
+                raise Http404
+        elif kind == "booking":
+            booking = get_object_or_404(Booking, pk=pk, customer=member)
+            if action == "cancel":
+                services.cancel_booking(booking, member)
+            elif action == "confirm":
+                services.confirm_performed(booking, member)
+            elif action == "dispute":
+                services.dispute_booking(booking, member, request.POST.get("text", ""))
+            else:
+                raise Http404
+        elif kind == "standing":
+            so = get_object_or_404(StandingOrder, pk=pk, member=member)
+            if action == "pause":
+                services.pause_standing_order(so, member)
+            elif action == "resume":
+                services.resume_standing_order(so, member)
+            elif action == "end":
+                services.end_standing_order(so, member)
+            else:
+                raise Http404
+        else:
+            raise Http404
+    except services.MarketError as e:
+        messages.error(request, str(e))
+    else:
+        messages.success(request, _("Done."))
+    return redirect("market:my_orders")
+
+
+# --- The unit's Work page ---
+
+
+def _worker_unit(request, slug):
+    from apps.units.models import Unit
+
+    unit = get_object_or_404(Unit, slug=slug)
+    if not unit_services.is_worker(request.member, unit):
+        raise PermissionDenied
+    return unit
+
+
+@login_required
+def unit_work(request, slug):
+    from .models import InputRequest, OrderLine, ProductionOrder, PurchaseNeed, ServiceSlot
+
+    unit = _worker_unit(request, slug)
+    member = request.member
+    orders = list(
+        ProductionOrder.objects.filter(offer__unit=unit, status__in=["open", "started"])
+        .select_related("offer__item")
+        .prefetch_related("lines")
+        .order_by("due_date", "id")
+    )
+    needs = (
+        InputRequest.objects.filter(production_order__offer__unit=unit)
+        .exclude(status__in=["cancelled", "received"])
+        .select_related("item", "production_order__offer__item", "supplier_offer__unit", "provided_by")
+    )
+    to_deliver = (
+        InputRequest.objects.filter(supplier_offer__unit=unit, source="unicorn", status__in=["open", "confirmed"])
+        .select_related("item", "production_order__offer__unit")
+        .order_by("due_date")
+    )
+    to_confirm = InputRequest.objects.filter(provided_by=member, source="own_free", status="open").select_related(
+        "item", "production_order__offer__unit"
+    )
+    ready = OrderLine.objects.filter(
+        offer__unit=unit, status__in=[OrderLine.READY, OrderLine.FROM_STOCK]
+    ).select_related("offer__item", "order__buyer")
+    now = timezone.now()
+    slots = list(
+        ServiceSlot.objects.filter(offer__unit=unit, status__in=["open", "full"])
+        .select_related("offer__item")
+        .prefetch_related("bookings__customer")
+        .order_by("starts_at")
+    )
+    for slot in slots:
+        slot.started = slot.starts_at <= now
+    offers = list(Offer.objects.filter(unit=unit, status="active").select_related("item"))
+    return render(
+        request,
+        "market/unit_work.html",
+        {
+            "unit": unit,
+            "orders": orders,
+            "needs": needs,
+            "to_deliver": to_deliver,
+            "to_confirm": to_confirm,
+            "ready": ready,
+            "slots": slots,
+            "product_offers": [o for o in offers if not o.is_service],
+            "service_offers": [o for o in offers if o.is_service],
+            "purchase_needs": PurchaseNeed.objects.filter(unit=unit, status="open").select_related("item"),
+            "continuous": unit.mode == "continuous",
+        },
+    )
+
+
+def _int(request, name="id"):
+    try:
+        return int(request.POST.get(name, ""))
+    except ValueError:
+        raise Http404 from None
+
+
+def _when(text):
+    """A date and time typed as 2026-12-01 10:00 (Europe/Berlin)."""
+    from datetime import datetime
+
+    try:
+        return datetime.strptime(text.strip().replace("T", " "), "%Y-%m-%d %H:%M").replace(tzinfo=services.BERLIN)
+    except ValueError:
+        raise services.MarketError(_("Please enter the date and time like 2026-12-01 10:00.")) from None
+
+
+@login_required
+@require_POST
+def unit_work_action(request, slug, action):
+    from datetime import date
+
+    from .models import Booking, InputRequest, OrderLine, ProductionOrder, ServiceSlot
+
+    unit = _worker_unit(request, slug)
+    member, p = request.member, request.POST
+    try:
+        if action in ("start", "complete", "hours"):
+            po = get_object_or_404(ProductionOrder, pk=_int(request), offer__unit=unit)
+            if action == "start":
+                services.start_production(po, member)
+            elif action == "complete":
+                services.complete_production(po, member, p.get("quantity_done", ""))
+            else:
+                try:
+                    day = date.fromisoformat(p.get("date") or services.today().isoformat())
+                    minutes = int(p.get("minutes", ""))
+                except ValueError:
+                    raise services.MarketError(_("Please enter the date and the minutes.")) from None
+                services.record_production_hours(member, po, day, minutes)
+        elif action == "hand_over":
+            services.hand_over(get_object_or_404(OrderLine, pk=_int(request), offer__unit=unit), member)
+        elif action in ("confirm_input", "deliver_input", "receive_input"):
+            req = get_object_or_404(InputRequest, pk=_int(request))
+            if action == "confirm_input":
+                services.confirm_input(req, member)
+            elif action == "deliver_input":
+                services.mark_delivered(req, member)
+            else:
+                services.mark_received(req, member)
+        elif action in ("performed", "cancel_slot", "no_show"):
+            if action == "no_show":
+                services.mark_no_show(get_object_or_404(Booking, pk=_int(request), slot__offer__unit=unit), member)
+            else:
+                slot = get_object_or_404(ServiceSlot, pk=_int(request), offer__unit=unit)
+                (services.mark_performed if action == "performed" else services.cancel_slot)(slot, member)
+        elif action == "new_slots":
+            offer = get_object_or_404(Offer, pk=_int(request, "offer"), unit=unit)
+            services.create_weekly_slots(member, offer, _when(p.get("starts_at", "")), int(p.get("weeks") or 1))
+        elif action in ("advance", "own_initiative"):
+            offer = get_object_or_404(Offer, pk=_int(request, "offer"), unit=unit)
+            if action == "advance":
+                services.start_advance(offer, p.get("quantity", ""), member, estimate=p.get("estimate") or None)
+            else:
+                services.start_own_initiative(offer, p.get("quantity", ""), member)
+        elif action == "weekly_plan":
+            offer = get_object_or_404(Offer, pk=_int(request, "offer"), unit=unit)
+            services.set_weekly_plan(member, offer, p.get("quantity", ""), p.get("reason", ""))
+        else:
+            raise Http404
+    except (services.MarketError, unit_services.UnitError) as e:
+        messages.error(request, str(e))
+    else:
+        messages.success(request, _("Done."))
+    return redirect("market:work", slug=unit.slug)

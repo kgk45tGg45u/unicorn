@@ -251,7 +251,7 @@
 
 ---
 
-### - [ ] P05.T11 — The marketplace pages
+### - [x] P05.T11 — The marketplace pages
 
 **Read:** docs/06 section 6.
 **Files:** `apps/market/views.py`, `apps/market/urls.py`, `apps/market/templates/market/*.html`, `apps/market/tests/test_pages.py`

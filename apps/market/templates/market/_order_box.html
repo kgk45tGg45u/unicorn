@@ -1,0 +1,47 @@
+{% load i18n %}
+<section aria-labelledby="order-title" class="my-4 p-3 border rounded">
+  {% if offer.is_service %}
+    <h2 class="h5" id="order-title">{% translate "Book a session" %}</h2>
+    {% if not orderable %}<p class="text-muted">{% translate "This offer is not available now." %}</p>
+    {% elif slots %}
+      <ul class="list-unstyled mb-0">
+        {% for slot in slots %}
+          <li class="d-flex flex-wrap gap-2 align-items-center mb-2">
+            <span>{{ slot.starts_at|date:"D j M, H:i" }} · {% blocktranslate count n=slot.capacity_left %}{{ n }} place left{% plural %}{{ n }} places left{% endblocktranslate %}</span>
+            {% if can_buy %}
+              <form method="post" action="{% url 'market:book' slot.pk %}">{% csrf_token %}<button class="btn btn-sm btn-primary" type="submit">{% translate "Book" %}</button></form>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-muted mb-0">{% translate "There are no open sessions in the next 4 weeks." %}</p>
+    {% endif %}
+  {% else %}
+    <h2 class="h5" id="order-title">{% translate "Order" %}</h2>
+    {% if not orderable %}<p class="text-muted mb-0">{% translate "This offer is not available now." %}</p>
+    {% else %}
+      <p>{% blocktranslate with d=expected|date:"j M Y" %}It will be ready around {{ d }}. The unit makes it after you order, so you can cancel for free until it starts.{% endblocktranslate %}</p>
+      {% if can_buy %}
+        <form method="post" action="{% url 'market:order' offer.pk %}" class="row g-2 align-items-end">{% csrf_token %}
+          <div class="col-6 col-md-3">
+            <label class="form-label" for="quantity">{% translate "How many?" %}</label>
+            <input class="form-control" id="quantity" name="quantity" inputmode="decimal" value="1" required>
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label" for="repeat">{% translate "Repeat" %}</label>
+            <select class="form-select" id="repeat" name="repeat">
+              <option value="">{% translate "Just once" %}</option>
+              <option value="week">{% translate "Every week" %}</option>
+              <option value="month">{% translate "Every month" %}</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-4"><span class="text-muted small">{% translate "Pick it up at the unit." %}</span></div>
+          <div class="col-12"><button class="btn btn-primary" type="submit">{% translate "Order" %}</button></div>
+        </form>
+      {% endif %}
+    {% endif %}
+  {% endif %}
+  {% if not member %}<p class="small text-muted mb-0 mt-2"><a href="{% url 'account_login' %}">{% translate "Sign in" %}</a> {% translate "to order or book." %}</p>
+  {% elif not can_buy %}<p class="small text-muted mb-0 mt-2">{% translate "Only members can order or book. Please finish joining first." %}</p>{% endif %}
+</section>

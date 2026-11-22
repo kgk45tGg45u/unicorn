@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load i18n market_tags %}
+{% block title %}{% translate "Work" %} · {{ unit.name }}{% endblock %}
+{% block content %}
+<h1>{{ unit.name }}: {% translate "Work" %}</h1>
+<p><a href="{% url 'units:unit' unit.slug %}">{% translate "Back to the unit" %}</a> · <a href="{% url 'market:sell' %}">{% translate "Sell in person" %}</a></p>
+
+<h2 class="h5 mt-4">{% translate "Production orders" %}</h2>
+{% for po in orders %}
+  <div class="card mb-2"><div class="card-body">
+    <strong>{{ po.quantity|qty }} × {{ po.offer.item.name }}</strong>
+    <span class="badge text-bg-secondary">{{ po.get_status_display }}</span>
+    <span class="text-muted small">{{ po.get_origin_display }} · {% blocktranslate with d=po.due_date|date:"j M Y" %}due {{ d }}{% endblocktranslate %} · {% blocktranslate with a=po.quantity_assigned|qty %}{{ a }} promised{% endblocktranslate %}</span>
+    <div class="d-flex flex-wrap gap-2 mt-2">
+      {% if po.status == "open" %}<form method="post" action="{% url 'market:work_action' unit.slug 'start' %}">{% csrf_token %}<input type="hidden" name="id" value="{{ po.pk }}"><button class="btn btn-sm btn-primary" type="submit">{% translate "Start" %}</button></form>{% endif %}
+      {% if po.status == "started" %}
+        <form method="post" action="{% url 'market:work_action' unit.slug 'complete' %}" class="d-flex gap-2">{% csrf_token %}<input type="hidden" name="id" value="{{ po.pk }}">
+          <label class="visually-hidden" for="done-{{ po.pk }}">{% translate "How many were made?" %}</label>
+          <input class="form-control form-control-sm w-auto" id="done-{{ po.pk }}" name="quantity_done" inputmode="decimal" value="{{ po.quantity|qty }}">
+          <button class="btn btn-sm btn-primary" type="submit">{% translate "Done" %}</button></form>
+      {% endif %}
+      <form method="post" action="{% url 'market:work_action' unit.slug 'hours' %}" class="d-flex gap-2">{% csrf_token %}<input type="hidden" name="id" value="{{ po.pk }}">
+        <label class="visually-hidden" for="min-{{ po.pk }}">{% translate "Minutes worked" %}</label>
+        <input class="form-control form-control-sm w-auto" id="min-{{ po.pk }}" name="minutes" inputmode="numeric" placeholder="{% translate 'Minutes' %}">
+        <button class="btn btn-sm btn-outline-secondary" type="submit">{% translate "Record hours" %}</button></form>
+    </div>
+  </div></div>
+{% empty %}<p class="text-muted">{% translate "No open production orders." %}</p>{% endfor %}
+
+<h2 class="h5 mt-4">{% translate "Inputs" %}</h2>
+{% for r in to_confirm %}
+  <div class="mb-2">{% blocktranslate with q=r.quantity|qty i=r.item.name u=r.production_order.offer.unit.name %}{{ u }} asks you to provide {{ q }} {{ i }}.{% endblocktranslate %}
+    <form class="d-inline" method="post" action="{% url 'market:work_action' unit.slug 'confirm_input' %}">{% csrf_token %}<input type="hidden" name="id" value="{{ r.pk }}"><button class="btn btn-sm btn-primary" type="submit">{% translate "I will bring it" %}</button></form></div>
+{% endfor %}
+{% for r in to_deliver %}
+  <div class="mb-2">{% blocktranslate with q=r.quantity|qty i=r.item.name u=r.production_order.offer.unit.name d=r.due_date|date:"j M" %}Deliver {{ q }} {{ i }} to {{ u }} by {{ d }}.{% endblocktranslate %}
+    <form class="d-inline" method="post" action="{% url 'market:work_action' unit.slug 'deliver_input' %}">{% csrf_token %}<input type="hidden" name="id" value="{{ r.pk }}"><button class="btn btn-sm btn-primary" type="submit">{% translate "Handed over" %}</button></form></div>
+{% endfor %}
+{% for r in needs %}
+  <div class="mb-2 text-muted">{% blocktranslate with q=r.quantity|qty i=r.item.name d=r.due_date|date:"j M" %}We need {{ q }} {{ i }} by {{ d }}.{% endblocktranslate %} <span class="badge text-bg-secondary">{{ r.get_source_display }} · {{ r.get_status_display }}</span>
+    {% if r.status == "delivered" or r.status == "confirmed" and r.source == "own_free" %}<form class="d-inline" method="post" action="{% url 'market:work_action' unit.slug 'receive_input' %}">{% csrf_token %}<input type="hidden" name="id" value="{{ r.pk }}"><button class="btn btn-sm btn-primary" type="submit">{% translate "Received" %}</button></form>{% endif %}</div>
+{% endfor %}
+{% if not to_confirm and not to_deliver and not needs %}<p class="text-muted">{% translate "No inputs to handle." %}</p>{% endif %}
+
+<h2 class="h5 mt-4">{% translate "Ready to hand over" %}</h2>
+{% for line in ready %}
+  <div class="mb-2">{% blocktranslate with q=line.quantity|qty i=line.offer.item.name b=line.order.buyer.display_name %}{{ q }} × {{ i }} for {{ b }}{% endblocktranslate %}
+    <form class="d-inline" method="post" action="{% url 'market:work_action' unit.slug 'hand_over' %}">{% csrf_token %}<input type="hidden" name="id" value="{{ line.pk }}"><button class="btn btn-sm btn-primary" type="submit">{% translate "Handed over" %}</button></form></div>
+{% empty %}<p class="text-muted">{% translate "Nothing is waiting to be handed over." %}</p>{% endfor %}
+
+<h2 class="h5 mt-4">{% translate "Sessions and bookings" %}</h2>
+{% for slot in slots %}
+  <div class="card mb-2"><div class="card-body">
+    <strong>{{ slot.offer.item.name }}</strong> · {{ slot.starts_at|date:"D j M Y, H:i" }} · {% blocktranslate with n=slot.capacity_left %}{{ n }} places left{% endblocktranslate %}
+    <ul class="mb-2">{% for b in slot.bookings.all %}{% if b.status != "cancelled" %}<li>{{ b.customer.display_name }} <span class="badge text-bg-secondary">{{ b.get_status_display }}</span>
+      {% if slot.started and b.status == "booked" %}<form class="d-inline" method="post" action="{% url 'market:work_action' unit.slug 'no_show' %}">{% csrf_token %}<input type="hidden" name="id" value="{{ b.pk }}"><button class="btn btn-sm btn-outline-secondary" type="submit">{% translate "Did not come" %}</button></form>{% endif %}</li>{% endif %}{% endfor %}</ul>
+    <div class="d-flex gap-2">
+      {% if slot.started %}<form method="post" action="{% url 'market:work_action' unit.slug 'performed' %}">{% csrf_token %}<input type="hidden" name="id" value="{{ slot.pk }}"><button class="btn btn-sm btn-primary" type="submit">{% translate "The session took place" %}</button></form>
+      {% else %}<form method="post" action="{% url 'market:work_action' unit.slug 'cancel_slot' %}">{% csrf_token %}<input type="hidden" name="id" value="{{ slot.pk }}"><button class="btn btn-sm btn-outline-danger" type="submit">{% translate "Cancel the session" %}</button></form>{% endif %}
+    </div>
+  </div></div>
+{% empty %}<p class="text-muted">{% translate "No sessions offered." %}</p>{% endfor %}
+{% if service_offers %}
+<form method="post" action="{% url 'market:work_action' unit.slug 'new_slots' %}" class="row g-2 align-items-end mb-4">{% csrf_token %}
+  <div class="col-12 col-md-3"><label class="form-label" for="slot-offer">{% translate "Service" %}</label><select class="form-select" id="slot-offer" name="offer">{% for o in service_offers %}<option value="{{ o.pk }}">{{ o.item.name }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-3"><label class="form-label" for="starts_at">{% translate "First session (date and time)" %}</label><input class="form-control" id="starts_at" name="starts_at" placeholder="2026-12-01 10:00"></div>
+  <div class="col-6 col-md-2"><label class="form-label" for="weeks">{% translate "Every week for" %}</label><input class="form-control" id="weeks" name="weeks" inputmode="numeric" value="1"></div>
+  <div class="col-12 col-md-2"><button class="btn btn-outline-primary" type="submit">{% translate "Offer sessions" %}</button></div>
+</form>
+{% endif %}
+
+{% if product_offers %}
+<h2 class="h5 mt-4">{% translate "Make for the shelf" %}</h2>
+<p class="small text-muted">{% translate "Making ahead is limited to a share of the expected orders. Anything more is made on your own initiative, and its hours are paid only as it sells." %}</p>
+<form method="post" action="{% url 'market:work_action' unit.slug 'advance' %}" class="row g-2 align-items-end mb-2">{% csrf_token %}
+  <div class="col-12 col-md-3"><label class="form-label" for="adv-offer">{% translate "Product" %}</label><select class="form-select" id="adv-offer" name="offer">{% for o in product_offers %}<option value="{{ o.pk }}">{{ o.item.name }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-2"><label class="form-label" for="adv-q">{% translate "How many?" %}</label><input class="form-control" id="adv-q" name="quantity" inputmode="decimal"></div>
+  <div class="col-6 col-md-3"><label class="form-label" for="adv-e">{% translate "Expected orders a month (first 3 months)" %}</label><input class="form-control" id="adv-e" name="estimate" inputmode="decimal"></div>
+  <div class="col-12 col-md-2"><button class="btn btn-outline-primary" type="submit">{% translate "Make ahead" %}</button></div>
+</form>
+<form method="post" action="{% url 'market:work_action' unit.slug 'own_initiative' %}" class="row g-2 align-items-end mb-2">{% csrf_token %}
+  <div class="col-12 col-md-3"><label class="form-label" for="own-offer">{% translate "Product" %}</label><select class="form-select" id="own-offer" name="offer">{% for o in product_offers %}<option value="{{ o.pk }}">{{ o.item.name }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-2"><label class="form-label" for="own-q">{% translate "How many?" %}</label><input class="form-control" id="own-q" name="quantity" inputmode="decimal"></div>
+  <div class="col-12 col-md-3"><button class="btn btn-outline-secondary" type="submit">{% translate "Make on our own initiative" %}</button></div>
+</form>
+{% if continuous %}
+<form method="post" action="{% url 'market:work_action' unit.slug 'weekly_plan' %}" class="row g-2 align-items-end mb-4">{% csrf_token %}
+  <div class="col-12 col-md-3"><label class="form-label" for="wp-offer">{% translate "Product" %}</label><select class="form-select" id="wp-offer" name="offer">{% for o in product_offers %}<option value="{{ o.pk }}">{{ o.item.name }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-2"><label class="form-label" for="wp-q">{% translate "A week" %}</label><input class="form-control" id="wp-q" name="quantity" inputmode="decimal"></div>
+  <div class="col-6 col-md-4"><label class="form-label" for="wp-r">{% translate "Why?" %}</label><input class="form-control" id="wp-r" name="reason"></div>
+  <div class="col-12 col-md-3"><button class="btn btn-outline-primary" type="submit">{% translate "Propose a weekly plan" %}</button></div>
+</form>
+{% endif %}
+{% endif %}
+
+<h2 class="h5 mt-4">{% translate "To buy from outside" %}</h2>
+{% for n in purchase_needs %}
+  <div>{% blocktranslate with q=n.quantity|qty i=n.item.name m=n.month|date:"F Y" e=n.euro_estimate %}{{ q }} {{ i }} in {{ m }}, about €{{ e }}{% endblocktranslate %}</div>
+{% empty %}<p class="text-muted">{% translate "Nothing to buy from outside." %}</p>{% endfor %}
+{% endblock %}

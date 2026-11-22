@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Market" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Market" %}</h1>
+<form method="get" class="row g-2 mb-4" role="search">
+  <div class="col-12 col-md-4"><label class="visually-hidden" for="q">{% translate "Search" %}</label><input class="form-control" id="q" name="q" value="{{ q }}" placeholder="{% translate 'What are you looking for?' %}"></div>
+  <div class="col-6 col-md-2"><label class="visually-hidden" for="kind">{% translate "Product or service" %}</label>
+    <select class="form-select" id="kind" name="kind">
+      <option value="">{% translate "Products and services" %}</option>
+      <option value="product"{% if kind == "product" %} selected{% endif %}>{% translate "Products" %}</option>
+      <option value="service"{% if kind == "service" %} selected{% endif %}>{% translate "Services" %}</option>
+    </select></div>
+  <div class="col-6 col-md-2"><label class="visually-hidden" for="trade">{% translate "Trade" %}</label>
+    <select class="form-select" id="trade" name="trade">
+      <option value="">{% translate "All trades" %}</option>
+      {% for t in trades %}<option value="{{ t }}"{% if trade == t %} selected{% endif %}>{{ t }}</option>{% endfor %}
+    </select></div>
+  <div class="col-6 col-md-2"><label class="visually-hidden" for="town">{% translate "Town" %}</label><input class="form-control" id="town" name="town" value="{{ town }}" placeholder="{% translate 'Town' %}"></div>
+  <div class="col-6 col-md-2"><button class="btn btn-primary w-100" type="submit">{% translate "Search" %}</button></div>
+</form>
+<p class="small text-muted">{% translate "Offers in your area come first, then the rest in alphabetical order. The list is never ordered by price or by stars." %}</p>
+{% if cards %}
+  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+    {% for c in cards %}{% include "market/_offer_card.html" %}{% endfor %}
+  </div>
+  {% if more %}<p class="text-muted mt-3">{% translate "There are more offers. Please narrow your search." %}</p>{% endif %}
+{% else %}
+  <p class="lead">{% translate "Nothing matches your search yet." %}</p>
+  {% block no_results %}{% endblock %}
+{% endif %}
+{% endblock %}

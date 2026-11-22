@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load i18n market_tags %}
+{% block title %}{% translate "My orders" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "My orders" %}</h1>
+
+<h2 class="h5 mt-4">{% translate "Products" %}</h2>
+{% for line in lines %}
+  <div class="card mb-2"><div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between">
+      <div>
+        <strong>{{ line.quantity|qty }} × {{ line.offer.item.name }}</strong>
+        <span class="text-muted">{{ line.offer.unit.name }}</span>
+      </div>
+      <div>{{ line.total_uniq|floatformat:2 }} UNIQ · <span class="badge text-bg-secondary">{{ line.get_status_display }}</span></div>
+    </div>
+    {% if line.due_date and line.status != "delivered" and line.status != "cancelled" and line.status != "refused" %}<div class="small text-muted">{% blocktranslate with d=line.due_date|date:"j M Y" %}Expected {{ d }}{% endblocktranslate %}</div>{% endif %}
+    {% if line.disputed_at %}<div class="small text-warning">{% translate "You reported a problem with this order." %}</div>{% endif %}
+    <div class="d-flex flex-wrap gap-2 mt-2">
+      {% if "cancel" in line.actions %}<form method="post" action="{% url 'market:my_order_action' 'line' line.pk 'cancel' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary" type="submit">{% translate "Cancel" %}</button></form>{% endif %}
+      {% if "confirm" in line.actions %}<form method="post" action="{% url 'market:my_order_action' 'line' line.pk 'confirm' %}">{% csrf_token %}<button class="btn btn-sm btn-primary" type="submit">{% translate "I received it" %}</button></form>{% endif %}
+      {% if "refuse" in line.actions %}<form method="post" action="{% url 'market:my_order_action' 'line' line.pk 'refuse' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit">{% translate "I do not want it" %}</button></form>{% endif %}
+      {% if "dispute" in line.actions %}
+        <form method="post" action="{% url 'market:my_order_action' 'line' line.pk 'dispute' %}" class="d-flex flex-wrap gap-2">{% csrf_token %}
+          <label class="visually-hidden" for="reason-{{ line.pk }}">{% translate "What went wrong?" %}</label>
+          <select class="form-select form-select-sm w-auto" id="reason-{{ line.pk }}" name="reason">{% for key, label in reasons.items %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select>
+          <label class="visually-hidden" for="text-{{ line.pk }}">{% translate "A few words" %}</label>
+          <input class="form-control form-control-sm w-auto" id="text-{{ line.pk }}" name="text" maxlength="250" placeholder="{% translate 'A few words' %}">
+          <button class="btn btn-sm btn-outline-warning" type="submit">{% translate "Report a problem" %}</button>
+        </form>
+      {% endif %}
+      {% if "review" in line.actions %}<a class="btn btn-sm btn-outline-primary" href="{% url 'market:review_line' line.pk %}">{% translate "Write a review" %}</a>{% endif %}
+    </div>
+  </div></div>
+{% empty %}
+  <p class="text-muted">{% translate "You have not ordered anything yet." %} <a href="{% url 'market:index' %}">{% translate "Go to the market" %}</a></p>
+{% endfor %}
+
+<h2 class="h5 mt-4">{% translate "Services" %}</h2>
+{% for b in bookings %}
+  <div class="card mb-2"><div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between">
+      <div><strong>{{ b.slot.offer.item.name }}</strong> <span class="text-muted">{{ b.slot.offer.unit.name }}</span> · {{ b.slot.starts_at|date:"D j M Y, H:i" }}</div>
+      <div>{% if b.hold %}{{ b.price_uniq|floatformat:2 }} UNIQ{% else %}{% translate "free" %}{% endif %} · <span class="badge text-bg-secondary">{{ b.get_status_display }}</span></div>
+    </div>
+    <div class="d-flex flex-wrap gap-2 mt-2">
+      {% if "cancel" in b.actions %}<form method="post" action="{% url 'market:my_order_action' 'booking' b.pk 'cancel' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary" type="submit">{% translate "Cancel" %}</button></form>{% endif %}
+      {% if "confirm" in b.actions %}<form method="post" action="{% url 'market:my_order_action' 'booking' b.pk 'confirm' %}">{% csrf_token %}<button class="btn btn-sm btn-primary" type="submit">{% translate "It took place" %}</button></form>{% endif %}
+      {% if "dispute" in b.actions %}
+        <form method="post" action="{% url 'market:my_order_action' 'booking' b.pk 'dispute' %}" class="d-flex flex-wrap gap-2">{% csrf_token %}
+          <label class="visually-hidden" for="btext-{{ b.pk }}">{% translate "A few words" %}</label>
+          <input class="form-control form-control-sm w-auto" id="btext-{{ b.pk }}" name="text" maxlength="250" placeholder="{% translate 'What went wrong?' %}">
+          <button class="btn btn-sm btn-outline-warning" type="submit">{% translate "Report a problem" %}</button>
+        </form>
+      {% endif %}
+      {% if "review" in b.actions %}<a class="btn btn-sm btn-outline-primary" href="{% url 'market:review_booking' b.pk %}">{% translate "Write a review" %}</a>{% endif %}
+    </div>
+  </div></div>
+{% empty %}
+  <p class="text-muted">{% translate "You have not booked anything yet." %}</p>
+{% endfor %}
+
+<h2 class="h5 mt-4">{% translate "Standing orders" %}</h2>
+{% for so in standing %}
+  <div class="card mb-2"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div>{{ so.quantity|qty }} × {{ so.offer.item.name }} · {{ so.get_every_display }} · {% blocktranslate with d=so.next_date|date:"j M Y" %}next on {{ d }}{% endblocktranslate %} · <span class="badge text-bg-secondary">{{ so.get_status_display }}</span>
+      {% if so.last_result %}<div class="small text-muted">{{ so.last_result }}</div>{% endif %}</div>
+    <div class="d-flex gap-2">
+      {% if so.status == "active" %}<form method="post" action="{% url 'market:my_order_action' 'standing' so.pk 'pause' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary" type="submit">{% translate "Pause" %}</button></form>{% endif %}
+      {% if so.status == "paused" %}<form method="post" action="{% url 'market:my_order_action' 'standing' so.pk 'resume' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary" type="submit">{% translate "Start again" %}</button></form>{% endif %}
+      <form method="post" action="{% url 'market:my_order_action' 'standing' so.pk 'end' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit">{% translate "End" %}</button></form>
+    </div>
+  </div></div>
+{% empty %}
+  <p class="text-muted">{% translate "You have no standing orders. You can repeat an order when you place it." %}</p>
+{% endfor %}
+{% endblock %}

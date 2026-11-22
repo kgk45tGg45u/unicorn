@@ -1632,3 +1632,59 @@ def search_offers(member=None, text="", kind="", trade="", town=""):
         return 2
 
     return sorted(offers, key=lambda o: (rank(o), o.item.name.lower(), o.unit.name.lower(), o.pk))
+
+
+# --- What the pages show (docs/06 section 6) ---
+
+
+def expected_date(offer):
+    """Products: today plus the lead time. Services: the start of the next open session, if any."""
+    if offer.is_service:
+        slot = (
+            ServiceSlot.objects.filter(offer=offer, status="open", starts_at__gt=timezone.now())
+            .order_by("starts_at")
+            .first()
+        )
+        return _local(slot.starts_at) if slot else None
+    return today() + timedelta(days=catalogue.lead_time_days(offer))
+
+
+def open_slots(offer, weeks=4):
+    """The open sessions of the next 4 weeks, for the booking calendar."""
+    now = timezone.now()
+    return list(
+        ServiceSlot.objects.filter(
+            offer=offer, status="open", starts_at__gt=now, starts_at__lte=now + timedelta(weeks=weeks)
+        ).order_by("starts_at")
+    )
+
+
+def line_actions(line) -> set:
+    """The buttons a buyer gets on an order line."""
+    actions = set()
+    if line.status in (OrderLine.DELIVERED, OrderLine.REFUSED, OrderLine.CANCELLED):
+        if line.status == OrderLine.DELIVERED and not hasattr(line, "review"):
+            actions.add("review")
+        return actions
+    if _free_cancel_allowed(line):
+        actions.add("cancel")
+    if line.status in (OrderLine.READY, OrderLine.FROM_STOCK, OrderLine.HANDED_OVER):
+        actions.add("confirm")
+        if line.disputed_at is None:
+            actions.add("dispute")
+    if line.status in (OrderLine.READY, OrderLine.HANDED_OVER):
+        actions.add("refuse")
+    return actions
+
+
+def booking_actions(booking) -> set:
+    actions = set()
+    if booking.status == "booked" and booking.slot.starts_at > timezone.now():
+        actions.add("cancel")
+    if booking.status in ("performed", "disputed"):
+        actions.add("confirm")
+    if booking.status == "performed":
+        actions.add("dispute")
+    if booking.status == "confirmed" and not hasattr(booking, "review"):
+        actions.add("review")
+    return actions
