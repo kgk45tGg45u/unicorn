@@ -167,3 +167,20 @@ class AuditRun(models.Model):
 
     def __str__(self):
         return f"audit {self.started_at:%Y-%m-%d %H:%M} ({'ok' if self.ok else 'findings'})"
+
+
+class DailyFingerprint(AppendOnlyModel):
+    """The head of a chain at the end of a day, published on the open-books page. Append-only."""
+
+    date = models.DateField()
+    chain = models.CharField(max_length=16, default="uniq")  # P08 adds "fund"
+    seq = models.BigIntegerField()
+    hash = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["date", "chain"], name="unique_fingerprint_per_day")]
+        ordering = ["-date", "chain"]
+
+    def __str__(self):
+        return f"{self.date} {self.chain} #{self.seq}"

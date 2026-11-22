@@ -195,7 +195,7 @@
 
 ---
 
-### - [ ] P02.T08 — Daily fingerprint and the open-books page
+### - [x] P02.T08 — Daily fingerprint and the open-books page
 
 **Read:** docs/08 section 5 ("Daily public fingerprint", "Open books").
 **Files:** `apps/ledger/models.py` (DailyFingerprint), `apps/ledger/jobs.py`, `apps/ledger/views.py`, `apps/ledger/templates/ledger/open_books.html`, `apps/ledger/tests/test_open_books.py`

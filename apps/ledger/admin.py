@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from apps.core.admin import ReadOnlyAdmin
 
-from .models import Account, AccountBalance, AuditRun, ChainHead, Entry, Hold, Period, Transaction
+from .models import Account, AccountBalance, AuditRun, ChainHead, DailyFingerprint, Entry, Hold, Period, Transaction
 
 
 @admin.register(Account)
@@ -43,3 +43,8 @@ class HoldAdmin(ReadOnlyAdmin):
 @admin.register(AuditRun)
 class AuditRunAdmin(ReadOnlyAdmin):
     list_display = ("started_at", "ok", "last_seq", "full")
+
+
+@admin.register(DailyFingerprint)
+class DailyFingerprintAdmin(ReadOnlyAdmin):
+    list_display = ("date", "chain", "seq")

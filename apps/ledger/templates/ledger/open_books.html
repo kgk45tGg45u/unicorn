@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Open books" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Open books" %}</h1>
+<p>{% translate "Everyone can check these totals. No personal data and no member numbers appear here." %}</p>
+{% if audit %}
+  {% if audit.ok %}
+    <div class="alert alert-success">{% blocktranslate with date=audit.finished_at|date:"Y-m-d" %}Books checked on {{ date }}.{% endblocktranslate %}</div>
+  {% else %}
+    <div class="alert alert-danger"><strong>{% translate "The last check of the books found problems:" %}</strong>
+      <ul class="mb-0">{% for f in audit.findings %}<li>{{ f }}</li>{% endfor %}</ul></div>
+  {% endif %}
+{% else %}
+  <div class="alert alert-secondary">{% translate "The books have not been checked yet." %}</div>
+{% endif %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3"><div class="card"><div class="card-body"><div class="small text-muted">{% translate "UNIQ outstanding" %}</div><div class="fs-4">{{ outstanding }}</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card"><div class="card-body"><div class="small text-muted">{% translate "Fund 1 now" %}</div><div class="fs-4">{{ fund1 }}</div></div></div></div>
+</div>
+<h2 class="h5">{% blocktranslate with p=current.period %}This month ({{ p }}) so far{% endblocktranslate %}</h2>
+<ul>
+  <li>{% translate "Paid for hours" %}: {{ current.issued }}</li>
+  <li>{% translate "Flat tax" %}: {{ current.tax }} ({% translate "rate" %} {{ current.tax_rate }})</li>
+  <li>{% translate "Spent" %}: {{ current.spent }}</li>
+</ul>
+<h2 class="h5 mt-4">{% translate "Closed months" %}</h2>
+<div class="table-responsive"><table class="table table-sm">
+  <thead><tr><th>{% translate "Month" %}</th><th>{% translate "Paid for hours" %}</th><th>{% translate "Flat tax" %}</th><th>{% translate "Spent" %}</th><th>{% translate "Tax rate" %}</th></tr></thead>
+  <tbody>{% for c in closed %}<tr><td>{{ c.period }}</td><td>{{ c.issued }}</td><td>{{ c.tax }}</td><td>{{ c.spent }}</td><td>{{ c.tax_rate }}</td></tr>
+  {% empty %}<tr><td colspan="5" class="text-muted">{% translate "No month has been closed yet." %}</td></tr>{% endfor %}</tbody>
+</table></div>
+<p><a href="{% url 'ledger:open_books_csv' %}">{% translate "Download the period totals as CSV" %}</a></p>
+<h2 class="h5 mt-4">{% translate "Daily fingerprints" %}</h2>
+<p class="small">{% translate "Copy a fingerprint today, and you can prove later that the books of that day were not changed." %}</p>
+<div class="table-responsive"><table class="table table-sm">
+  <thead><tr><th>{% translate "Date" %}</th><th>{% translate "Chain" %}</th><th>{% translate "Number" %}</th><th>{% translate "Fingerprint" %}</th></tr></thead>
+  <tbody>{% for f in fingerprints %}<tr><td>{{ f.date|date:"Y-m-d" }}</td><td>{{ f.chain }}</td><td>{{ f.seq }}</td><td><code class="small">{{ f.hash }}</code></td></tr>
+  {% empty %}<tr><td colspan="4" class="text-muted">{% translate "No fingerprint yet." %}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

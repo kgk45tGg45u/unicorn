@@ -86,3 +86,56 @@ def my_uniq_csv(request):
     for row in _rows(member):
         writer.writerow([row["when"].isoformat(), str(row["kind"]), row["reason"], row["amount"], row["balance"]])
     return response
+
+
+# --- The open books: public, no personal data, no member numbers ---
+
+
+def _period_totals(period):
+    from django.db.models import Sum
+
+    def total(kind, account_kind):
+        value = Entry.objects.filter(
+            transaction__period=period, transaction__kind=kind, account__kind=account_kind, amount__gt=0
+        ).aggregate(t=Sum("amount"))["t"]
+        return value or 0
+
+    return {
+        "period": f"{period.year}-{period.month:02d}",
+        "issued": total("hours_pay", "member"),
+        "tax": total("tax", "fund2"),
+        "spent": total("purchase", "fund1") + total("rent", "fund1"),
+        "tax_rate": period.tax_rate,
+        "status": period.status,
+    }
+
+
+def open_books(request):
+    from .models import AuditRun, DailyFingerprint, Period
+
+    current = services.current_period()
+    return render(
+        request,
+        "ledger/open_books.html",
+        {
+            "outstanding": -services.balance(services.fund2()),
+            "fund1": services.balance(services.fund1()),
+            "current": _period_totals(current),
+            "closed": [_period_totals(p) for p in Period.objects.filter(status=Period.CLOSED)[:24]],
+            "fingerprints": DailyFingerprint.objects.all()[:30],
+            "audit": AuditRun.objects.first(),
+        },
+    )
+
+
+def open_books_csv(request):
+    from .models import Period
+
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = 'attachment; filename="unicorn-period-totals.csv"'
+    writer = csv.writer(response)
+    writer.writerow(["period", "status", "tax_rate", "issued", "tax", "spent"])
+    for period in Period.objects.order_by("year", "month"):
+        t = _period_totals(period)
+        writer.writerow([t["period"], t["status"], t["tax_rate"], t["issued"], t["tax"], t["spent"]])
+    return response
