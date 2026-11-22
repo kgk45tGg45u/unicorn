@@ -82,7 +82,7 @@
 
 ---
 
-### - [ ] P00.T03 — The database: MySQL locally, MariaDB on the server
+### - [x] P00.T03 — The database: MySQL locally, MariaDB on the server
 
 **Read:** docs/09 sections 1–2.
 **Files:** `unicorn/settings.py`, `unicorn/__init__.py`, `apps/core/tests/test_database.py`

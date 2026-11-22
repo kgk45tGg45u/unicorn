@@ -41,3 +41,5 @@ Questions that are not decided. The coding agent adds new ones at the end of sec
 ## 3. Raised while building
 
 *(The coding agent adds questions here: date, task number, question, the option chosen for now.)*
+
+- 2026-11-22, P00.T01/T03: Python 3.14 (the Mac's default) has no ready-made `cryptography` for this older macOS, so I installed Python 3.12 with Homebrew (`.venv` uses it). Driver: `mysqlclient` built fine, no PyMySQL needed. Local MySQL is 8.3.0.

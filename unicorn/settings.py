@@ -27,6 +27,13 @@ ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 DATABASES = {
     "default": env.db("DATABASE_URL", default="sqlite:///" + str(BASE_DIR / "db.sqlite3"))
 }  # T03 makes it MySQL
+DATABASES["default"]["OPTIONS"] = {
+    "charset": "utf8mb4",
+    "isolation_level": "read committed",
+    "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+}
+DATABASES["default"]["TEST"] = {"CHARSET": "utf8mb4", "COLLATION": "utf8mb4_unicode_ci"}
+DATABASES["default"]["ATOMIC_REQUESTS"] = False  # services open their own transactions
 UNICORN_MASTER_KEY = env("UNICORN_MASTER_KEY", default="")
 UNICORN_HMAC_KEY = env("UNICORN_HMAC_KEY", default="")
 UNICORN_BACKUP_NOTE = env("UNICORN_BACKUP_NOTE", default="")
