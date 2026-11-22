@@ -149,3 +149,21 @@ class Hold(models.Model):
 
     def __str__(self):
         return f"hold {self.amount} on {self.account} ({self.status})"
+
+
+class AuditRun(models.Model):
+    """One run of the nightly audit."""
+
+    started_at = models.DateTimeField()
+    finished_at = models.DateTimeField(null=True, blank=True)
+    ok = models.BooleanField(default=False)
+    last_seq = models.BigIntegerField(default=0)
+    last_hash = models.CharField(max_length=64, blank=True)
+    full = models.BooleanField(default=False)
+    findings = models.JSONField(default=list)  # plain sentences
+
+    class Meta:
+        ordering = ["-started_at"]
+
+    def __str__(self):
+        return f"audit {self.started_at:%Y-%m-%d %H:%M} ({'ok' if self.ok else 'findings'})"

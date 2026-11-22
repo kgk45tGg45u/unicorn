@@ -171,7 +171,7 @@
 
 ---
 
-### - [ ] P02.T07 — The nightly audit
+### - [x] P02.T07 — The nightly audit
 
 **Read:** docs/08 section 5 ("Nightly audit").
 **Files:** `apps/ledger/models.py` (AuditRun), `apps/ledger/audit.py`, `apps/ledger/management/commands/audit_books.py`, `apps/ledger/tests/test_audit.py`
