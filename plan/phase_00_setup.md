@@ -236,7 +236,7 @@
 
 ---
 
-### - [ ] P00.T07 — The registry of democratic defaults
+### - [x] P00.T07 — The registry of democratic defaults
 
 **Read:** docs/01 sections 2–3; `config/defaults.yaml` (its header).
 **Files:** `apps/rules/models.py`, `apps/rules/services.py`, `apps/rules/management/commands/load_defaults.py`, `apps/rules/tests/test_defaults.py`
