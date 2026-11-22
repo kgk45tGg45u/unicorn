@@ -5,6 +5,10 @@ from . import views
 app_name = "catalogue"
 
 urlpatterns = [
+    path("open-books/io-table/", views.io_table, name="io_table"),
+    path("open-books/io-table/offers.csv", views.io_offers_csv, name="io_offers_csv"),
+    path("open-books/io-table/inputs.csv", views.io_inputs_csv, name="io_inputs_csv"),
+    path("open-books/io-table/tools.csv", views.io_tools_csv, name="io_tools_csv"),
     path("units/<slug:slug>/offers/new/", views.offer_new, name="offer_new"),
     path("offers/<int:pk>/", views.offer_page, name="offer"),
     path("offers/<int:pk>/recipe/", views.recipe_editor, name="recipe"),

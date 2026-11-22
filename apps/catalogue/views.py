@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST
 from apps.core.decorators import sensitive_action
 
 from . import services
-from .models import Item, Offer, OfferInput, OfferTool, UnitOfMeasure
+from .models import Item, Offer, OfferInput, OfferTool, UnitOfMeasure, ValueRun
 
 
 def item_page(request, pk):
@@ -202,3 +202,82 @@ def unit_services_can_edit(member, unit):
     from apps.units import services as unit_services
 
     return unit_services.can_edit_unit(member, unit)
+
+
+# --- Open data: the input-output table (no personal data, HF-14) ---
+
+
+def io_table(request):
+    from django.db.models import Sum
+
+    active = Offer.objects.filter(status="active")
+    last = ValueRun.objects.order_by("-started_at").first()
+    return render(
+        request,
+        "catalogue/io_table.html",
+        {
+            "items": Item.objects.exclude(status__in=["placeholder", "retired"]).count(),
+            "placeholders": Item.objects.filter(status="placeholder").count(),
+            "offers": active.count(),
+            "euro_total": active.aggregate(t=Sum("euro_content"))["t"] or 0,
+            "last_run": last.finished_at or last.started_at if last else None,
+        },
+    )
+
+
+def _csv(name, header, rows):
+    import csv
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{name}.csv"'
+    writer = csv.writer(response)
+    writer.writerow(header)
+    writer.writerows(rows)
+    return response
+
+
+def io_offers_csv(request):
+    rows = (
+        (
+            o.pk,
+            o.unit.slug,
+            o.item.name,
+            o.item.kind,
+            o.item.uom_id,
+            o.value_basis,
+            o.value_direct,
+            o.value_indirect,
+            o.value_total,
+            o.euro_content,
+        )
+        for o in Offer.objects.filter(status="active").select_related("unit", "item")
+    )
+    header = [
+        "offer_id",
+        "unit",
+        "item",
+        "kind",
+        "uom",
+        "basis",
+        "direct_hours",
+        "indirect_hours",
+        "total_hours",
+        "euro_content",
+    ]
+    return _csv("offers", header, rows)
+
+
+def io_inputs_csv(request):
+    rows = (
+        (r.offer_id, r.item.name, r.quantity_per_batch, r.source, r.preferred_supplier_id or "")
+        for r in OfferInput.objects.filter(offer__status="active").select_related("item")
+    )
+    return _csv("inputs", ["offer_id", "item", "quantity_per_batch", "source", "preferred_supplier_offer_id"], rows)
+
+
+def io_tools_csv(request):
+    rows = (
+        (t.offer_id, t.tool_item.name, t.source, t.uses_per_batch, t.lifetime_uses)
+        for t in OfferTool.objects.filter(offer__status="active").select_related("tool_item")
+    )
+    return _csv("tools", ["offer_id", "tool", "source", "uses_per_batch", "lifetime_uses"], rows)

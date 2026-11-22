@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "The input-output table" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "The input-output table" %}</h1>
+<p>{% translate "This is Unicorn's open book of production: what is made, how, and how many hours are in it. There is no personal data here." %}</p>
+<dl class="row">
+  <dt class="col-sm-4">{% translate "Items" %}</dt><dd class="col-sm-8">{{ items }}</dd>
+  <dt class="col-sm-4">{% translate "Items nobody makes in Unicorn yet" %}</dt><dd class="col-sm-8">{{ placeholders }}</dd>
+  <dt class="col-sm-4">{% translate "Active offers" %}</dt><dd class="col-sm-8">{{ offers }}</dd>
+  <dt class="col-sm-4">{% translate "Euros bought from outside, in all offers (per unit made)" %}</dt><dd class="col-sm-8">€{{ euro_total|floatformat:2 }}</dd>
+  <dt class="col-sm-4">{% translate "Last price calculation" %}</dt><dd class="col-sm-8">{% if last_run %}{{ last_run|date:"Y-m-d H:i" }}{% else %}{% translate "not yet" %}{% endif %}</dd>
+</dl>
+<h2 class="h5">{% translate "Download" %}</h2>
+<ul>
+  <li><a href="{% url 'catalogue:io_offers_csv' %}">{% translate "Offers and their values (CSV)" %}</a></li>
+  <li><a href="{% url 'catalogue:io_inputs_csv' %}">{% translate "Inputs of the recipes (CSV)" %}</a></li>
+  <li><a href="{% url 'catalogue:io_tools_csv' %}">{% translate "Tools of the recipes (CSV)" %}</a></li>
+</ul>
+{% endblock %}

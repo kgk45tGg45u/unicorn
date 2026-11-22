@@ -213,7 +213,7 @@
 
 ---
 
-### - [ ] P04.T07 — The input-output table as open data
+### - [x] P04.T07 — The input-output table as open data
 
 **Read:** docs/04 section 10 ("Open data").
 **Files:** `apps/catalogue/views.py`, `apps/catalogue/templates/catalogue/io_table.html`, `apps/catalogue/tests/test_open_data.py`
