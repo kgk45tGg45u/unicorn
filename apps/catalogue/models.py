@@ -53,3 +53,85 @@ class Item(models.Model):
             raise ValidationError(_("A service is counted per service or per hour."))
         if self.kind == "service" and self.shelf_life_days is not None:
             raise ValidationError(_("Only products have a shelf life."))
+
+
+class Offer(models.Model):
+    """One unit's way of making an item: its cycle, recipe and price. Each offer is its own row of the table."""
+
+    STATUSES = [
+        ("draft", _("draft")),
+        ("active", _("active")),
+        ("paused", _("paused")),
+        ("retired", _("retired")),
+        ("value_error", _("price cannot be computed")),
+    ]
+    PLACES = [("unit", _("at the unit")), ("customer", _("at the customer's place")), ("online", _("online"))]
+    BASES = [("declared", _("from the recipe")), ("measured", _("measured from the last 3 months"))]
+
+    unit = models.ForeignKey("units.Unit", on_delete=models.PROTECT, related_name="offers")
+    item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name="offers")
+    status = models.CharField(max_length=12, choices=STATUSES, default="draft")
+    status_note = models.CharField(max_length=120, blank=True)
+
+    # product cycle
+    batch_size = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    min_batch = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    cycle_days = models.PositiveIntegerField(default=0)
+    setup_minutes = models.PositiveIntegerField(default=0)
+    direct_minutes_per_batch = models.PositiveIntegerField(null=True, blank=True)
+
+    # service cycle
+    duration_minutes = models.PositiveIntegerField(null=True, blank=True)
+    capacity = models.PositiveIntegerField(null=True, blank=True)
+    travel_minutes = models.PositiveIntegerField(default=0)
+    place = models.CharField(max_length=10, choices=PLACES, default="unit")
+    max_per_week = models.PositiveIntegerField(null=True, blank=True)
+
+    advance_share = models.DecimalField(max_digits=5, decimal_places=4, default=0)
+    sold_outside = models.BooleanField(default=False)
+    outside_price = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    outside_currency = models.CharField(max_length=3, default="EUR")
+
+    # computed by the value engine only (HF-3)
+    declared_hours_per_unit = models.DecimalField(max_digits=18, decimal_places=4, default=0)
+    measured_hours_per_unit = models.DecimalField(max_digits=18, decimal_places=4, null=True, blank=True)
+    value_direct = models.DecimalField(max_digits=18, decimal_places=4, default=0)
+    value_indirect = models.DecimalField(max_digits=18, decimal_places=4, default=0)
+    value_total = models.DecimalField(max_digits=18, decimal_places=4, default=0)
+    euro_content = models.DecimalField(max_digits=18, decimal_places=4, default=0)
+    values_computed_at = models.DateTimeField(null=True, blank=True)
+    value_basis = models.CharField(max_length=10, choices=BASES, default="declared")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["item__name", "unit__name"]
+
+    def __str__(self):
+        return f"{self.item.name} by {self.unit.name}"
+
+    @property
+    def is_service(self):
+        return self.item.kind == "service"
+
+    def clean(self):
+        errors = []
+        if self.item_id is None:
+            return
+        if self.item.kind == "product":
+            if not self.batch_size or self.batch_size <= 0:
+                errors.append(_("A product needs a batch size above zero."))
+            if not self.direct_minutes_per_batch or self.direct_minutes_per_batch <= 0:
+                errors.append(_("A product needs the working time of a batch."))
+            if self.duration_minutes or self.capacity or self.travel_minutes or self.max_per_week:
+                errors.append(_("A product has no session fields: duration, capacity, travel or sessions a week."))
+        else:
+            if not self.duration_minutes or self.duration_minutes <= 0:
+                errors.append(_("A service needs a duration above zero."))
+            if not self.capacity or self.capacity < 1:
+                errors.append(_("A service needs a capacity of at least 1."))
+            if self.batch_size or self.min_batch or self.direct_minutes_per_batch or self.setup_minutes:
+                errors.append(_("A service has no batch fields: batch size, setup or working time of a batch."))
+        if errors:
+            raise ValidationError(errors)

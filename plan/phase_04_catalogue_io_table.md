@@ -31,7 +31,7 @@
 
 ---
 
-### - [ ] P04.T02 — Offers and working cycles
+### - [x] P04.T02 — Offers and working cycles
 
 **Read:** docs/04 sections 3–4.
 **Files:** `apps/catalogue/models.py` (Offer), `apps/catalogue/services.py`, `apps/catalogue/forms.py`, `apps/catalogue/tests/test_offers.py`
