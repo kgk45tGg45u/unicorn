@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "My UNIQ account" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "My UNIQ account" %}</h1>
+<p>{% translate "UNIQ are earned only by working. They cannot be given to other members, and they are never exchanged for euros." %}</p>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3"><div class="card"><div class="card-body"><div class="small text-muted">{% translate "Balance" %}</div><div class="fs-4">{{ balance }}</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card"><div class="card-body"><div class="small text-muted">{% translate "Held for orders" %}</div><div class="fs-4">{{ held }}</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card"><div class="card-body"><div class="small text-muted">{% translate "Available" %}</div><div class="fs-4">{{ available }}</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card"><div class="card-body"><div class="small text-muted">{% translate "Retirement account" %}</div><div class="fs-4">{{ retirement }}</div></div></div></div>
+</div>
+<p>{% blocktranslate with rate=tax_rate %}This month's flat tax rate: {{ rate }}{% endblocktranslate %}</p>
+<p><a href="{% url 'ledger:my_uniq_csv' %}">{% translate "Download CSV" %}</a></p>
+<div class="table-responsive">
+<table class="table table-sm">
+  <thead><tr><th>{% translate "Date" %}</th><th>{% translate "What" %}</th><th>{% translate "Reason" %}</th><th class="text-end">{% translate "Amount" %}</th><th class="text-end">{% translate "Balance" %}</th></tr></thead>
+  <tbody>
+  {% for row in page %}
+    <tr>
+      <td>{{ row.when|date:"Y-m-d H:i" }}</td><td>{{ row.kind }}</td><td>{{ row.reason }}</td>
+      <td class="text-end {% if row.amount > 0 %}text-success{% else %}text-danger{% endif %}">{% if row.amount > 0 %}+{% endif %}{{ row.amount }}</td>
+      <td class="text-end">{{ row.balance }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5" class="text-muted">{% translate "Nothing here yet." %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if page.has_other_pages %}
+<nav>
+  {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">{% translate "Newer" %}</a>{% endif %}
+  {% if page.has_next %}<a class="ms-3" href="?page={{ page.next_page_number }}">{% translate "Older" %}</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

@@ -155,7 +155,7 @@
 
 ---
 
-### - [ ] P02.T06 — My UNIQ account page
+### - [x] P02.T06 — My UNIQ account page
 
 **Files:** `apps/ledger/views.py`, `apps/ledger/urls.py`, `apps/ledger/templates/ledger/my_account.html`, `apps/ledger/tests/test_views.py`
 
