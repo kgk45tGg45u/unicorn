@@ -8,7 +8,7 @@
 
 ---
 
-### - [ ] P05.T01 — Orders for products
+### - [x] P05.T01 — Orders for products
 
 **Read:** docs/06 section 5 ("Orders").
 **Files:** `apps/market/` (new app), `apps/market/models.py` (Order, OrderLine), `apps/market/services.py`, `apps/market/tests/test_orders.py`

@@ -1,0 +1,10 @@
+from django.apps import AppConfig
+
+
+class MarketConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "apps.market"
+    label = "market"
+
+    def ready(self):
+        from . import services  # noqa: F401
