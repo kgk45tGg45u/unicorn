@@ -313,3 +313,29 @@ class StandingOrder(models.Model):
 
     def __str__(self):
         return f"{self.quantity} x {self.offer} {self.get_every_display()} ({self.status})"
+
+
+class Sale(models.Model):
+    """Paying in person: the seller makes a sale in the app, the buyer scans its QR code and confirms."""
+
+    STATUSES = [("open", _("open")), ("paid", _("paid")), ("expired", _("expired"))]
+
+    offer = models.ForeignKey("catalogue.Offer", on_delete=models.PROTECT, related_name="sales")
+    quantity = models.DecimalField(max_digits=14, decimal_places=4)
+    seller = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="sales_made")
+    code = models.CharField(max_length=10, unique=True)
+    amount_uniq = models.DecimalField(max_digits=18, decimal_places=4)  # the price at the time of the sale (HF-3)
+    status = models.CharField(max_length=8, choices=STATUSES, default="open")
+    expires_at = models.DateTimeField()
+    buyer = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="sales_bought"
+    )
+    stock_lot = models.ForeignKey(StockLot, null=True, blank=True, on_delete=models.PROTECT, related_name="sales")
+    created_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"sale {self.code} of {self.quantity} {self.offer} ({self.status})"

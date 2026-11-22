@@ -37,3 +37,8 @@ def auto_confirm_booking(payload):
 def standing_orders(payload):
     """Daily. Safe to run twice: after a run, no standing order is due today any more."""
     services.run_standing_orders()
+
+
+@job("market.expire_sales")
+def expire_sales(payload):
+    services.expire_sales()

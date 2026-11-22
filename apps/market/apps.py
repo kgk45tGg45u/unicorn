@@ -16,6 +16,7 @@ class MarketConfig(AppConfig):
             ("market.auto_confirm", {}),
             ("market.auto_confirm_bookings", {}),
             ("market.standing_orders", {}),
+            ("market.expire_sales", {}),
         ):
             if entry not in daily.DAILY_JOBS:
                 daily.DAILY_JOBS.append(entry)

@@ -196,7 +196,7 @@
 
 ---
 
-### - [ ] P05.T08 — Paying in person with a QR code
+### - [x] P05.T08 — Paying in person with a QR code
 
 **Read:** docs/06 section 6 ("Buying in person").
 **Files:** `apps/market/models.py` (Sale), `apps/market/views.py`, `apps/market/templates/market/sale*.html`, `apps/market/tests/test_sale.py`

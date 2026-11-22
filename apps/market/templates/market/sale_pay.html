@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Pay in person" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Pay in person" %}</h1>
+{% if sale.status == "paid" %}
+  <div class="alert alert-success">{% translate "This sale has been paid." %}</div>
+{% elif sale.status == "expired" %}
+  <div class="alert alert-warning">{% translate "This payment code has expired. Please ask the seller for a new one." %}</div>
+{% else %}
+  <p class="lead">{% blocktranslate with q=sale.quantity|floatformat:"-4" item=sale.offer.item.name unit=sale.offer.unit.name %}{{ q }} × {{ item }} from {{ unit }}{% endblocktranslate %}</p>
+  <p class="display-6">{{ sale.amount_uniq|floatformat:2 }} UNIQ</p>
+  <p class="text-muted">{% translate "The UNIQ go to the common fund (Fund 1). Nobody else receives them." %}</p>
+  {% if own %}
+    <div class="alert alert-info">{% translate "You cannot pay your own sale. Show this code to the buyer." %}</div>
+  {% else %}
+    <form method="post">{% csrf_token %}
+      <button class="btn btn-primary btn-lg" type="submit">{% translate "Pay" %}</button>
+    </form>
+  {% endif %}
+{% endif %}
+{% endblock %}

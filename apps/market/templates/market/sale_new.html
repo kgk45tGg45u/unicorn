@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Sell in person" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Sell in person" %}</h1>
+<p>{% translate "Choose what you are selling from your unit's shelf. You will get a code for the buyer to scan. It works for 10 minutes." %}</p>
+{% if offers %}
+<form method="post" class="col-md-6">{% csrf_token %}
+  <div class="mb-3">
+    <label class="form-label" for="offer">{% translate "What are you selling?" %}</label>
+    <select class="form-select" id="offer" name="offer" required>
+      {% for o in offers %}<option value="{{ o.pk }}">{{ o.item.name }} ({{ o.unit.name }}) · {{ o.value_total|floatformat:2 }} UNIQ</option>{% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="quantity">{% translate "How many?" %}</label>
+    <input class="form-control" id="quantity" name="quantity" inputmode="decimal" value="1" required>
+  </div>
+  <button class="btn btn-primary" type="submit">{% translate "Show the code" %}</button>
+</form>
+{% else %}
+<p class="text-muted">{% translate "You do not work in a unit that makes products yet." %}</p>
+{% endif %}
+{% endblock %}

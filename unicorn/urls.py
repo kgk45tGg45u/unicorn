@@ -25,6 +25,7 @@ urlpatterns = [
     path("", include("apps.ledger.urls")),
     path("units/", include("apps.units.urls")),
     path("", include("apps.catalogue.urls")),
+    path("", include("apps.market.urls")),
     path("rules/", include("apps.rules.urls")),
     path("", include("apps.core.urls")),
 ]

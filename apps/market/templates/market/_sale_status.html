@@ -1,0 +1,13 @@
+{% load i18n %}
+<div id="sale-status"{% if sale.status == "open" %} hx-get="{% url 'market:sale' sale.code %}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  {% if sale.status == "paid" %}
+    <div class="alert alert-success">{% translate "Paid. The buyer confirmed the payment." %}</div>
+  {% elif sale.status == "expired" %}
+    <div class="alert alert-warning">{% translate "This code has expired. Make a new sale to get a new code." %}</div>
+  {% else %}
+    <div class="text-center">
+      <div class="mx-auto mb-3" style="max-width: 18rem" role="img" aria-label="{% translate 'QR code for the buyer to scan' %}">{{ qr|safe }}</div>
+      <p class="text-muted small">{% translate "Waiting for the buyer to scan the code and confirm." %}</p>
+    </div>
+  {% endif %}
+</div>

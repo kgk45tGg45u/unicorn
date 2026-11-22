@@ -23,6 +23,7 @@ from .models import (
     OrderLine,
     ProductionOrder,
     PurchaseNeed,
+    Sale,
     ServiceSlot,
     StandingOrder,
     StockLot,
@@ -1415,3 +1416,118 @@ def run_standing_orders(day=None):
                 so.next_date = _next_standing_date(so.next_date, so.every)
             so.save(update_fields=["next_date", "last_result"])
     return count
+
+
+# --- Paying in person with a QR code (docs/06 section 6) ---
+
+SALE_MINUTES = 10
+SALE_CODE_CHARS = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+REAUTH_ABOVE_UNIQ = Decimal("10")  # a payment above this needs a recent sign-in
+
+
+def _new_sale_code():
+    import secrets
+
+    while True:
+        code = "".join(secrets.choice(SALE_CODE_CHARS) for _ in range(10))
+        if not Sale.objects.filter(code=code).exists():
+            return code
+
+
+def create_sale(seller, offer, quantity) -> Sale:
+    """A worker of the unit sells products from its shelf in person. The buyer pays by scanning the code."""
+    try:
+        quantity = Decimal(str(quantity))
+    except (InvalidOperation, ValueError, TypeError):
+        raise MarketError(_("Please enter how many.")) from None
+    if quantity <= 0:
+        raise MarketError(_("Please enter how many."))
+    with transaction.atomic():
+        offer = type(offer).objects.select_related("item", "unit").get(pk=offer.pk)
+        _need_worker(seller, offer.unit)
+        if offer.status != "active":
+            raise MarketError(_("This offer is not available now."))
+        # OWNER-CHECK: selling a service in person (how are the provider's hours recorded?) is not built; products only.
+        if offer.is_service:
+            raise MarketError(_("Services are booked in the market. In-person payment is for products on the shelf."))
+        if offer.values_computed_at is None or offer.value_total <= 0:
+            raise MarketError(_("This offer has no price yet."))
+        if _lot_for(offer, quantity) is None:
+            raise MarketError(_("There is not enough of this on the shelf."))
+        sale = Sale.objects.create(
+            offer=offer,
+            quantity=quantity,
+            seller=seller,
+            code=_new_sale_code(),
+            amount_uniq=uniq(offer.value_total * quantity),
+            expires_at=timezone.now() + timedelta(minutes=SALE_MINUTES),
+        )
+        audit.record(seller.number, "sale.created", sale, amount=str(sale.amount_uniq))
+        return sale
+
+
+def get_sale(code):
+    """The sale for a code, marked expired if its time is over. None if there is no such code."""
+    sale = Sale.objects.select_related("offer__item", "offer__unit", "seller").filter(code=(code or "").upper()).first()
+    if sale is not None and sale.status == "open" and sale.expires_at <= timezone.now():
+        Sale.objects.filter(pk=sale.pk, status="open").update(status="expired")
+        sale.status = "expired"
+    return sale
+
+
+def needs_recent_sign_in(sale) -> bool:
+    return sale.amount_uniq > REAUTH_ABOVE_UNIQ
+
+
+def pay_sale(code, buyer) -> Sale:
+    """The buyer confirms: the UNIQ go straight to Fund 1 and the shelf is drawn. Works once per code."""
+    if not can_buy(buyer):
+        raise MarketError(_("Only members can pay. Please finish joining first."))
+    with transaction.atomic():
+        sale = (
+            Sale.objects.select_for_update()
+            .select_related("offer__item", "offer__unit")
+            .filter(code=(code or "").upper())
+            .first()
+        )
+        if sale is None:
+            raise MarketError(_("This payment code does not exist."))
+        if sale.status == "paid":
+            raise MarketError(_("This sale has already been paid."))
+        if sale.status == "expired" or sale.expires_at <= timezone.now():
+            if sale.status == "open":
+                sale.status = "expired"
+                sale.save(update_fields=["status"])
+            raise MarketError(_("This payment code has expired. Please ask the seller for a new one."))
+        if sale.seller_id == buyer.pk:
+            raise MarketError(_("You cannot pay your own sale."))
+        lot = _lot_for(sale.offer, sale.quantity)
+        if lot is None:
+            raise MarketError(_("There is not enough of this on the shelf any more."))
+        try:
+            ledger.post(
+                "purchase",
+                _("Bought %(qty)s %(item)s from %(unit)s in person")
+                % {"qty": sale.quantity.normalize(), "item": sale.offer.item.name, "unit": sale.offer.unit.name},
+                [
+                    ledger.Leg(ledger.member_account(buyer), -sale.amount_uniq),
+                    ledger.Leg(ledger.fund1(), sale.amount_uniq),
+                ],
+                ref=sale,
+                actor_ref=buyer.number,
+            )
+        except ledger.LedgerError:
+            raise MarketError(_("Not enough UNIQ available")) from None
+        draw_stock(lot, sale.quantity)
+        sale.status = "paid"
+        sale.buyer = buyer
+        sale.stock_lot = lot
+        sale.paid_at = timezone.now()
+        sale.save(update_fields=["status", "buyer", "stock_lot", "paid_at"])
+        audit.record(buyer.number, "sale.paid", sale, amount=str(sale.amount_uniq))
+        unit_services.touch(sale.offer.unit)
+        return sale
+
+
+def expire_sales():
+    return Sale.objects.filter(status="open", expires_at__lte=timezone.now()).update(status="expired")

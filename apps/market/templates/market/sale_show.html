@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Payment code" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Payment code" %}</h1>
+<p class="lead">{% blocktranslate with q=sale.quantity|floatformat:"-4" item=sale.offer.item.name a=sale.amount_uniq|floatformat:2 %}{{ q }} × {{ item }}: {{ a }} UNIQ{% endblocktranslate %}</p>
+{% include "market/_sale_status.html" %}
+<p class="small text-muted">{% translate "The buyer can also open this address:" %} <span class="user-select-all">{{ pay_url }}</span></p>
+<p><a href="{% url 'market:sell' %}">{% translate "Make another sale" %}</a></p>
+{% endblock %}
