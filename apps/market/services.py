@@ -24,6 +24,7 @@ from .models import (
     ProductionOrder,
     PurchaseNeed,
     ServiceSlot,
+    StandingOrder,
     StockLot,
     WasteRecord,
     WeeklyPlan,
@@ -1301,3 +1302,116 @@ def dispute_booking(booking, customer, text=""):
         booking.save(update_fields=["status", "dispute_text"])
         audit.record(customer.number, "booking.disputed", booking)  # P06 turns this into a flag ticket
         return booking
+
+
+# --- Standing orders (docs/06 section 5) ---
+
+
+def _next_standing_date(day, every):
+    if every == "week":
+        return day + timedelta(days=7)
+    year, month = (day.year, day.month + 1) if day.month < 12 else (day.year + 1, 1)
+    for d in range(day.day, 0, -1):  # 31 January goes to 28 February
+        try:
+            return day.replace(year=year, month=month, day=d)
+        except ValueError:
+            continue
+
+
+def create_standing_order(member, offer, quantity, every, first_date=None) -> StandingOrder:
+    try:
+        quantity = Decimal(str(quantity))
+    except (InvalidOperation, ValueError, TypeError):
+        raise MarketError(_("Please enter how many you want.")) from None
+    if quantity <= 0 or every not in dict(StandingOrder.EVERY):
+        raise MarketError(_("Please enter how many you want, and how often."))
+    if not can_buy(member):
+        raise MarketError(_("Only members can order. Please finish joining first."))
+    if offer.status != "active" or offer.is_service:
+        raise MarketError(_("This offer is not available now."))
+    first_date = first_date or today()
+    if first_date < today():
+        raise MarketError(_("The first delivery cannot be in the past."))
+    with transaction.atomic():
+        so = StandingOrder.objects.create(
+            member=member, offer=offer, quantity=quantity, every=every, next_date=first_date
+        )
+        audit.record(member.number, "standing_order.created", so)
+        return so
+
+
+def _own_standing_order(so, member):
+    so = StandingOrder.objects.select_for_update().get(pk=so.pk)
+    if so.member_id != member.pk:
+        raise MarketError(_("This is not your standing order."))
+    return so
+
+
+def pause_standing_order(so, member):
+    with transaction.atomic():
+        so = _own_standing_order(so, member)
+        if so.status != "active":
+            raise MarketError(_("This standing order is not running."))
+        so.status = "paused"
+        so.save(update_fields=["status"])
+        audit.record(member.number, "standing_order.paused", so)
+        return so
+
+
+def resume_standing_order(so, member):
+    with transaction.atomic():
+        so = _own_standing_order(so, member)
+        if so.status != "paused":
+            raise MarketError(_("This standing order is not paused."))
+        so.status = "active"
+        while so.next_date < today():
+            so.next_date = _next_standing_date(so.next_date, so.every)
+        so.save(update_fields=["status", "next_date"])
+        audit.record(member.number, "standing_order.resumed", so)
+        return so
+
+
+def end_standing_order(so, member):
+    with transaction.atomic():
+        so = _own_standing_order(so, member)
+        so.status = "ended"
+        so.save(update_fields=["status"])
+        audit.record(member.number, "standing_order.ended", so)
+        return so
+
+
+def run_standing_orders(day=None):
+    """Place the order of every active standing order that is due, at today's price. Safe to run twice.
+
+    If the UNIQ are not there, this time is skipped and the member is told; the next date is set in any case.
+    """
+    day = day or today()
+    count = 0
+    due = StandingOrder.objects.filter(status="active", next_date__lte=day).select_related("member", "offer")
+    for so in due:
+        with transaction.atomic():
+            so = (
+                StandingOrder.objects.select_for_update()
+                .select_related("member", "offer__item", "offer__unit")
+                .get(pk=so.pk)
+            )
+            if so.status != "active" or so.next_date > day:
+                continue
+            try:
+                with transaction.atomic():
+                    place_order(so.member, so.offer, so.quantity, note=_("Standing order"))
+                so.last_result = _("Ordered on %(date)s") % {"date": day.isoformat()}
+                count += 1
+            except MarketError as e:
+                so.last_result = _("Skipped on %(date)s: %(why)s") % {"date": day.isoformat(), "why": e}
+                audit.record(so.member.number, "standing_order.skipped", so, why=str(e))
+                unit_services._notify(
+                    so.member,
+                    _("Your standing order for %(item)s was skipped") % {"item": so.offer.item.name},
+                    _("This time your standing order could not be placed: %(why)s. The next one is on %(date)s.")
+                    % {"why": e, "date": _next_standing_date(so.next_date, so.every).isoformat()},
+                )
+            while so.next_date <= day:
+                so.next_date = _next_standing_date(so.next_date, so.every)
+            so.save(update_fields=["next_date", "last_result"])
+    return count

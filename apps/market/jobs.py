@@ -31,3 +31,9 @@ def auto_confirm_bookings(payload):
 def auto_confirm_booking(payload):
     """Queued when a session is marked performed; does nothing if it ran too early."""
     services.auto_confirm_bookings()
+
+
+@job("market.standing_orders")
+def standing_orders(payload):
+    """Daily. Safe to run twice: after a run, no standing order is due today any more."""
+    services.run_standing_orders()

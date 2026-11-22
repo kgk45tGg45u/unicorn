@@ -289,3 +289,27 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"{self.customer.number} in {self.slot} ({self.status})"
+
+
+class StandingOrder(models.Model):
+    """A subscription to a product, for example a vegetable box every week. Each delivery is a new order line."""
+
+    EVERY = [("week", _("every week")), ("month", _("every month"))]
+    STATUSES = [("active", _("active")), ("paused", _("paused")), ("ended", _("ended"))]
+
+    member = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="standing_orders")
+    offer = models.ForeignKey("catalogue.Offer", on_delete=models.PROTECT, related_name="standing_orders")
+    quantity = models.DecimalField(max_digits=14, decimal_places=4)
+    every = models.CharField(max_length=6, choices=EVERY)
+    next_date = models.DateField()
+    status = models.CharField(max_length=8, choices=STATUSES, default="active")
+    last_result = models.CharField(max_length=200, blank=True)  # what happened the last time it ran
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["next_date", "id"]
+        indexes = [models.Index(fields=["status", "next_date"])]
+        constraints = [models.CheckConstraint(condition=models.Q(quantity__gt=0), name="standing_quantity_positive")]
+
+    def __str__(self):
+        return f"{self.quantity} x {self.offer} {self.get_every_display()} ({self.status})"

@@ -180,7 +180,7 @@
 
 ---
 
-### - [ ] P05.T07 — Standing orders
+### - [x] P05.T07 — Standing orders
 
 **Read:** docs/06 section 5 ("Standing orders").
 **Files:** `apps/market/models.py` (StandingOrder), `apps/market/jobs.py`, `apps/market/tests/test_standing.py`

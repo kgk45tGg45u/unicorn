@@ -10,6 +10,7 @@ from .models import (
     ProductionOrder,
     PurchaseNeed,
     ServiceSlot,
+    StandingOrder,
     StockLot,
     WasteRecord,
     WeeklyPlan,
@@ -64,3 +65,8 @@ class ServiceSlotAdmin(ReadOnlyAdmin):
 @admin.register(Booking)
 class BookingAdmin(ReadOnlyAdmin):
     list_display = ("id", "slot", "customer", "price_uniq", "status")
+
+
+@admin.register(StandingOrder)
+class StandingOrderAdmin(ReadOnlyAdmin):
+    list_display = ("member", "offer", "quantity", "every", "next_date", "status")
