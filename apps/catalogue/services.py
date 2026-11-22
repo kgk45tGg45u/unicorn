@@ -200,7 +200,10 @@ def add_input(member, offer, name, uom, quantity, source, **extra):
         raise CatalogueError(_("The quantity must be above zero."))
     if source not in dict(OfferInput.SOURCES):
         raise CatalogueError(_("Please choose where the input comes from."))
+    from django.utils import timezone
+
     row = OfferInput.objects.create(offer=offer, item=item, quantity_per_batch=quantity, source=source, **extra)
+    Item.objects.filter(pk=item.pk).update(last_used_at=timezone.now())
     audit.record(member.number, "offer.input_added", offer, item=item.pk, source=source)
     return row
 
@@ -286,7 +289,107 @@ def publish_offer(offer, member):
 
 
 def on_publish(offer):
-    """Extension point: P04.T09 makes a placeholder item active here."""
+    """A placeholder item that someone now makes becomes a normal item; the units that bought it outside are told."""
+    item = offer.item
+    if item.status != "placeholder":
+        return
+    item.status = "active"
+    item.save(update_fields=["status"])
+    p = preview(offer)
+    users = (
+        OfferInput.objects.filter(item=item, source__in=["own_free", "buy_outside"], offer__status="active")
+        .exclude(offer__unit=offer.unit)
+        .select_related("offer__unit")
+    )
+    told = set()
+    for row in users:
+        unit = row.offer.unit
+        if unit.pk in told:
+            continue
+        told.add(unit.pk)
+        for w in unit_services.workers(unit):
+            if w.is_council or unit_services.workers(unit).count() == 1:
+                unit_services._notify(
+                    w.member,
+                    _("%(unit)s now makes %(item)s") % {"unit": offer.unit.name, "item": item.name},
+                    _(
+                        "%(unit)s now makes %(item)s (%(value).2f UNIQ per %(uom)s, €%(euro).2f). "
+                        "Switch your input to Unicorn?"
+                    )
+                    % {
+                        "unit": offer.unit.name,
+                        "item": item.name,
+                        "value": p.total,
+                        "uom": item.uom.name,
+                        "euro": p.euro,
+                    },
+                )
+    audit.record("system", "item.placeholder_activated", item, units_told=len(told))
+
+
+def can_switch(row) -> bool:
+    return row.source in ("own_free", "buy_outside") and active_offers_of(row.item).exists()
+
+
+def switch_input_source(row, source, member):
+    """Switch an input to Unicorn-made. A unit with a council decides it; a one-person unit switches at once."""
+    if source != "unicorn":
+        raise CatalogueError(_("An input can only be switched to Made in Unicorn."))
+    _need_editor(member, row.offer)
+    if not active_offers_of(row.item).exists():
+        raise CatalogueError(_("Nobody in Unicorn makes %(item)s yet.") % {"item": row.item.name})
+    unit = row.offer.unit
+    if unit_services.has_council(unit):
+        return unit_services.open_decision(
+            member,
+            unit,
+            _("Switch %(item)s to Made in Unicorn") % {"item": row.item.name},
+            _("Use %(item)s from Unicorn in the recipe of %(offer)s instead of providing or buying it outside.")
+            % {"item": row.item.name, "offer": str(row.offer)},
+            kind="production",
+            payload={"switch_input": row.pk},
+        )
+    _apply_switch(row)
+    return None
+
+
+def _apply_switch(row):
+    row.source = "unicorn"
+    row.preferred_supplier = None
+    row.save(update_fields=["source", "preferred_supplier"])
+    audit.record("system", "offer.input_switched", row.offer, item=row.item_id)
+    request_recompute()
+
+
+def _production_decision_action(decision):
+    row_id = (decision.payload or {}).get("switch_input")
+    if row_id:
+        row = OfferInput.objects.filter(pk=row_id, offer__unit=decision.unit).first()
+        if row is not None and can_switch(row):
+            _apply_switch(row)
+
+
+unit_services.DECISION_ACTIONS["production"] = _production_decision_action
+
+
+def retire_placeholders(now=None):
+    """Placeholders that nobody has used for `catalogue.placeholder_retire_months` are retired."""
+    from django.utils import timezone
+
+    now = now or timezone.now()
+    cutoff = member_services._add_months(now, -get_param("catalogue.placeholder_retire_months"))
+    count = 0
+    for item in Item.objects.filter(status="placeholder"):
+        last = item.last_used_at or item.created_at
+        if last >= cutoff:
+            continue
+        if OfferInput.objects.filter(item=item, offer__status__in=["active", "paused", "draft"]).exists():
+            continue  # still in a recipe
+        item.status = "retired"
+        item.save(update_fields=["status"])
+        audit.record("system", "item.placeholder_retired", item)
+        count += 1
+    return count
 
 
 # --- Members confirm "I still provide it free" every month ---

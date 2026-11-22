@@ -19,3 +19,8 @@ def recompute(payload):
 def join_forces(payload):
     """Safe to run twice: at most one open suggestion per pair, and none for 6 months after an answer."""
     services.make_join_forces_suggestions()
+
+
+@job("catalogue.retire_placeholders")
+def retire_placeholders(payload):
+    services.retire_placeholders()

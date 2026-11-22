@@ -69,6 +69,7 @@ def recipe_editor(request, pk):
             "uoms": UnitOfMeasure.objects.all(),
             "problems": services.validate_recipe(offer),
             "preview": services.preview(offer),
+            "switchable": {r.pk for r in offer.inputs.select_related("item") if services.can_switch(r)},
             "workers": [w.member for w in unit_services_workers(offer.unit)],
             "supplier_choices": {},
         },
@@ -322,3 +323,26 @@ def unit_services_can_decide(member, unit):
     from apps.units import services as unit_services
 
     return unit_services.can_decide_joins(member, unit)
+
+
+@login_required
+@require_POST
+def switch_input(request, pk):
+    row = get_object_or_404(OfferInput.objects.select_related("offer__unit", "item"), pk=pk)
+    try:
+        decision = services.switch_input_source(row, "unicorn", request.member)
+        if decision is not None:
+            messages.info(request, _("A council decision was opened. The input switches when the council approves."))
+        else:
+            messages.success(request, _("The input now comes from Unicorn."))
+    except services.CatalogueError as e:
+        messages.error(request, str(e))
+    except unit_services_error() as e:
+        messages.error(request, str(e))
+    return redirect("catalogue:recipe", pk=row.offer_id)
+
+
+def unit_services_error():
+    from apps.units import services as unit_services
+
+    return unit_services.UnitError

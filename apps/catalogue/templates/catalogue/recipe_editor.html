@@ -15,6 +15,7 @@
       {% if r.source == "buy_outside" %}· €{{ r.euro_price_estimate|floatformat:"-4" }} {% translate "each" %}{% endif %}
       {% if r.source == "own_free" and r.provided_by %}· {{ r.provided_by.display_name }}
         {% if r.provided_by == request.member %}<form method="post" action="{% url 'catalogue:confirm_free' r.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">{% translate "I still provide it" %}</button></form>{% endif %}{% endif %}</span>
+    {% if r.pk in switchable %}<form method="post" action="{% url 'catalogue:switch_input' r.pk %}" class="me-2">{% csrf_token %}<button class="btn btn-sm btn-outline-primary">{% translate "Now made in Unicorn: switch" %}</button></form>{% endif %}
     <form method="post" action="{% url 'catalogue:remove_row' offer.pk 'input' r.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">{% translate "Remove" %}</button></form>
   </li>
 {% empty %}<li class="list-group-item text-muted">{% translate "No inputs yet." %}</li>{% endfor %}

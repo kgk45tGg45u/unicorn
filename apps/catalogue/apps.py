@@ -9,8 +9,12 @@ class CatalogueConfig(AppConfig):
     def ready(self):
         from apps.core.management.commands import daily
 
-        from . import jobs  # noqa: F401
+        from . import jobs, services  # noqa: F401
 
-        for entry in (("catalogue.ask_own_free", {}), ("catalogue.join_forces", {})):
+        for entry in (
+            ("catalogue.ask_own_free", {}),
+            ("catalogue.join_forces", {}),
+            ("catalogue.retire_placeholders", {}),
+        ):
             if entry not in daily.DAILY_JOBS:
                 daily.DAILY_JOBS.append(entry)

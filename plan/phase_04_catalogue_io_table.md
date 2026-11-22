@@ -256,7 +256,7 @@
 
 ---
 
-### - [ ] P04.T09 — When a placeholder starts being made
+### - [x] P04.T09 — When a placeholder starts being made
 
 **Read:** docs/04 section 9.
 **Files:** `apps/catalogue/services.py`, `apps/catalogue/jobs.py`, `apps/catalogue/tests/test_placeholder_life.py`
