@@ -2,6 +2,7 @@ import io
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
+from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -281,3 +282,38 @@ def portfolio(request):
             "error": error,
         },
     )
+
+
+@login_required
+def leave_page(request):
+    member = request.member
+    if member is None:
+        return redirect("members:join_about")
+    reasons = services.leave_blockers(member)
+    if request.method == "POST" and request.POST.get("confirm"):
+        try:
+            services.leave(member)
+        except services.LeaveBlocked as e:
+            reasons = e.reasons
+        else:
+            messages.success(request, _("You have left Unicorn. Your UNIQ stay yours and you can still spend them."))
+            return redirect("members:my_account")
+    return render(request, "members/leave.html", {"member": member, "reasons": reasons})
+
+
+@login_required
+def delete_page(request):
+    member = request.member
+    if member is None:
+        return redirect("members:join_about")
+    reasons = services.leave_blockers(member)
+    if request.method == "POST" and request.POST.get("confirm"):
+        try:
+            services.delete_account(member)
+        except services.LeaveBlocked as e:
+            reasons = e.reasons
+        else:
+            auth_logout(request)
+            messages.success(request, _("Your account is deleted."))
+            return redirect("core:home")
+    return render(request, "members/delete.html", {"member": member, "reasons": reasons})

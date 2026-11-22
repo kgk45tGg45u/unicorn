@@ -201,7 +201,7 @@
 
 ---
 
-### - [ ] P01.T08 — Leaving and deleting the account
+### - [x] P01.T08 — Leaving and deleting the account
 
 **Read:** docs/08 section 7 ("On deletion"); docs/01 HF-8; docs/07 section 2 ("Leaving").
 **Files:** `apps/members/services.py`, `apps/members/views.py`, `apps/members/templates/members/leave.html`, `apps/members/tests/test_leave.py`

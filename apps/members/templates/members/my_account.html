@@ -25,6 +25,7 @@
 </ul>
 <p><a href="{% url 'members:portfolio' %}">{% translate "My work portfolio" %}</a></p>
 <p><a href="{% url 'members:public_profile' member.number %}">{% translate "See my public profile" %}</a></p>
+<p>{% if member.status != "former" %}<a href="{% url 'members:leave' %}">{% translate "Leave Unicorn" %}</a> · {% endif %}<a href="{% url 'members:delete' %}">{% translate "Delete my account" %}</a></p>
 <p><a href="{% url 'mfa_index' %}">{% translate "Passkeys and recovery codes" %}</a> ·
    <a href="{% url 'account_logout' %}">{% translate "Log out" %}</a></p>
 {% endblock %}

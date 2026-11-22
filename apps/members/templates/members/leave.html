@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block content %}
+<h1>{% translate "Leave Unicorn" %}</h1>
+{% if member.status == "former" %}
+  <p>{% translate "You have already left. Your UNIQ stay yours and you can still spend them." %}</p>
+{% else %}
+  <p>{% translate "If you leave, you stop earning UNIQ, but the UNIQ you have are never taken away. You can still log in and spend them." %}</p>
+  {% if reasons %}
+    <div class="alert alert-warning"><p class="mb-1">{% translate "You cannot leave yet:" %}</p><ul class="mb-0">{% for r in reasons %}<li>{{ r }}</li>{% endfor %}</ul></div>
+  {% else %}
+    <form method="post">{% csrf_token %}<input type="hidden" name="confirm" value="1">
+      <button class="btn btn-danger" type="submit">{% translate "Yes, I want to leave" %}</button></form>
+  {% endif %}
+{% endif %}
+{% endblock %}

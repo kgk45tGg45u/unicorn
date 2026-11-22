@@ -414,3 +414,64 @@ def submit_licence(member, kind, uploaded_file, expires_on=None):
         licence = Licence.objects.create(member=member, kind=kind, document=pf, expires_on=expires_on)
         audit.record(member.number, "licence.submitted", licence, kind=kind)
         return licence
+
+
+# --- Leaving and deleting (HF-8: UNIQ are never taken away; HF-14: deletable) ---
+
+LEAVE_CHECKS: list = []  # other apps add check(member) -> list[str] of blocking reasons in plain words
+
+
+class LeaveBlocked(ValueError):
+    def __init__(self, reasons):
+        self.reasons = reasons
+        super().__init__("; ".join(reasons))
+
+
+def leave_blockers(member) -> list:
+    reasons = []
+    for check in LEAVE_CHECKS:
+        reasons.extend(check(member))
+    return reasons
+
+
+def leave(member):
+    """Become a former member. The UNIQ account stays: former members can still spend (HF-8)."""
+    from django.utils import timezone
+
+    from apps.core import audit
+
+    from .models import Member
+
+    with transaction.atomic():
+        member = Member.objects.select_for_update().get(pk=member.pk)
+        if member.status == Member.FORMER:
+            return member
+        reasons = leave_blockers(member)
+        if reasons:
+            raise LeaveBlocked(reasons)
+        member.status = Member.FORMER
+        member.left_at = timezone.now()
+        member.save(update_fields=["status", "left_at"])
+        audit.record(member.number, "member.left", member)
+        return member
+
+
+def delete_account(member):
+    """Destroy the member's key and personal data. The Member row and number stay: the books need them."""
+    from apps.core import audit
+
+    from .models import Member, MemberHash
+
+    with transaction.atomic():
+        member = leave(member)
+        shred(member)
+        MemberHash.objects.filter(member=member).delete()
+        user = member.user
+        user.email = f"deleted-{member.number}@invalid"
+        user.is_active = False
+        user.set_unusable_password()
+        user.save()
+        member.deleted = True
+        member.save(update_fields=["deleted"])
+        audit.record(member.number, "member.deleted", member)
+        return Member.objects.get(pk=member.pk)

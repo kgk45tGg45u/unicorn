@@ -14,5 +14,7 @@ urlpatterns = [
     path("vouch/", views.vouch_page, name="vouch"),
     path("identity-checks/", views.identity_check_page, name="identity_check"),
     path("portfolio/", views.portfolio, name="portfolio"),
+    path("leave/", views.leave_page, name="leave"),
+    path("delete-account/", views.delete_page, name="delete"),
     path("m/<str:number>/", views.public_profile, name="public_profile"),
 ]

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block content %}
+<h1>{% translate "Delete my account" %}</h1>
+<div class="alert alert-warning">
+  {% translate "Deleting your account destroys your personal data for good. Your member number and its history stay in the open books, because the law requires the books to be kept. Any UNIQ you still have stay in the books but can no longer be spent. This cannot be undone." %}
+</div>
+{% if reasons %}
+  <div class="alert alert-danger"><p class="mb-1">{% translate "You cannot delete your account yet:" %}</p><ul class="mb-0">{% for r in reasons %}<li>{{ r }}</li>{% endfor %}</ul></div>
+{% else %}
+  <form method="post">{% csrf_token %}<input type="hidden" name="confirm" value="1">
+    <button class="btn btn-danger" type="submit">{% translate "Yes, delete my account" %}</button></form>
+{% endif %}
+{% endblock %}
