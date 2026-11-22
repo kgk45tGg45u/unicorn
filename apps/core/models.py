@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 class TimeStamped(models.Model):
@@ -30,3 +31,28 @@ class AuditEvent(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValueError("Audit events cannot be deleted.")
+
+
+class Job(models.Model):
+    """A background job, run by `manage.py run_jobs` (cron calls it every minute)."""
+
+    QUEUED, RUNNING, DONE, FAILED = "queued", "running", "done", "failed"
+    STATUS_CHOICES = [(QUEUED, "queued"), (RUNNING, "running"), (DONE, "done"), (FAILED, "failed")]
+
+    kind = models.CharField(max_length=64)
+    payload = models.JSONField(default=dict)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=QUEUED)
+    run_after = models.DateTimeField(default=timezone.now)
+    attempts = models.PositiveIntegerField(default=0)
+    max_attempts = models.PositiveIntegerField(default=5)
+    last_error = models.TextField(blank=True)
+    dedupe_key = models.CharField(max_length=128, null=True, blank=True, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["status", "run_after"])]
+
+    def __str__(self):
+        return f"{self.kind} ({self.status})"

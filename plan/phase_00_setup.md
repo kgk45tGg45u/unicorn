@@ -198,7 +198,7 @@
 
 ---
 
-### - [ ] P00.T06 — Background jobs without an extra server
+### - [x] P00.T06 — Background jobs without an extra server
 
 **Read:** docs/09 section 1 (Background jobs), section 3 item 7 (cron).
 **Files:** `apps/core/models.py` (Job), `apps/core/jobs.py`, `apps/core/management/commands/run_jobs.py`, `apps/core/management/commands/daily.py`, `apps/core/tests/test_jobs.py`
