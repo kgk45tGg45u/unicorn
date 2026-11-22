@@ -5,7 +5,7 @@
 
 ---
 
-### - [ ] P03.T01 — The unit
+### - [x] P03.T01 — The unit
 
 **Files:** `apps/units/` (new app), `apps/units/models.py`, `apps/units/migrations/0002_coordination_unit.py`, `apps/units/tests/test_unit.py`
 

@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     "apps.rules",
     "apps.members",
     "apps.ledger",
+    "apps.units",
 ]
 
 MIDDLEWARE = [
