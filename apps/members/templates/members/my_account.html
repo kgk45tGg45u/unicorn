@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "My account" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "My account" %}</h1>
+<dl class="row">
+  <dt class="col-sm-3">{% translate "Member number" %}</dt><dd class="col-sm-9">{{ member.number }}</dd>
+  <dt class="col-sm-3">{% translate "Display name" %}</dt><dd class="col-sm-9">{{ member.display_name }}</dd>
+  <dt class="col-sm-3">{% translate "Status" %}</dt><dd class="col-sm-9">{{ member.get_status_display }}</dd>
+  <dt class="col-sm-3">{% translate "Country" %}</dt><dd class="col-sm-9">{{ member.country }}</dd>
+  <dt class="col-sm-3">{% translate "Email" %}</dt><dd class="col-sm-9">{{ user.email }}</dd>
+</dl>
+{% if missing %}
+<h2 class="h5">{% translate "What is still missing" %}</h2>
+<ul>
+  {% if "contract" in missing %}<li>{% translate "Sign the Unicorn contract." %}</li>{% endif %}
+  {% if "verification" in missing %}<li>{% translate "Be vouched for by two members and meet an identity helper in person." %}</li>{% endif %}
+</ul>
+{% endif %}
+<p><a href="{% url 'members:public_profile' member.number %}">{% translate "See my public profile" %}</a></p>
+<p><a href="{% url 'mfa_index' %}">{% translate "Passkeys and recovery codes" %}</a> ·
+   <a href="{% url 'account_logout' %}">{% translate "Log out" %}</a></p>
+{% endblock %}

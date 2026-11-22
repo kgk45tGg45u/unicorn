@@ -28,7 +28,7 @@
 
 ---
 
-### - [ ] P01.T02 — The member
+### - [x] P01.T02 — The member
 
 **Read:** docs/10 (Member, Former member), docs/08 section 2.
 **Files:** `apps/members/models.py`, `apps/members/services.py`, `apps/members/views.py`, `apps/members/urls.py`, `apps/members/templates/members/*.html`, `apps/members/tests/test_member.py`

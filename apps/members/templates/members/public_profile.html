@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ profile.display_name }} · Unicorn{% endblock %}
+{% block content %}
+<h1>{{ profile.display_name }}</h1>
+<p class="text-muted">{{ profile.number }}</p>
+{% if profile.public_profile %}
+  {# The work portfolio is added in P01.T07. #}
+{% else %}
+  <p>{% translate "This member keeps their profile private." %}</p>
+{% endif %}
+{% endblock %}
