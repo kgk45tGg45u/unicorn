@@ -3,13 +3,14 @@ from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from django.db import IntegrityError, transaction
+from django.db.models import Sum
 from django.utils import timezone
 
 from apps.core.hashing import chain_hash
 from apps.core.money import minutes_to_uniq, uniq
 from apps.rules.services import get_param
 
-from .models import Account, AccountBalance, ChainHead, Entry, Period, Transaction
+from .models import Account, AccountBalance, ChainHead, Entry, Hold, Period, Transaction
 
 BERLIN = ZoneInfo("Europe/Berlin")
 
@@ -88,8 +89,8 @@ def balance(account) -> Decimal:
 
 
 def _held(account) -> Decimal:
-    # Holds are added in P02.T04.
-    return Decimal("0.0000")
+    total = Hold.objects.filter(account=account, status=Hold.ACTIVE).aggregate(t=Sum("amount"))["t"]
+    return total or Decimal("0.0000")
 
 
 def available(account) -> Decimal:
@@ -234,3 +235,70 @@ def pay_hours_legs(member, minutes, tax_rate):
     gross_legs = [Leg(fund2(), -gross), Leg(account, gross)]
     tax_legs = [Leg(account, -tax), Leg(fund2(), tax)] if tax else []
     return gross_legs, tax_legs
+
+
+# --- Holds ---
+
+
+def place_hold(member, amount, reason, ref=None):
+    """Reserve UNIQ for an order or booking. Needs enough available UNIQ."""
+    from apps.core import audit
+
+    amount = uniq(amount)
+    if amount <= 0:
+        raise LedgerError("A hold must be more than zero")
+    if not (reason or "").strip():
+        raise LedgerError("A hold needs a written reason")
+    with transaction.atomic():
+        account = member_account(member)
+        AccountBalance.objects.select_for_update().get_or_create(account=account)
+        if available(account) < amount:
+            raise LedgerError("Not enough UNIQ available")
+        ref_type, ref_id = _ref_parts(ref)
+        hold = Hold.objects.create(
+            account=account, amount=amount, reason=reason.strip(), ref_type=ref_type, ref_id=ref_id
+        )
+        audit.record(member.number, "hold.placed", hold, amount=str(amount))
+        return hold
+
+
+def _lock_active(hold):
+    hold = Hold.objects.select_for_update().get(pk=hold.pk)
+    if hold.status != Hold.ACTIVE:
+        raise LedgerError("This hold is already closed")
+    return hold
+
+
+def capture_hold(hold, reason, kind="purchase"):
+    """Turn a hold into a purchase (member to Fund 1) and close it."""
+    from apps.core import audit
+
+    with transaction.atomic():
+        hold = _lock_active(hold)
+        tx = post(
+            kind,
+            reason,
+            [Leg(hold.account, -hold.amount), Leg(fund1(), hold.amount)],
+            ref=(hold.ref_type, hold.ref_id) if hold.ref_type else hold,
+            actor_ref=hold.account.member.number,
+            capturing_hold=hold,
+        )
+        hold.status = Hold.CAPTURED
+        hold.closed_at = timezone.now()
+        hold.save(update_fields=["status", "closed_at"])
+        audit.record(hold.account.member.number, "hold.captured", hold, transaction=tx.seq)
+        return tx
+
+
+def release_hold(hold, reason):
+    from apps.core import audit
+
+    if not (reason or "").strip():
+        raise LedgerError("Releasing a hold needs a written reason")
+    with transaction.atomic():
+        hold = _lock_active(hold)
+        hold.status = Hold.RELEASED
+        hold.closed_at = timezone.now()
+        hold.save(update_fields=["status", "closed_at"])
+        audit.record(hold.account.member.number, "hold.released", hold, reason=reason)
+        return hold

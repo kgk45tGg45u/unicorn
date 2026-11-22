@@ -106,7 +106,7 @@
 
 ---
 
-### - [ ] P02.T04 — Holds
+### - [x] P02.T04 — Holds
 
 **Read:** docs/06 sections 4–5 (UNIQ held at order or booking).
 **Files:** `apps/ledger/models.py` (Hold), `apps/ledger/services.py`, `apps/ledger/tests/test_holds.py`

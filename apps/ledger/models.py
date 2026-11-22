@@ -126,3 +126,26 @@ class ChainHead(models.Model):
 
     def __str__(self):
         return f"{self.name} at #{self.last_seq}"
+
+
+class Hold(models.Model):
+    """UNIQ reserved for an order or booking until delivery. Not part of the chain; mutable."""
+
+    ACTIVE, CAPTURED, RELEASED = "active", "captured", "released"
+    STATUSES = [(ACTIVE, "active"), (CAPTURED, "captured"), (RELEASED, "released")]
+
+    account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name="holds")
+    amount = models.DecimalField(max_digits=18, decimal_places=4)
+    status = models.CharField(max_length=10, choices=STATUSES, default=ACTIVE)
+    reason = models.TextField()
+    ref_type = models.CharField(max_length=40, blank=True)
+    ref_id = models.CharField(max_length=40, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.CheckConstraint(condition=Q(amount__gt=0), name="hold_amount_positive")]
+        indexes = [models.Index(fields=["account", "status"])]
+
+    def __str__(self):
+        return f"hold {self.amount} on {self.account} ({self.status})"

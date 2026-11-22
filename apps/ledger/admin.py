@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from apps.core.admin import ReadOnlyAdmin
 
-from .models import Account, AccountBalance, ChainHead, Entry, Period, Transaction
+from .models import Account, AccountBalance, ChainHead, Entry, Hold, Period, Transaction
 
 
 @admin.register(Account)
@@ -33,3 +33,8 @@ class EntryAdmin(ReadOnlyAdmin):
 @admin.register(ChainHead)
 class ChainHeadAdmin(ReadOnlyAdmin):
     list_display = ("name", "last_seq", "last_hash")
+
+
+@admin.register(Hold)
+class HoldAdmin(ReadOnlyAdmin):
+    list_display = ("account", "amount", "status")
