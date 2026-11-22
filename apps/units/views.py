@@ -27,6 +27,10 @@ def unit_page(request, slug):
             "unit": unit,
             "workers": [m.member for m in services.workers(unit)],
             "is_worker": is_worker,
+            "responsible": services.responsible(unit),
+            "i_am_responsible": bool(member)
+            and (services.responsible(unit) or None) is not None
+            and services.responsible(unit).member_id == member.pk,
             "can_join": bool(member) and not is_worker,
             "requests": unit.join_requests.filter(status="open").select_related("member") if can_decide else [],
         },
@@ -142,3 +146,15 @@ def decision_vote(request, pk):
     except services.UnitError as e:
         messages.error(request, str(e))
     return redirect("units:decision", pk=pk)
+
+
+@login_required
+@require_POST
+def decline_turn(request, slug):
+    unit = get_object_or_404(Unit, slug=slug)
+    try:
+        services.decline_turn(request.member, unit)
+        messages.success(request, _("You declined. The next worker has the responsibility."))
+    except services.UnitError as e:
+        messages.error(request, str(e))
+    return redirect("units:unit", slug=slug)

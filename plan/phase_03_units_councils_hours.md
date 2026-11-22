@@ -107,7 +107,7 @@
 
 ---
 
-### - [ ] P03.T05 — The responsible and rotation
+### - [x] P03.T05 — The responsible and rotation
 
 **Read:** docs/05 section 6 ("The responsible").
 **Files:** `apps/units/models.py` (Responsibility), `apps/units/services.py`, `apps/units/jobs.py`, `apps/units/tests/test_rotation.py`

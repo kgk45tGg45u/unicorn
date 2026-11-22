@@ -14,5 +14,6 @@ urlpatterns = [
     path("<slug:slug>/join/", views.request_join, name="join"),
     path("<slug:slug>/rules/", views.rules_page, name="rules"),
     path("<slug:slug>/rules/sign/", views.sign_rules, name="sign_rules"),
+    path("<slug:slug>/decline-turn/", views.decline_turn, name="decline_turn"),
     path("<slug:slug>/leave/", views.leave, name="leave"),
 ]

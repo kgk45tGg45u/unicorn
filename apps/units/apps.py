@@ -11,6 +11,6 @@ class UnitsConfig(AppConfig):
 
         from . import jobs, services  # noqa: F401
 
-        for entry in (("units.close_decisions", {}),):
+        for entry in (("units.close_decisions", {}), ("units.rotate", {})):
             if entry not in daily.DAILY_JOBS:
                 daily.DAILY_JOBS.append(entry)

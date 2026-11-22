@@ -66,8 +66,12 @@ def _add_worker(unit, member):
 
 
 def add_first_worker(unit, member):
+    """The first worker of a unit is its founder and its first responsible."""
     with transaction.atomic():
-        return _add_worker(unit, member)
+        membership = _add_worker(unit, member)
+        if responsible(unit) is None:
+            _start_responsibility(unit, member, "founder")
+        return membership
 
 
 def request_to_join(unit, member, message=""):
@@ -136,6 +140,9 @@ def leave_unit(member, unit):
         membership.left_at = timezone.now()
         membership.save()
         audit.record(member.number, "unit.worker_left", unit)
+        current = responsible(unit)
+        if current is not None and current.member_id == member.pk:
+            _hand_over(unit, "handover", exclude={member.pk})
 
 
 def _default_rules_hook(unit):
@@ -262,3 +269,139 @@ def close_due_decisions(now=None):
         tally(d)
         count += 1
     return count
+
+
+# --- The responsible and rotation ---
+
+
+def responsible(unit):
+    """The current Responsibility row, or None."""
+    from .models import Responsibility
+
+    return Responsibility.objects.filter(unit=unit, ends_at__isnull=True).select_related("member").first()
+
+
+def can_edit_unit(member, unit) -> bool:
+    """The unit's profile, offers and recipes: the responsible, or any council member (the default)."""
+    current = responsible(unit)
+    if current is not None and current.member_id == member.pk:
+        return True
+    return is_council_member(member, unit) or (workers(unit).count() == 1 and is_worker(member, unit))
+
+
+def _start_responsibility(unit, member, how, declined_by=None):
+    from .models import Responsibility
+
+    row = Responsibility.objects.create(
+        unit=unit, member=member, starts_at=timezone.now(), how=how, declined_by=declined_by or []
+    )
+    audit.record(member.number, "unit.responsible_started", unit, how=how)
+    return row
+
+
+def days_responsible(unit, member, now=None) -> int:
+    from .models import Responsibility
+
+    now = now or timezone.now()
+    total = 0
+    for r in Responsibility.objects.filter(unit=unit, member=member):
+        total += ((r.ends_at or now) - r.starts_at).days
+    return total
+
+
+def _next_responsible(unit, exclude):
+    """The active council member with the fewest days as responsible; ties go to the earliest joined."""
+    candidates = [m for m in council_members(unit) if m.member_id not in exclude]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda m: (days_responsible(unit, m.member), m.joined_at, m.pk))
+    return candidates[0].member
+
+
+def _notify(member, subject, body):
+    from django.core import mail
+
+    audit.record("system", "notice.sent", member, subject=subject)
+    if not member.deleted and member.status == "member":
+        mail.send_mail(subject, body, None, [member.user.email])
+
+
+def _hand_over(unit, how, exclude, declined_by=None):
+    """End the current responsibility and start the next one. Caller holds the transaction."""
+    current = responsible(unit)
+    if current is not None:
+        current.ends_at = timezone.now()
+        current.save(update_fields=["ends_at"])
+    skip = set(exclude) | set(declined_by or [])
+    chosen = _next_responsible(unit, skip)
+    if chosen is None:
+        return None
+    row = _start_responsibility(unit, chosen, how, declined_by=declined_by)
+    _notify(
+        chosen,
+        _("You are now the responsible of %(unit)s") % {"unit": unit.name},
+        _("The responsibility of %(unit)s has passed to you. You can decline it on the unit page.")
+        % {"unit": unit.name},
+    )
+    if current is not None and current.member_id != chosen.pk:
+        _notify(
+            current.member,
+            _("Your turn as responsible of %(unit)s has ended") % {"unit": unit.name},
+            _("Thank you. The responsibility has passed to the next worker."),
+        )
+    return row
+
+
+def rotate_due(now=None):
+    """Pass the responsibility on in every council unit whose turn is older than its rotation time."""
+    from . import council_rules
+    from .models import Responsibility
+
+    now = now or timezone.now()
+    count = 0
+    for current in Responsibility.objects.filter(ends_at__isnull=True).select_related("unit"):
+        unit = current.unit
+        if unit.status in ("closed", "merged") or not has_council(unit):
+            continue
+        rules = council_rules.current(unit)
+        months = rules.rotation_months if rules else get_param("governance.council.rotation_months")
+        if member_services._add_months(current.starts_at, months) > now:
+            continue
+        with transaction.atomic():
+            current = Responsibility.objects.select_for_update().get(pk=current.pk)
+            if current.ends_at is not None:
+                continue
+            if _hand_over(unit, "rotation", exclude={current.member_id}) is not None:
+                count += 1
+    return count
+
+
+def decline_turn(member, unit):
+    """The responsible declines; the next worker is chosen at once."""
+    with transaction.atomic():
+        current = responsible(unit)
+        if current is None or current.member_id != member.pk:
+            raise UnitError(_("You are not the responsible of this unit."))
+        declined = list(current.declined_by) + [member.pk]
+        row = _hand_over(unit, "rotation", exclude={member.pk}, declined_by=declined)
+        if row is None:
+            # everybody declined: the turn starts again with the one who has held it least
+            row = _hand_over(unit, "rotation", exclude=set())
+        audit.record(member.number, "unit.turn_declined", unit)
+        return row
+
+
+def _leave_check(member):
+    """Leaving Unicorn hands over every responsibility at once instead of blocking."""
+    from .models import Responsibility
+
+    for r in Responsibility.objects.filter(member=member, ends_at__isnull=True).select_related("unit"):
+        _hand_over(r.unit, "handover", exclude={member.pk})
+    for m in UnitMembership.objects.filter(member=member, left_at__isnull=True):
+        m.left_at = timezone.now()
+        m.save()
+    return []
+
+
+if _leave_check not in member_services.LEAVE_CHECKS:
+    member_services.LEAVE_CHECKS.append(_leave_check)

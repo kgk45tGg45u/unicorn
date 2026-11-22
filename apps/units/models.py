@@ -193,3 +193,27 @@ class CouncilRules(models.Model):
 
     def __str__(self):
         return f"Rules of {self.unit.name}, version {self.version}"
+
+
+class Responsibility(models.Model):
+    """Who holds the council's responsibility. `ends_at` is empty while current."""
+
+    HOW = [
+        ("founder", _("founder")),
+        ("rotation", _("rotation")),
+        ("vote", _("vote")),
+        ("handover", _("handover")),
+    ]
+
+    unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name="responsibilities")
+    member = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="responsibilities")
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField(null=True, blank=True)
+    how = models.CharField(max_length=10, choices=HOW)
+    declined_by = models.JSONField(default=list, blank=True)  # member ids who declined this turn
+
+    class Meta:
+        ordering = ["unit", "-starts_at"]
+
+    def __str__(self):
+        return f"{self.member.number} responsible for {self.unit.name}"

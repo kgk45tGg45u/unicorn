@@ -2,7 +2,15 @@ from django.contrib import admin
 
 from apps.core.admin import ReadOnlyAdmin
 
-from .models import CouncilDecision, CouncilRules, CouncilVote, JoinRequest, Unit, UnitMembership
+from .models import (
+    CouncilDecision,
+    CouncilRules,
+    CouncilVote,
+    JoinRequest,
+    Responsibility,
+    Unit,
+    UnitMembership,
+)
 
 
 @admin.register(Unit)
@@ -33,3 +41,8 @@ class CouncilVoteAdmin(ReadOnlyAdmin):
 @admin.register(CouncilRules)
 class CouncilRulesAdmin(ReadOnlyAdmin):
     list_display = ("unit", "version", "decision_rule")
+
+
+@admin.register(Responsibility)
+class ResponsibilityAdmin(ReadOnlyAdmin):
+    list_display = ("unit", "member", "starts_at", "ends_at", "how")
