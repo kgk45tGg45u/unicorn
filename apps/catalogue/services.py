@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import timedelta
 from decimal import Decimal
 
@@ -10,7 +11,7 @@ from apps.core.money import uniq
 from apps.rules.services import get_param
 from apps.units import services as unit_services
 
-from .models import Item, Offer, OfferInput, OfferTool, OwnFreeConfirmation
+from .models import Item, Offer, OfferInput, OfferTool, OfferValueHistory, OwnFreeConfirmation, ValueRun
 
 
 class CatalogueError(ValueError):
@@ -345,3 +346,158 @@ def ask_own_free(today=None):
                 )
             paused += 1
     return paused
+
+
+# --- Computing values (the only code that writes an offer's value fields: HF-3) ---
+
+SUPPLY_WEIGHTS_HOOK = None  # P05 sets this to a function (item ids) -> {item_id: {offer_id: share}} from deliveries
+
+
+def _equal_weights(offers_by_item):
+    return {item_id: {o.id: 1 / len(offers) for o in offers} for item_id, offers in offers_by_item.items()}
+
+
+def _offer_data(offer, hours, q):
+    """Hours, depreciation and euros per unit of one offer, as engine input."""
+    from .engine import OfferData
+
+    d = m = 0.0
+    for t in offer.tools.all():
+        if t.source != "unicorn_owned":
+            continue
+        d += float(t.value_uniq / t.lifetime_uses * t.uses_per_batch) / q
+        m += float(t.euro_price / t.lifetime_uses * t.uses_per_batch) / q
+    inputs = []
+    for r in offer.inputs.all():
+        if r.source == "buy_outside":
+            m += float(r.quantity_per_batch * (r.euro_price_estimate or 0)) / q
+        elif r.source == "unicorn":
+            inputs.append((r.item_id, float(r.quantity_per_batch), r.preferred_supplier_id))
+    return OfferData(offer.pk, offer.item_id, q, hours, d, m, inputs)
+
+
+def _quantity(offer):
+    return float(offer.batch_size if offer.item.kind == "product" else offer.capacity)
+
+
+def recompute_values():
+    """Compute every price from the recipes and store it. Offers with an error keep their last good values."""
+    from django.utils import timezone
+
+    from . import engine
+
+    started = timezone.now()
+    with transaction.atomic():
+        offers = list(
+            Offer.objects.filter(status__in=["active", "value_error"])
+            .select_related("item", "unit")
+            .prefetch_related("inputs", "tools")
+        )
+        errors = {}
+        # An offer whose Unicorn-made input has no supplier left cannot be priced; this can chain.
+        alive = {o.pk: o for o in offers}
+        changed = True
+        while changed:
+            changed = False
+            suppliers = {}
+            for o in alive.values():
+                suppliers.setdefault(o.item_id, []).append(o)
+            for o in list(alive.values()):
+                for r in o.inputs.all():
+                    if r.source != "unicorn":
+                        continue
+                    ok = (r.preferred_supplier_id in alive) if r.preferred_supplier_id else (r.item_id in suppliers)
+                    if not ok:
+                        errors[o.pk] = "no_supplier"
+                        del alive[o.pk]
+                        changed = True
+                        break
+                else:
+                    if any(r.currency != "EUR" for r in o.inputs.all() if r.source == "buy_outside"):
+                        errors[o.pk] = "currency"
+                        del alive[o.pk]
+                        changed = True
+        data = []
+        for o in alive.values():
+            use_measured = o.measured_hours_per_unit is not None
+            hours = float(o.measured_hours_per_unit if use_measured else declared_hours(o))
+            data.append(_offer_data(o, hours, _quantity(o)))
+        by_item = {}
+        for o in alive.values():
+            by_item.setdefault(o.item_id, []).append(o)
+        weights = SUPPLY_WEIGHTS_HOOK(list(by_item)) if SUPPLY_WEIGHTS_HOOK else _equal_weights(by_item)
+        info = {}
+        results = engine.solve(data, weights, info)
+        run = ValueRun.objects.create(
+            started_at=started,
+            offers=len(offers),
+            method=info.get("method", "spsolve"),
+            converged=info.get("converged", True),
+        )
+        now = timezone.now()
+        for o in offers:
+            res = results.get(o.pk)
+            if res is not None and res.error:
+                errors[o.pk] = res.error
+            if o.pk in errors:
+                o.status = "value_error"
+                o.status_note = _("The price cannot be computed: %(why)s") % {"why": errors[o.pk]}
+                o.save(update_fields=["status", "status_note"])
+                continue
+            basis = "measured" if o.measured_hours_per_unit is not None else "declared"
+            o.value_direct = uniq(Decimal(str(res.direct)))
+            o.value_indirect = uniq(Decimal(str(res.indirect)))
+            o.value_total = uniq(Decimal(str(res.total)))
+            o.euro_content = uniq(Decimal(str(res.euro)))
+            o.value_basis = basis
+            o.values_computed_at = now
+            if o.status == "value_error":
+                o.status, o.status_note = "active", ""
+            o.save()
+            OfferValueHistory.objects.create(
+                run=run,
+                offer=o,
+                direct=o.value_direct,
+                indirect=o.value_indirect,
+                total=o.value_total,
+                euro=o.euro_content,
+                basis=basis,
+            )
+        run.errors = {str(k): v for k, v in errors.items()}
+        run.finished_at = timezone.now()
+        run.save()
+        audit.record("system", "catalogue.values_computed", run, offers=len(offers), errors=len(errors))
+        return run
+
+
+@dataclass
+class Preview:
+    direct: Decimal
+    indirect: Decimal
+    total: Decimal
+    euro: Decimal
+
+
+def preview(offer) -> Preview:
+    """What the recipe would cost, one level deep, using today's values of the inputs' offers."""
+    direct = declared_hours(offer)
+    q = Decimal(str(_quantity(offer)))
+    indirect = euro = Decimal(0)
+    for t in offer.tools.all():
+        if t.source == "unicorn_owned":
+            indirect += t.value_uniq / t.lifetime_uses * t.uses_per_batch / q
+            euro += t.euro_price / t.lifetime_uses * t.uses_per_batch / q
+    for r in offer.inputs.all():
+        if r.source == "buy_outside":
+            euro += r.quantity_per_batch * (r.euro_price_estimate or 0) / q
+        elif r.source == "unicorn":
+            if r.preferred_supplier_id:
+                suppliers = [r.preferred_supplier]
+            else:
+                suppliers = list(active_offers_of(r.item))
+            if suppliers:
+                value = sum((s.value_total for s in suppliers), Decimal(0)) / len(suppliers)
+                eur = sum((s.euro_content for s in suppliers), Decimal(0)) / len(suppliers)
+                indirect += r.quantity_per_batch * value / q
+                euro += r.quantity_per_batch * eur / q
+    return Preview(direct, uniq(indirect), uniq(direct + indirect), uniq(euro))

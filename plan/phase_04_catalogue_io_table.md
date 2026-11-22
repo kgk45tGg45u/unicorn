@@ -160,7 +160,7 @@
 
 ---
 
-### - [ ] P04.T05 — Value runs: computing and storing prices
+### - [x] P04.T05 — Value runs: computing and storing prices
 
 **Read:** docs/04 section 6 ("Declared and measured hours", "When values are computed"); HF-3.
 **Files:** `apps/catalogue/models.py` (ValueRun, OfferValueHistory), `apps/catalogue/services.py`, `apps/catalogue/jobs.py`, `apps/catalogue/migrations/000X_value_history_triggers.py`, `apps/catalogue/tests/test_values.py`

@@ -2,6 +2,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from apps.core.models import AppendOnlyModel
+
 
 class UnitOfMeasure(models.Model):
     DIMENSIONS = [
@@ -201,3 +203,35 @@ class OwnFreeConfirmation(models.Model):
 
     def __str__(self):
         return f"{self.input} {self.month:%Y-%m}"
+
+
+class ValueRun(models.Model):
+    """One computation of all labour values."""
+
+    started_at = models.DateTimeField()
+    finished_at = models.DateTimeField(null=True, blank=True)
+    offers = models.PositiveIntegerField(default=0)
+    method = models.CharField(max_length=10, default="spsolve")  # spsolve or jacobi
+    converged = models.BooleanField(default=True)
+    errors = models.JSONField(default=dict, blank=True)  # offer id -> what went wrong
+
+    class Meta:
+        ordering = ["-started_at"]
+
+    def __str__(self):
+        return f"value run {self.started_at:%Y-%m-%d %H:%M}"
+
+
+class OfferValueHistory(AppendOnlyModel):
+    """The values of one offer at one run. Append-only: prices have a public history (HF-3)."""
+
+    run = models.ForeignKey(ValueRun, on_delete=models.PROTECT, related_name="history")
+    offer = models.ForeignKey(Offer, on_delete=models.PROTECT, related_name="history")
+    direct = models.DecimalField(max_digits=18, decimal_places=4)
+    indirect = models.DecimalField(max_digits=18, decimal_places=4)
+    total = models.DecimalField(max_digits=18, decimal_places=4)
+    euro = models.DecimalField(max_digits=18, decimal_places=4)
+    basis = models.CharField(max_length=10, default="declared")
+
+    def __str__(self):
+        return f"{self.offer} {self.total}"

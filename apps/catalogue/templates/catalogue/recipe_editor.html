@@ -51,6 +51,6 @@
   <div class="col-6 col-md-3"><label class="form-label" for="t-e">{% translate "Price in euros (bought with euros)" %}</label><input class="form-control" id="t-e" name="euro_price"></div>
   <div class="col-12 col-md-2 align-self-end"><button class="btn btn-primary w-100" type="submit">{% translate "Add tool" %}</button></div>
 </form>
-{% block preview %}{% endblock %}
+<div class="alert alert-secondary">{% blocktranslate with t=preview.total|floatformat:2 d=preview.direct|floatformat:2 i=preview.indirect|floatformat:2 e=preview.euro|floatformat:2 %}With this recipe one unit would cost about {{ t }} UNIQ ({{ d }} h direct + {{ i }} h indirect), and €{{ e }} of it is bought from outside.{% endblocktranslate %}</div>
 <form method="post" action="{% url 'catalogue:publish' offer.pk %}">{% csrf_token %}<button class="btn btn-success" type="submit">{% translate "Publish the offer" %}</button></form>
 {% endblock %}

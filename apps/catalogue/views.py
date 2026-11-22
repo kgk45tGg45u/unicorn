@@ -66,6 +66,7 @@ def recipe_editor(request, pk):
             "tools": offer.tools.select_related("tool_item"),
             "uoms": UnitOfMeasure.objects.all(),
             "problems": services.validate_recipe(offer),
+            "preview": services.preview(offer),
             "workers": [w.member for w in unit_services_workers(offer.unit)],
             "supplier_choices": {},
         },
