@@ -21,6 +21,7 @@
    ```python
    class UserManager(BaseUserManager):
        use_in_migrations = True
+
        def create_user(self, email, password=None, **extra):
            if not email:
                raise ValueError("email required")
@@ -28,9 +29,11 @@
            user.set_unusable_password() if password is None else user.set_password(password)
            user.save(using=self._db)
            return user
+
        def create_superuser(self, email, password=None, **extra):
            extra.update(is_staff=True, is_superuser=True)
            return self.create_user(email, password, **extra)
+
 
    class User(AbstractUser):
        username = None
@@ -56,7 +59,7 @@
 
 ---
 
-### - [ ] P00.T02 — Tooling and the Makefile
+### - [x] P00.T02 — Tooling and the Makefile
 
 **Files:** `pyproject.toml`, `Makefile`, `conftest.py`, `apps/core/tests/__init__.py`, `apps/core/tests/test_settings.py`
 
@@ -96,7 +99,7 @@
        "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
    }
    DATABASES["default"]["TEST"] = {"CHARSET": "utf8mb4", "COLLATION": "utf8mb4_unicode_ci"}
-   DATABASES["default"]["ATOMIC_REQUESTS"] = False   # services open their own transactions
+   DATABASES["default"]["ATOMIC_REQUESTS"] = False  # services open their own transactions
    ```
 
 3. **The driver.** If `mysqlclient` failed to install on the Mac, first try:
@@ -113,6 +116,7 @@
        import MySQLdb  # noqa: F401  mysqlclient, the preferred driver
    except ImportError:  # fallback: docs/09
        import pymysql
+
        pymysql.version_info = (2, 2, 1, "final", 0)
        pymysql.install_as_MySQLdb()
    ```

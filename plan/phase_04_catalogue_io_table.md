@@ -118,14 +118,22 @@
    class OfferData:
        id: int
        item_id: int
-       q: float                    # batch_size (products) or capacity (services)
-       l: float                    # hours per unit (declared or measured)
-       d: float                    # depreciation hours per unit (unicorn_owned tools)
-       m: float                    # euros per unit (buy_outside inputs + euro-bought tools)
-       inputs: list[tuple[int, float, int | None]]   # (item_id, quantity_per_batch, preferred_supplier_offer_id)
+       q: float  # batch_size (products) or capacity (services)
+       l: float  # hours per unit (declared or measured)
+       d: float  # depreciation hours per unit (unicorn_owned tools)
+       m: float  # euros per unit (buy_outside inputs + euro-bought tools)
+       inputs: list[tuple[int, float, int | None]]  # (item_id, quantity_per_batch, preferred_supplier_offer_id)
+
+
    @dataclass
    class ValueResult:
-       direct: float; indirect: float; total: float; euro: float; error: str | None
+       direct: float
+       indirect: float
+       total: float
+       euro: float
+       error: str | None
+
+
    def solve(offers: list[OfferData], weights: dict[int, dict[int, float]]) -> dict[int, ValueResult]:
        """weights[item_id][offer_id] = share of that offer in the item's supply (sums to 1 per item)."""
    ```
