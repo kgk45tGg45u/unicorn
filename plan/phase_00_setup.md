@@ -166,7 +166,7 @@
 
 ---
 
-### - [ ] P00.T05 — Core helpers: money, hashing, audit events
+### - [x] P00.T05 — Core helpers: money, hashing, audit events
 
 **Read:** CLAUDE.md section 5 (Numbers and money).
 **Files:** `apps/core/money.py`, `apps/core/hashing.py`, `apps/core/models.py`, `apps/core/audit.py`, `apps/core/tests/test_money.py`, `apps/core/tests/test_hashing.py`, `apps/core/tests/test_audit.py`
