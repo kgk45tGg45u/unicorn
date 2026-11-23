@@ -53,6 +53,7 @@ class Ticket(models.Model):
         "bodies.Union", null=True, blank=True, on_delete=models.PROTECT, related_name="tickets"
     )
     scope_area = models.CharField(max_length=12, blank=True)
+    scope_country = models.CharField(max_length=2, default="DE")  # with scope_area: the area is in this country
 
     brief_md = models.TextField(blank=True)
     check_question = models.CharField(max_length=300, blank=True)

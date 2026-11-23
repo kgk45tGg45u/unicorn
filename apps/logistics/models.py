@@ -31,7 +31,9 @@ class PickupPoint(models.Model):
     managed_by_unit = models.ForeignKey(
         "units.Unit", null=True, blank=True, on_delete=models.PROTECT, related_name="managed_pickup_points"
     )
-    managed_by_local_council_id = models.PositiveIntegerField(null=True, blank=True)  # the FK comes with P13
+    managed_by_local_council = models.ForeignKey(
+        "bodies.LocalCouncil", null=True, blank=True, on_delete=models.PROTECT, related_name="pickup_points"
+    )
     manager = models.ForeignKey(
         "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
     )  # who confirms hand-overs

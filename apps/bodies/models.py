@@ -219,3 +219,64 @@ class ExpertNomination(models.Model):
 
     def __str__(self):
         return f"{self.union.name} names {self.member.number}"
+
+
+class LocalCouncil(models.Model):
+    """An open assembly of the members who live in an area (docs/05 section 7). Who belongs is computed."""
+
+    LEVELS = [
+        ("district", _("district")),
+        ("town", _("town")),
+        ("region", _("region")),
+        ("country", _("country")),
+    ]
+    STATUSES = [("active", _("active")), ("closed", _("closed"))]
+
+    name = models.CharField(max_length=80)
+    country = models.CharField(max_length=2)
+    postcode_prefix = models.CharField(max_length=12)
+    level = models.CharField(max_length=10, choices=LEVELS)
+    status = models.CharField(max_length=8, choices=STATUSES, default="active")
+    created_at = models.DateTimeField(auto_now_add=True)
+    ticket = models.ForeignKey("tickets.Ticket", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+
+    class Meta:
+        ordering = ["country", "postcode_prefix"]
+        constraints = [models.UniqueConstraint(fields=["country", "postcode_prefix"], name="one_council_per_area")]
+
+    def __str__(self):
+        return self.name
+
+
+class LocalVolunteer(models.Model):
+    """A member of the area who offers to be the council's responsible in turn."""
+
+    council = models.ForeignKey(LocalCouncil, on_delete=models.PROTECT, related_name="volunteers")
+    member = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="local_volunteering")
+    joined_at = models.DateTimeField()
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["council", "joined_at"]
+
+    def __str__(self):
+        return f"{self.member.number} volunteers for {self.council.name}"
+
+
+class LocalResponsibility(models.Model):
+    """Who holds the council's responsibility. `ends_at` is empty while current."""
+
+    HOW = [("volunteer", _("volunteer")), ("rotation", _("rotation")), ("handover", _("handover"))]
+
+    council = models.ForeignKey(LocalCouncil, on_delete=models.PROTECT, related_name="responsibilities")
+    member = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="local_responsibilities")
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField(null=True, blank=True)
+    how = models.CharField(max_length=10, choices=HOW)
+    declined_by = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        ordering = ["council", "-starts_at"]
+
+    def __str__(self):
+        return f"{self.member.number} is responsible for {self.council.name}"

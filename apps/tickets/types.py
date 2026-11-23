@@ -183,6 +183,22 @@ TYPES: dict[str, TicketType] = {
             unit_scope=True,
             creatable=False,
         ),
+        _T(
+            "local_council_open",
+            _("Open a local council"),
+            "confirmers",
+            action="open_local_council",
+            needs_brief=True,
+            creatable=False,
+        ),
+        _T(
+            "local_decision",
+            _("A decision for one area"),
+            "confirmers",
+            action="local_decision",
+            needs_brief=True,
+            creatable=False,
+        ),
         _T("poll", _("Ask all members"), "referendum"),
         _T("referendum_request", _("Ask for a vote of all members"), "none"),
         _T(

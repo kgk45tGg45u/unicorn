@@ -73,7 +73,7 @@ def eligible(ticket, round="confirmers") -> list[Member]:
     members = members.exclude(conflicts__ticket=ticket)
     members = members.filter(Q(draw_pause_until__isnull=True) | Q(draw_pause_until__lt=timezone.localdate()))
     if ticket.scope == "local" and ticket.scope_area:
-        members = members.filter(postcode__startswith=ticket.scope_area)
+        members = members.filter(country=ticket.scope_country, postcode__startswith=ticket.scope_area)
     chosen = []
     limit = get_param("governance.confirmers.max_draws_per_month")
     start = _month_start()

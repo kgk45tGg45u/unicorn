@@ -115,7 +115,7 @@
 
 ---
 
-### - [ ] P13.T06 — Local councils
+### - [x] P13.T06 — Local councils
 
 **Read:** docs/05 section 7 ("Local councils"); P06.T04 (eligibility for `local` scope).
 **Files:** `apps/bodies/models.py` (LocalCouncil, LocalResponsibility), `apps/bodies/services.py`, `apps/bodies/jobs.py`, `apps/tickets/types.py` (add `local_council_open` and `local_decision`), `apps/logistics/models.py` (PickupPoint FK), `apps/bodies/tests/test_local.py`
