@@ -21,6 +21,7 @@ run:
 
 migrate:
 	$(PY) manage.py migrate
+	$(PY) manage.py createcachetable
 	$(PY) manage.py loaddata contracts
 
 defaults:

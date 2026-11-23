@@ -35,7 +35,7 @@
 
 ---
 
-### - [ ] P14.T02 — Limits against spam and overload
+### - [x] P14.T02 — Limits against spam and overload
 
 **Read:** docs/08 section 1 ("Denial of service, spam"); the `security.*` parameters.
 **Files:** `unicorn/settings.py` (CACHES), `Makefile` (`migrate` also runs `createcachetable`), `apps/core/ratelimit.py`, the views that create tickets, comments, flags and outside orders, `apps/core/tests/test_ratelimit.py`

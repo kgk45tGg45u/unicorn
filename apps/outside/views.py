@@ -6,6 +6,7 @@ from django.utils.translation import gettext as _
 
 from apps.catalogue.models import Offer
 from apps.core.decorators import sensitive_action
+from apps.core.ratelimit import rate_limited
 from apps.market.models import Order, OrderLine
 from apps.units import services as unit_services
 
@@ -21,6 +22,7 @@ def consumer_info(request):
     return render(request, "outside/consumer_info.html", {})
 
 
+@rate_limited("shop", "security.shop_orders_per_ip_per_hour", 3600, per="ip")
 def checkout(request, pk):
     offer = next((o for o in services.shop_offers() if o.pk == pk), None)
     if offer is None:

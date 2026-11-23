@@ -34,6 +34,9 @@ DATABASES["default"]["OPTIONS"] = {
 }
 DATABASES["default"]["TEST"] = {"CHARSET": "utf8mb4", "COLLATION": "utf8mb4_unicode_ci"}
 DATABASES["default"]["ATOMIC_REQUESTS"] = False  # services open their own transactions
+CACHES = {  # shared by all workers; also holds the rate limits and allauth's login limits
+    "default": {"BACKEND": "django.core.cache.backends.db.DatabaseCache", "LOCATION": "unicorn_cache"}
+}
 PRIVATE_MEDIA_ROOT = env("PRIVATE_MEDIA_ROOT", default=str(BASE_DIR / "private_media"))
 UNICORN_MASTER_KEY = env("UNICORN_MASTER_KEY", default="")
 UNICORN_HMAC_KEY = env("UNICORN_HMAC_KEY", default="")

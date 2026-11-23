@@ -9,6 +9,7 @@ from django.views.decorators.http import require_POST
 
 from apps.core.decorators import sensitive_action
 from apps.core.models import AuditEvent
+from apps.core.ratelimit import rate_limited
 from apps.members.assist import assist_allowed
 
 from . import confirm, flags, mediation, routing, services, types
@@ -139,6 +140,7 @@ def new_ticket(request):
 
 @assist_allowed("tickets")
 @login_required
+@rate_limited("tickets", "security.tickets_per_member_per_day", 86400)
 def new_ticket_form(request, key):
     info = types.TYPES.get(key)
     if info is None or not info.creatable:
@@ -171,6 +173,7 @@ def new_ticket_form(request, key):
 @assist_allowed("comments")
 @login_required
 @require_POST
+@rate_limited("comments", "security.comments_per_member_per_hour", 3600)
 def comment(request, number):
     ticket = get_object_or_404(Ticket, number=number)
     parent = Comment.objects.filter(pk=request.POST.get("parent") or 0, ticket=ticket).first()
@@ -312,6 +315,7 @@ def seat_conflict(request, pk):
 
 @login_required
 @require_POST
+@rate_limited("flags", "security.flags_per_member_per_day", 86400)
 def flag_view(request):
     from django.utils.http import url_has_allowed_host_and_scheme
 
