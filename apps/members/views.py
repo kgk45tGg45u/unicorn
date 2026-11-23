@@ -87,17 +87,20 @@ def _parts(template):
     return parts
 
 
-@login_required
 def contract(request):
-    member = request.member
-    if member is None:
+    """The current membership contract. Anyone can read it; signing needs an account."""
+    member = request.member if request.user.is_authenticated else None
+    if request.user.is_authenticated and member is None:
         return redirect("core:home")
+    readonly = member is None
     template = ContractTemplate.objects.filter(kind="membership", is_current=True).first()
     if template is None:
         raise Http404
     parts = _parts(template)
-    already = Signature.objects.filter(member=member, template=template).exists()
+    already = bool(member) and Signature.objects.filter(member=member, template=template).exists()
     error = False
+    if request.method == "POST" and readonly:
+        return redirect("account_login")
     if request.method == "POST" and not already:
         if all(request.POST.get(f"accept_{i}") for i in range(len(parts))):
             services.sign(member, template, "click")
@@ -107,7 +110,7 @@ def contract(request):
     return render(
         request,
         "members/contract.html",
-        {"template": template, "parts": parts, "already": already, "error": error},
+        {"template": template, "parts": parts, "already": already, "error": error, "readonly": readonly},
     )
 
 

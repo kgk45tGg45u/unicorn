@@ -9,4 +9,8 @@ urlpatterns = [
     path("healthz", views.healthz, name="healthz"),
     path("offline/", views.offline, name="offline"),
     path("sw.js", views.service_worker, name="sw"),
+    path("imprint/", views.legal_page, {"name": "imprint"}, name="imprint"),
+    path("privacy/", views.legal_page, {"name": "privacy"}, name="privacy"),
+    path("terms/", views.legal_page, {"name": "terms"}, name="terms"),
+    path("third-party/", views.legal_page, {"name": "third-party"}, name="third_party"),
 ]

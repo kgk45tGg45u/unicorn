@@ -55,3 +55,26 @@ def healthz(request):
     except Exception:
         return JsonResponse({"status": "error"}, status=503)
     return JsonResponse({"status": "ok"})
+
+
+# --- Legal pages (P14.T07): Markdown files that change only with a release ---
+
+LEGAL_PAGES = {
+    "imprint": ("Imprint", "content/legal/imprint.md"),
+    "privacy": ("Privacy notice", "content/legal/privacy.md"),
+    "terms": ("Terms of use", "content/legal/terms.md"),
+    "third-party": ("Third-party notices", "THIRD_PARTY.md"),
+}
+
+
+def legal_page(request, name):
+    from django.http import Http404
+
+    from .markdown import render as markdown
+
+    try:
+        title, path = LEGAL_PAGES[name]
+    except KeyError:
+        raise Http404 from None
+    text = (Path(settings.BASE_DIR) / path).read_text()
+    return render(request, "core/legal.html", {"title": title, "html": markdown(text)})

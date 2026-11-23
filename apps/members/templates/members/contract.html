@@ -16,7 +16,7 @@
     <section class="mb-4">
       <h2 class="h5">{{ forloop.counter }}. {{ part.title }}</h2>
       <div class="ws-pre-line">{{ part.text }}</div>
-      {% if not already %}
+      {% if not already and not readonly %}
       <div class="form-check mt-2">
         <input class="form-check-input" type="checkbox" id="accept_{{ forloop.counter0 }}" name="accept_{{ forloop.counter0 }}" value="1">
         <label class="form-check-label" for="accept_{{ forloop.counter0 }}">{% translate "I have read and accept this part" %}</label>
@@ -24,6 +24,7 @@
       {% endif %}
     </section>
   {% endfor %}
-  {% if not already %}<button class="btn btn-primary btn-lg" type="submit">{% translate "Sign" %}</button>{% endif %}
+  {% if not already and not readonly %}<button class="btn btn-primary btn-lg" type="submit">{% translate "Sign" %}</button>{% endif %}
+  {% if readonly %}<p class="text-muted">{% translate "To sign this contract, please sign up or log in first." %}</p>{% endif %}
 </form>
 {% endblock %}

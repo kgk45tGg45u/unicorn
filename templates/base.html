@@ -36,8 +36,13 @@
   <footer class="container py-3 border-top small">
     <a class="me-3" href="{% url 'ledger:open_books' %}">{% translate "Open books" %}</a>
     <a class="me-3" href="{% url 'rules:index' %}">{% translate "Rules" %}</a>
-    <a class="me-3" href="#">{% translate "Imprint" %}</a>
-    <a href="#">{% translate "Privacy" %}</a>
+    <a class="me-3" href="{% url 'core:imprint' %}">{% translate "Imprint" %}</a>
+    <a class="me-3" href="{% url 'core:privacy' %}">{% translate "Privacy" %}</a>
+    <a class="me-3" href="{% url 'core:terms' %}">{% translate "Terms" %}</a>
+    <a class="me-3" href="{% url 'members:contract' %}">{% translate "Contract" %}</a>
+    <a class="me-3" href="{% url 'core:third_party' %}">{% translate "Third-party notices" %}</a>
+    <a class="me-3" href="{{ SOURCE_URL }}">{% translate "Source code" %}</a>
+    <span class="text-muted">{% blocktranslate with v=UNICORN_VERSION %}Version {{ v }}{% endblocktranslate %}</span>
   </footer>
   {% block extra_body %}{% endblock %}
 </body>

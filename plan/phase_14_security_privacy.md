@@ -156,7 +156,7 @@
 
 ---
 
-### - [ ] P14.T07 — Legal pages and third-party notices
+### - [x] P14.T07 — Legal pages and third-party notices
 
 **Read:** docs/08 section 8 ("Legal pages"); legal frame (`../Unicorn-simulation/docs/real_world/4_legal_frame.md`) sections 1, 7 and 10.
 **Files:** `content/legal/imprint.md`, `content/legal/privacy.md`, `content/legal/terms.md`, `THIRD_PARTY.md`, `apps/core/views.py`, `apps/core/urls.py`, `templates/core/legal.html`, `apps/core/tests/test_legal_pages.py`
@@ -174,7 +174,7 @@
 
 ---
 
-### - [ ] P14.T08 — The licence and the source link (HF-19)
+### - [x] P14.T08 — The licence and the source link (HF-19)
 
 **Read:** docs/01 rule HF-19.
 **Files:** `LICENSE`, `pyproject.toml` (`license`), `templates/base.html` (footer), `unicorn/settings.py` (`SOURCE_URL`, `UNICORN_VERSION`), `apps/core/tests/test_hf19.py`

@@ -321,7 +321,7 @@ class Booking(models.Model):
 
 
 class StandingOrder(models.Model):
-    """A subscription to a product, for example a vegetable box every week. Each delivery is a new order line."""
+    """A repeating order for a product, for example a vegetable box every week. Each delivery is a new order line."""
 
     EVERY = [("week", _("every week")), ("month", _("every month"))]
     STATUSES = [("active", _("active")), ("paused", _("paused")), ("ended", _("ended"))]

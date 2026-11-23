@@ -45,6 +45,9 @@ UNICORN_BACKUP_NOTE = env("UNICORN_BACKUP_NOTE", default="")
 EMAIL_CONFIG = env.email("EMAIL_URL", default="consolemail://")
 vars().update(EMAIL_CONFIG)
 SITE_URL = env("SITE_URL", default="http://127.0.0.1:8000")
+# The AGPL asks that people who use the app over the network can get its source (HF-19).
+SOURCE_URL = env("SOURCE_URL", default="/third-party/")  # set the real address of the repository in .env
+UNICORN_VERSION = env("UNICORN_VERSION", default="dev")  # set by the release script (P15.T06)
 
 LANGUAGE_CODE = "en"
 LANGUAGES = [("en", "English")]
@@ -125,6 +128,7 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                "apps.core.context.site",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
             ],
