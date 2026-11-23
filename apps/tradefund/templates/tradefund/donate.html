@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Donate" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Donate to the trade fund" %}</h1>
+<p><strong>{% translate "Donations earn no UNIQ. They are not tax-deductible." %}</strong></p>
+{% if donation %}
+  <div class="alert alert-success">
+    <p>{% translate "Thank you. Please pay into this account with your own bank:" %}</p>
+    <dl class="row mb-0">
+      <dt class="col-sm-3">{% translate "Amount" %}</dt><dd class="col-sm-9">{{ donation.amount }} {{ donation.currency }}</dd>
+      <dt class="col-sm-3">{% translate "Account number (IBAN)" %}</dt><dd class="col-sm-9"><code>{{ iban }}</code></dd>
+      <dt class="col-sm-3">{% translate "Reference" %}</dt><dd class="col-sm-9"><code>Unicorn donation {{ donation.reference }}</code></dd>
+    </dl>
+  </div>
+  <p>{% translate "The holder of the account confirms when it arrives. Unicorn never moves money itself." %}</p>
+{% else %}
+<form method="post" class="mb-4">{% csrf_token %}
+  <div class="row"><div class="col-7 mb-3"><label class="form-label" for="a">{% translate "Amount" %}</label><input class="form-control" id="a" name="amount" inputmode="decimal" required></div>
+  <div class="col-5 mb-3"><label class="form-label" for="c">{% translate "Currency" %}</label><select class="form-select" id="c" name="currency">{% for c in currencies %}<option>{{ c }}</option>{% endfor %}</select></div></div>
+  <div class="mb-3"><label class="form-label" for="n">{% translate "Your name, if you want the holder to know it (optional)" %}</label><input class="form-control" id="n" name="name" autocomplete="off"></div>
+  <button class="btn btn-primary" type="submit">{% translate "Show me where to pay" %}</button>
+</form>
+{% endif %}
+{% endblock %}

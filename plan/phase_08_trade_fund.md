@@ -184,7 +184,7 @@
 
 ---
 
-### - [ ] P08.T08 — Donations in euros or dollars
+### - [x] P08.T08 — Donations in euros or dollars
 
 **Read:** docs/07 section 8; HF-18.
 **Files:** `apps/tradefund/models.py` (Donation), `apps/tradefund/views.py`, `apps/tradefund/templates/tradefund/donate.html`, `apps/tradefund/tests/test_donations.py`

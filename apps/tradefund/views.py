@@ -220,3 +220,59 @@ def purchase_detail(request, pk):
             "can_deliver": pr.status == "bought" and purchases.can_confirm_delivery(pr, member),
         },
     )
+
+
+# --- Donations (P08.T08) ---
+
+
+def donate(request):
+    """Anyone may donate: the page picks a holder and shows their account number and the reference."""
+    from django.conf import settings  # noqa: F401
+
+    from apps.rules.services import get_param
+
+    from . import donations
+
+    context = {"currencies": get_param("tradefund.donation_currencies")}
+    if request.method == "POST":
+        try:
+            donation = donations.pledge(
+                request.POST.get("amount", ""),
+                request.POST.get("currency", "EUR"),
+                donor_member=getattr(request, "member", None),
+                donor_name=request.POST.get("name", ""),
+            )
+            context.update(donation=donation, iban=donations.holder_iban(donation))
+        except FundError as e:
+            messages.error(request, str(e))
+    return render(request, "tradefund/donate.html", context)
+
+
+@login_required
+def my_donations(request):
+    from . import donations
+
+    holder = Holder.objects.filter(member=request.member).first()
+    if holder is None:
+        return redirect("tradefund:become_holder")
+    if request.method == "POST":
+        try:
+            if request.POST.get("do") == "own":
+                donations.record_own_donation(holder, request.POST.get("amount", ""))
+                messages.success(request, _("Thank you. Your donation was recorded."))
+            else:
+                donation = get_object_or_404(holder.donations, pk=request.POST.get("donation"))
+                donations.confirm_received(donation, request.member, request.POST.get("amount", ""))
+                messages.success(request, _("Thank you. The donation is recorded."))
+        except FundError as e:
+            messages.error(request, str(e))
+        return redirect("tradefund:my_donations")
+    return render(
+        request,
+        "tradefund/my_donations.html",
+        {
+            "holder": holder,
+            "pledged": holder.donations.filter(status="pledged"),
+            "received": holder.donations.filter(status="received")[:20],
+        },
+    )

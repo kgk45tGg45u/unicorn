@@ -298,3 +298,30 @@ class GroupTool(models.Model):
 
     def __str__(self):
         return f"group tool {self.item.name}"
+
+
+class Donation(models.Model):
+    """Euros or dollars given to the fund. It earns no UNIQ (HF-18): there is no link to the ledger on purpose."""
+
+    STATUSES = [("pledged", _("promised")), ("received", _("received")), ("cancelled", _("cancelled"))]
+
+    donor_member = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    donor_name_enc = models.BinaryField(blank=True, default=b"")  # an outside donor's name, system_encrypt (HF-14)
+    holder = models.ForeignKey(Holder, on_delete=models.PROTECT, related_name="donations")
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=3)
+    status = models.CharField(max_length=10, choices=STATUSES, default="pledged")
+    pledged_at = models.DateTimeField(auto_now_add=True)
+    received_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-id"]
+
+    def __str__(self):
+        return f"donation {self.reference} ({self.status})"
+
+    @property
+    def reference(self):
+        return f"D-{self.pk:06d}"

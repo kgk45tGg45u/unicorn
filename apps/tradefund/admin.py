@@ -4,6 +4,7 @@ from apps.core.admin import ReadOnlyAdmin
 
 from .models import (
     BuyerVolunteer,
+    Donation,
     ExternalPayee,
     FundEntry,
     FxRate,
@@ -58,3 +59,8 @@ class GroupToolAdmin(ReadOnlyAdmin):
 @admin.register(BuyerVolunteer)
 class BuyerVolunteerAdmin(ReadOnlyAdmin):
     list_display = ("purchase", "holder", "created_at")
+
+
+@admin.register(Donation)
+class DonationAdmin(ReadOnlyAdmin):
+    list_display = ("id", "holder", "amount", "currency", "status")

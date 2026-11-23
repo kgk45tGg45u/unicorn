@@ -12,6 +12,8 @@ urlpatterns = [
     path("fund/purchase/", views.purchase_list, name="purchase_list"),
     path("fund/purchase/new/", views.purchase_new, name="purchase_new"),
     path("fund/purchase/<int:pk>/", views.purchase_detail, name="purchase_detail"),
+    path("fund/donate/", views.donate, name="donate"),
+    path("fund/donations/", views.my_donations, name="my_donations"),
     path("fund/trust/", views.trust_page, name="trust"),
     path("fund/trust/<int:pk>/contest/", views.trust_contest, name="trust_contest"),
 ]
