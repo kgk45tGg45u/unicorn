@@ -441,10 +441,19 @@ def open_decision(member, union, title, text="", kind="other", payload=None):
         raise BodyError(_("Please give the decision a title."))
     payload = dict(payload or {})
     _action_for(kind, payload)  # refuses anything outside the allow-list before a vote is wasted
+    problems = []
     if kind == "rules_change":
         problems = rule_problems(payload)
-        if problems:
-            raise BodyError(problems[0])
+    elif kind == "standard" and not ((payload.get("title") or "").strip() and (payload.get("body_md") or "").strip()):
+        problems = [_("A standard needs a title and a text.")]
+    elif kind == "recipe_template":
+        from . import duties
+
+        problems = duties.template_problems(payload)
+    elif kind == "training" and not payload.get("tasks"):
+        problems = [_("A training needs at least one task.")]
+    if problems:
+        raise BodyError(problems[0])
     rules = current_rules(union)
     now = timezone.now()
     with transaction.atomic():

@@ -17,6 +17,10 @@ def _auto_open_unit(ticket) -> bool:
 
 AUTO_RULES["open_unit"] = _auto_open_unit
 
+# Functions called with (ticket) when a ticket is routed, before it is sent to its deciders. They may notify people
+# (a union asked to advise) but must never change the ticket's method (HF-15).
+ROUTE_HOOKS: list = []
+
 # type -> function(ticket) -> bool: True when the app routed the ticket itself (P08 adds "purchase" for big amounts).
 CUSTOM_ROUTES: dict = {}
 
@@ -39,6 +43,8 @@ def route(ticket):
         ticket.decision_method = info.method
         ticket.save(update_fields=["decision_method"])
         method = info.method
+        for hook in ROUTE_HOOKS:
+            hook(ticket)
         if ticket.type == "parameter_change":
             return _route_parameter(ticket)
         custom = CUSTOM_ROUTES.get(ticket.type)

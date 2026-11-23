@@ -35,6 +35,26 @@ def _editable_offer(request, pk):
     return offer
 
 
+def _template_id(request):
+    return request.POST.get("template") or request.GET.get("template") or ""
+
+
+def _templates_for(item):
+    from apps.bodies.models import RecipeTemplate
+
+    return RecipeTemplate.objects.filter(item=item, union__status="active").select_related("union")
+
+
+def _union_template(request, item):
+    """The union template the member chose ("Start from a union template"), or None."""
+    from apps.bodies.models import RecipeTemplate
+
+    chosen = _template_id(request)
+    if not chosen:
+        return None
+    return RecipeTemplate.objects.filter(pk=chosen, item=item, union__status="active").first()
+
+
 @login_required
 def offer_new(request, slug):
     from apps.units.models import Unit
@@ -48,12 +68,28 @@ def offer_new(request, slug):
     if request.method == "POST" and form.is_valid():
         data = {k: v for k, v in form.cleaned_data.items() if v not in (None, "")}
         try:
-            offer = services.create_offer(request.member, unit, item, **data)
+            template = _union_template(request, item)
+            if template is not None:
+                from apps.bodies import duties
+
+                offer = duties.apply_template(request.member, unit, template, **data)
+            else:
+                offer = services.create_offer(request.member, unit, item, **data)
         except services.CatalogueError as e:
             form.add_error(None, str(e))
         else:
             return redirect("catalogue:recipe", pk=offer.pk)
-    return render(request, "catalogue/offer_new.html", {"unit": unit, "item": item, "form": form})
+    return render(
+        request,
+        "catalogue/offer_new.html",
+        {
+            "unit": unit,
+            "item": item,
+            "form": form,
+            "templates": _templates_for(item),
+            "template_id": _template_id(request),
+        },
+    )
 
 
 @login_required

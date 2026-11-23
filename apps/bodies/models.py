@@ -132,3 +132,68 @@ class UnionVote(models.Model):
 
     def __str__(self):
         return f"{self.unit.name}: {self.vote}"
+
+
+class UnionPage(models.Model):
+    """A trade standard or training material. Changing a page makes a new version; it needs a union decision."""
+
+    union = models.ForeignKey(Union, on_delete=models.PROTECT, related_name="pages")
+    title = models.CharField(max_length=120)
+    slug = models.SlugField(max_length=80)
+    body_md = models.TextField()
+    version = models.PositiveIntegerField(default=1)
+    published_at = models.DateTimeField()
+    decision = models.ForeignKey(UnionDecision, on_delete=models.PROTECT, related_name="+")
+
+    class Meta:
+        ordering = ["union", "slug", "-version"]
+        constraints = [models.UniqueConstraint(fields=["union", "slug", "version"], name="unique_union_page_version")]
+
+    def __str__(self):
+        return f"{self.title} (version {self.version})"
+
+
+class RecipeTemplate(models.Model):
+    """A suggested recipe for an item. It is never a price and never binds a unit (docs/05 section 7)."""
+
+    union = models.ForeignKey(Union, on_delete=models.PROTECT, related_name="templates")
+    item = models.ForeignKey("catalogue.Item", on_delete=models.PROTECT, related_name="+")
+    title = models.CharField(max_length=120)
+    notes_md = models.TextField(blank=True)
+    published_at = models.DateTimeField()
+    decision = models.ForeignKey(UnionDecision, on_delete=models.PROTECT, related_name="+")
+    # [{"item": id, "quantity": "per unit of output", "source": "unicorn|own_free|buy_outside"}]
+    inputs = models.JSONField(default=list, blank=True)
+    # [{"item": id, "source": "unicorn_owned|own_free|to_buy", "uses": "per unit of output", "lifetime_uses": n}]
+    tools = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        ordering = ["union", "title"]
+
+    def __str__(self):
+        return self.title
+
+
+class AdviceRequest(models.Model):
+    """The secretariat asked a union to advise on a ticket. The ticket's decision method does not change (HF-15)."""
+
+    ticket = models.ForeignKey("tickets.Ticket", on_delete=models.PROTECT, related_name="advice_requests")
+    union = models.ForeignKey(Union, on_delete=models.PROTECT, related_name="advice_requests")
+    trade_code = models.CharField(max_length=16)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["ticket", "union"], name="one_advice_request_each")]
+
+    def __str__(self):
+        return f"{self.union.name} advises on {self.ticket.number}"
+
+
+class AdviceComment(models.Model):
+    """A comment written as the union's advice. It is shown first on the ticket and marked "not binding"."""
+
+    request = models.ForeignKey(AdviceRequest, on_delete=models.PROTECT, related_name="comments")
+    comment = models.OneToOneField("tickets.Comment", on_delete=models.PROTECT, related_name="advice")
+
+    def __str__(self):
+        return f"advice {self.comment_id}"

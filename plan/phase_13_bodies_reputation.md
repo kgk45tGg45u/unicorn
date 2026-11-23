@@ -75,7 +75,7 @@
 
 ---
 
-### - [ ] P13.T04 — What unions do: advice, standards, recipe templates, mediation, training
+### - [x] P13.T04 — What unions do: advice, standards, recipe templates, mediation, training
 
 **Read:** docs/05 section 7 ("Duties").
 **Files:** `apps/bodies/models.py` (UnionPage, RecipeTemplate), `apps/tickets/routing.py`, `apps/catalogue/views.py`, `apps/tickets/draw.py` (mediator pool), `apps/bodies/tests/test_union_duties.py`

@@ -91,6 +91,13 @@ def ticket_detail(request, number):
             walk(c.pk, min(depth + 1, 3))
 
     walk(None, 0)
+    from apps.bodies import duties
+
+    advice_by_comment = duties.advice_comment_ids(ticket)  # union advice is shown first, marked as not binding
+    advice_rows = [
+        dict(r, union=advice_by_comment[r["comment"].pk]) for r in flat if r["comment"].pk in advice_by_comment
+    ]
+    flat = [r for r in flat if r["comment"].pk not in advice_by_comment]
     plan = ticket.plan_check or {}
     return render(
         request,
@@ -98,6 +105,8 @@ def ticket_detail(request, number):
         {
             "ticket": ticket,
             "comments": flat,
+            "advice_rows": advice_rows,
+            "can_advise": [r.union for r in duties.advice_requests_for(request.member, ticket)],
             "history": _status_history(ticket),
             "plan_points": plan.get("points", []),
             "plan_color": plan.get("color", ""),

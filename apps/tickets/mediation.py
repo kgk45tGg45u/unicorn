@@ -64,15 +64,34 @@ def open_mediation(author, title, body, parties_members=(), parties_units=(), br
     )
 
 
+# Functions called with (ticket) that may name a preferred pool of mediators: (label, set of member ids) or None.
+# The unions add one: for two units of the same union, mediators come first from the union's other units.
+PREFERRED_POOLS: list = []
+
+
 def start(ticket):
-    """Draw the mediators from the volunteers, excluding the parties; if there are too few, from everyone eligible."""
+    """Draw the mediators from a preferred pool, else the volunteers, excluding the parties; else from everyone."""
     k = get_param("governance.mediation.mediators")
-    pool = set(Member.objects.filter(is_mediator=True).values_list("pk", flat=True))
-    candidates = [m for m in draw.eligible(ticket, "mediation") if m.pk in pool]
-    only = pool if len(candidates) >= k else None
-    if not draw.eligible(ticket, "mediation"):
+    volunteers = set(Member.objects.filter(is_mediator=True).values_list("pk", flat=True))
+    eligible = draw.eligible(ticket, "mediation")
+    if not eligible:
         ticket_services.set_status(ticket, "open", _("Waiting until mediators can be drawn."))
         return None
+    only, label = None, "everyone"
+    for chooser in PREFERRED_POOLS:
+        found = chooser(ticket)
+        if found is None:
+            continue
+        name, pks = found
+        if len([m for m in eligible if m.pk in pks and m.pk in volunteers]) >= k:
+            only, label = pks & volunteers, name
+            break
+    if only is None and len([m for m in eligible if m.pk in volunteers]) >= k:
+        only, label = volunteers, "volunteers"
+    with transaction.atomic():
+        ticket = Ticket.objects.select_for_update().get(pk=ticket.pk)
+        ticket.action_payload = {**ticket.action_payload, "mediator_pool": label}
+        ticket.save(update_fields=["action_payload"])
     days = get_param("governance.mediation.days")
     confirmation = draw.draw(ticket, "mediation", k, only=only, deadline_hours=days * 24, needs_check=False)
     ticket_services.set_status(ticket, "confirming", _("With the mediators until %(date)s.") % {"date": _date(days)})

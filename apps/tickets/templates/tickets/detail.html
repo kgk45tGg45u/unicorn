@@ -53,6 +53,25 @@
 {% include "tickets/_decision.html" %}
 <h2 class="h5">{% translate "History" %}</h2>
 <ul class="small text-muted">{% for when, what in history %}<li>{{ when|date:"Y-m-d H:i" }} · {{ what }}</li>{% endfor %}</ul>
+{% if advice_rows or can_advise %}
+<h2 class="h5">{% translate "Advice from unions" %}</h2>
+<p class="small text-muted">{% translate "A union is asked because the ticket is about its trade. Its advice does not bind anyone and does not change how the ticket is decided." %}</p>
+{% for row in advice_rows %}
+<div class="card mb-2 border-info" id="c{{ row.comment.pk }}">
+  <div class="card-body py-2">
+    <div class="small text-muted">{% blocktranslate with union=row.union %}Advice from {{ union }} (not binding){% endblocktranslate %} · {{ row.comment.author.display_name }} · {{ row.comment.created_at|date:"Y-m-d H:i" }}</div>
+    <div>{{ row.comment.body_md|linebreaks }}</div>
+  </div>
+</div>
+{% endfor %}
+{% for union in can_advise %}
+<form method="post" action="{% url 'bodies:give_advice' ticket.number union.pk %}" class="mb-3">{% csrf_token %}
+  <label class="form-label" for="advice-{{ union.pk }}">{% blocktranslate with union=union.name %}Write the advice of {{ union }}{% endblocktranslate %}</label>
+  <textarea class="form-control mb-2" id="advice-{{ union.pk }}" name="body" rows="3"></textarea>
+  <button class="btn btn-outline-primary">{% translate "Send advice" %}</button>
+</form>
+{% endfor %}
+{% endif %}
 <h2 class="h5">{% translate "Comments" %}</h2>
 {% for row in comments %}
 <div class="card mb-2" style="margin-left: {{ row.depth }}rem" id="c{{ row.comment.pk }}">
