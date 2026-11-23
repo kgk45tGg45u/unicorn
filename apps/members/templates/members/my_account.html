@@ -42,6 +42,10 @@
   <button class="btn btn-sm btn-outline-primary">{% if member.suggest_me %}{% translate "Do not suggest me for questions" %}{% else %}{% translate "Suggest me for questions" %}{% endif %}</button>
 </form>
 <p><a href="{% url 'members:public_profile' member.number %}">{% translate "See my public profile" %}</a></p>
+<form method="post" action="{% url 'privacy:request_export' %}" class="mb-3">{% csrf_token %}
+  <button class="btn btn-sm btn-outline-primary">{% translate "Download all my data" %}</button>
+  <span class="small text-muted">{% translate "You get a ZIP file with everything we keep about you." %}</span>
+</form>
 <p>{% if member.status != "former" %}<a href="{% url 'members:leave' %}">{% translate "Leave Unicorn" %}</a> · {% endif %}<a href="{% url 'members:delete' %}">{% translate "Delete my account" %}</a></p>
 <p><a href="{% url 'mfa_index' %}">{% translate "Passkeys and recovery codes" %}</a> ·
    <a href="{% url 'account_logout' %}">{% translate "Log out" %}</a></p>

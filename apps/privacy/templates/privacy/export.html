@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "My data" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "My data" %}</h1>
+{% if ready %}
+<p>{% blocktranslate with until=export.expires_at|date:"Y-m-d H:i" %}Your data is ready. You can download it until {{ until }}.{% endblocktranslate %}</p>
+<a class="btn btn-primary" href="{% url 'privacy:download' export.pk %}">{% translate "Download my data" %}</a>
+{% elif export.status == "queued" %}<p>{% translate "We are still preparing your data. Please come back in a few minutes." %}</p>
+{% else %}<p>{% translate "This download has ended. You can ask for a new one on your account page." %}</p>{% endif %}
+<p class="mt-3"><a href="{% url 'members:my_account' %}">{% translate "Back to my account" %}</a></p>
+{% endblock %}

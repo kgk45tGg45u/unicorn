@@ -58,7 +58,7 @@
 
 ---
 
-### - [ ] P14.T03 — Download all my data
+### - [x] P14.T03 — Download all my data
 
 **Read:** docs/08 section 7 ("Member rights").
 **Files:** `apps/privacy/` (new app), `apps/privacy/export.py`, `apps/privacy/views.py`, `apps/privacy/jobs.py`, `apps/privacy/tests/test_export.py`
