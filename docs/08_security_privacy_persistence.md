@@ -115,6 +115,10 @@
   - the account is closed, and the member number stays in the books with its history (legal duty to keep the books; HF-7);
   - the member is told first that remaining UNIQ stay in the books but can no longer be spent, and that held fund euros must first be passed on (docs/07, section 2).
 - **A data-protection impact assessment** is needed before care services start (Art. 9 health data). A data-protection officer is needed once 20 people regularly handle personal data.
+- **The privacy documents of the association** (task P14.T12, all drafts to be checked by lawyers):
+  - [records of processing](privacy/records_of_processing.md) (Art. 30), one section per purpose;
+  - [a DPIA template](privacy/dpia_template.md) (Art. 35), which the board fills in and signs before care services or benefit claims start;
+  - [the breach procedure](privacy/breach_procedure.md) (Art. 33–34): who decides, the 72 hours, informing members, the log, and changing the keys.
 - **No tracking:** no third-party analytics, no external fonts, no CDNs in production, no advertising. Logs never contain personal data.
 
 ## 8. Logs, monitoring, disclosure

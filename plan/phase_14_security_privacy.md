@@ -279,7 +279,7 @@
 
 ---
 
-### - [ ] P14.T12 — Privacy documents for the association
+### - [x] P14.T12 — Privacy documents for the association
 
 **Read:** docs/08 section 7 ("A data-protection impact assessment"); docs/12 (lawyer questions).
 **Files:** `docs/privacy/records_of_processing.md`, `docs/privacy/dpia_template.md`, `docs/privacy/breach_procedure.md`
