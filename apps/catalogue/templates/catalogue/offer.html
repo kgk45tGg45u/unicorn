@@ -21,6 +21,11 @@
 <h2 class="h5">{% translate "How is this price made?" %}</h2>
 <p>{% translate "The price is the hours of work in this item: the hours the unit works on it directly, plus the hours inside everything used to make it. Everyone's hour counts the same. Nobody sets the price: it is calculated from the recipe, and it changes only when the recipe or its inputs change." %}</p>
 <p><a href="{% url 'catalogue:item' offer.item.pk %}">{% translate "Other units that make this" %}</a>{% if can_edit %} · <a href="{% url 'catalogue:recipe' offer.pk %}">{% translate "Edit the recipe" %}</a>{% endif %}</p>
+{% if declarations %}
+<h2 class="h5">{% translate "Guidelines this unit follows" %}</h2>
+<ul>{% for d in declarations %}<li>{% blocktranslate with title=d.guideline.title council=d.guideline.council.name %}We follow the guideline {{ title }} ({{ council }}).{% endblocktranslate %}
+  {% include "partials/flag_button.html" with target_type="guideline" target_id=d.pk %}</li>{% endfor %}</ul>
+{% endif %}
 {% offer_order_box offer %}
 {% offer_reviews offer %}
 {% endblock %}

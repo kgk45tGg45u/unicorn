@@ -140,7 +140,7 @@
 
 ---
 
-### - [ ] P13.T07 — Consumers' councils
+### - [x] P13.T07 — Consumers' councils
 
 **Read:** docs/05 section 7 ("Consumers' councils").
 **Files:** `apps/bodies/models.py` (ConsumerCouncil, ConsumerMembership, Guideline), `apps/bodies/views.py`, `apps/bodies/tests/test_consumers.py`

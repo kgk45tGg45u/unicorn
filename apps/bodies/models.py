@@ -280,3 +280,89 @@ class LocalResponsibility(models.Model):
 
     def __str__(self):
         return f"{self.member.number} is responsible for {self.council.name}"
+
+
+class ConsumerCouncil(models.Model):
+    """Members who care about one topic: food quality, accessibility. It has no special power (docs/05 section 7)."""
+
+    STATUSES = [("active", _("active")), ("closed", _("closed"))]
+
+    name = models.CharField(max_length=80, unique=True)
+    topic = models.CharField(max_length=80)
+    description = models.TextField(blank=True)
+    created_by = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=8, choices=STATUSES, default="active")
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class ConsumerMembership(models.Model):
+    council = models.ForeignKey(ConsumerCouncil, on_delete=models.PROTECT, related_name="memberships")
+    member = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="consumer_memberships")
+    joined_at = models.DateTimeField()
+    left_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["council", "joined_at"]
+
+    def __str__(self):
+        return f"{self.member.number} in {self.council.name}"
+
+
+class Guideline(models.Model):
+    """A guideline the council's members vote on for 7 days. Units may declare that they follow a published one."""
+
+    STATUSES = [("voting", _("being voted on")), ("published", _("published")), ("rejected", _("not adopted"))]
+
+    council = models.ForeignKey(ConsumerCouncil, on_delete=models.PROTECT, related_name="guidelines")
+    title = models.CharField(max_length=120)
+    body_md = models.TextField()
+    version = models.PositiveIntegerField(default=1)
+    status = models.CharField(max_length=10, choices=STATUSES, default="voting")
+    proposed_by = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="+")
+    opens_at = models.DateTimeField()
+    closes_at = models.DateTimeField()
+    published_at = models.DateTimeField(null=True, blank=True)
+    result = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ["council", "title", "-version", "-id"]
+
+    def __str__(self):
+        return f"{self.title} (version {self.version})"
+
+
+class GuidelineVote(models.Model):
+    VOTES = [("yes", _("yes")), ("no", _("no")), ("abstain", _("abstain"))]
+
+    guideline = models.ForeignKey(Guideline, on_delete=models.PROTECT, related_name="votes")
+    member = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="+")
+    vote = models.CharField(max_length=8, choices=VOTES)
+    voted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["guideline", "member"], name="one_guideline_vote_each")]
+
+    def __str__(self):
+        return f"{self.member.number}: {self.vote}"
+
+
+class GuidelineDeclaration(models.Model):
+    """ "We follow the guideline X", shown on an offer. It can be flagged like any content."""
+
+    guideline = models.ForeignKey(Guideline, on_delete=models.PROTECT, related_name="declarations")
+    offer = models.ForeignKey("catalogue.Offer", on_delete=models.PROTECT, related_name="guideline_declarations")
+    declared_by = models.ForeignKey("members.Member", null=True, on_delete=models.PROTECT, related_name="+")
+    declared_at = models.DateTimeField()
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["offer", "declared_at"]
+
+    def __str__(self):
+        return f"{self.offer} follows {self.guideline.title}"

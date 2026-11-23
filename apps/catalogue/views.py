@@ -231,8 +231,15 @@ def offer_page(request, pk):
             "tools": offer.tools.select_related("tool_item"),
             "lead_time": services.lead_time_days(offer),
             "can_edit": can_edit,
+            "declarations": _declarations(offer),
         },
     )
+
+
+def _declarations(offer):
+    from apps.bodies import consumers
+
+    return consumers.declarations_for(offer)
 
 
 def unit_services_can_edit(member, unit):

@@ -2,7 +2,7 @@
 
 from apps.core.jobs import job
 
-from . import local, services
+from . import consumers, local, services
 
 
 @job("bodies.daily")
@@ -11,3 +11,4 @@ def daily(payload):
     services.rotate_delegates()
     services.close_due_decisions()
     local.rotate_local()
+    consumers.close_due_guidelines()

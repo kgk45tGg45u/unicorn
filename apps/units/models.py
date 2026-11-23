@@ -126,6 +126,7 @@ class CouncilDecision(models.Model):
         ("rules_change", _("change of council rules")),
         ("outside_prices", _("outside prices")),
         ("close_unit", _("close the unit")),
+        ("guideline", _("follow a guideline")),
         ("other", _("other")),
     ]
     STATUSES = [("open", _("open")), ("approved", _("approved")), ("rejected", _("rejected"))]

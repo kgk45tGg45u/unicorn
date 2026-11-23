@@ -20,7 +20,7 @@ REASONS = {
     "privacy": _("It shows private data"),
     "other": _("Something else"),
 }
-TARGET_TYPES = ("offer", "comment", "ticket", "profile", "hours", "payment", "review")
+TARGET_TYPES = ("offer", "comment", "ticket", "profile", "hours", "payment", "review", "guideline")
 # the model class name -> the flag's target type, for the template filter
 CLASS_TO_TARGET = {
     "Offer": "offer",
@@ -38,6 +38,7 @@ class FlagError(ValueError):
 
 def _target(target_type, target_id):
     """The object a flag is about, or None (payments exist from phase 8)."""
+    from apps.bodies.models import GuidelineDeclaration
     from apps.catalogue.models import Offer
     from apps.market.models import Review
     from apps.members.models import Member
@@ -52,6 +53,7 @@ def _target(target_type, target_id):
         "profile": Member,
         "hours": HoursEntry,
         "review": Review,
+        "guideline": GuidelineDeclaration,
     }.get(target_type)
     return model.objects.filter(pk=target_id).first() if model else None
 
@@ -68,6 +70,8 @@ def _owners(target_type, obj):
         return [obj.author], []
     if target_type == "ticket":
         return ([obj.author] if obj.author_id else []), []
+    if target_type == "guideline":  # a declaration on an offer belongs to the offer's unit
+        return [w.member for w in unit_services.workers(obj.offer.unit)], [obj.offer.unit_id]
     if target_type == "profile":
         return [obj], []
     if target_type == "hours":
@@ -88,6 +92,7 @@ def _describe(target_type):
         "hours": _("an hours entry"),
         "payment": _("a payment"),
         "review": _("a review"),
+        "guideline": _("a guideline declaration"),
     }[target_type]
 
 
@@ -100,6 +105,11 @@ def _excerpt(target_type, obj) -> str:
         return f'"{obj.body_md[:300]}"'
     if target_type == "ticket":
         return f"{obj.number}: {obj.title}"
+    if target_type == "guideline":
+        return _("The unit %(unit)s says it follows the guideline %(title)s.") % {
+            "unit": obj.offer.unit.name,
+            "title": obj.guideline.title,
+        }
     if target_type == "profile":
         return _("The profile of %(name)s.") % {"name": obj.display_name}
     if target_type == "hours":
