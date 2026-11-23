@@ -523,23 +523,67 @@ def leave(member):
         return member
 
 
-def delete_account(member):
-    """Destroy the member's key and personal data. The Member row and number stay: the books need them."""
-    from apps.core import audit
+def erase_traces(member, old_email=""):
+    """Remove everything personal about a deleted member. Safe to run twice (it is also run after a restore).
 
-    from .models import Member, MemberHash
+    The Member row and number stay: the books need them. Comments and tickets keep their text, which belongs to the
+    record of decisions, and show the author as "Former member <number>".
+    """
+    from pathlib import Path
+
+    from allauth.account.models import EmailAddress
+    from allauth.mfa.models import Authenticator
+    from django.conf import settings
+
+    from apps.privacy import export
+    from apps.privacy.models import DataExport
+    from apps.tickets.models import Notification
+
+    from .models import Availability, MemberHash, PrivateFile, Skill, Waitlist
+
+    shred(member)
+    MemberHash.objects.filter(member=member).delete()
+    user = member.user
+    old_email = old_email or ""
+    if old_email:
+        Waitlist.objects.filter(email__iexact=old_email).delete()
+    user.email = f"deleted-{member.number}@invalid"
+    user.is_active = False
+    user.set_unusable_password()
+    user.save()
+    EmailAddress.objects.filter(user=user).delete()
+    Authenticator.objects.filter(user=user).delete()
+    Notification.objects.filter(member=member).delete()
+    Skill.objects.filter(member=member).delete()
+    Availability.objects.filter(member=member).delete()
+    root = Path(settings.PRIVATE_MEDIA_ROOT)
+    for pf in PrivateFile.objects.filter(owner=member).exclude(path=""):
+        (root / pf.path).unlink(missing_ok=True)
+        pf.path = ""
+        pf.save(update_fields=["path"])
+    export.delete_files(member)
+    DataExport.objects.filter(member=member).delete()
+    member.display_name = f"Former member {member.number}"
+    member.postcode = ""
+    member.public_profile = False
+    member.deleted = True
+    member.save(update_fields=["display_name", "postcode", "public_profile", "deleted"])
+
+
+def delete_account(member):
+    """Destroy the member's key and personal data completely. The Member row and number stay: the books need them."""
+    from django.utils import timezone
+
+    from apps.core import audit
+    from apps.privacy.models import DeletionRecord
+
+    from .models import Member
 
     with transaction.atomic():
         member = leave(member)
-        shred(member)
-        MemberHash.objects.filter(member=member).delete()
-        user = member.user
-        user.email = f"deleted-{member.number}@invalid"
-        user.is_active = False
-        user.set_unusable_password()
-        user.save()
-        member.deleted = True
-        member.save(update_fields=["deleted"])
+        old_email = member.user.email
+        erase_traces(member, old_email)
+        DeletionRecord.objects.get_or_create(member_number=member.number, defaults={"deleted_at": timezone.now()})
         audit.record(member.number, "member.deleted", member)
         return Member.objects.get(pk=member.pk)
 

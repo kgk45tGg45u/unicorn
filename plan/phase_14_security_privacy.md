@@ -79,7 +79,7 @@
 
 ---
 
-### - [ ] P14.T04 — Deleting an account completely
+### - [x] P14.T04 — Deleting an account completely
 
 **Read:** docs/08 section 7 ("On deletion"); P01.T08.
 **Files:** `apps/members/services.py` (`delete_account`), `apps/privacy/models.py` (DeletionRecord), `apps/privacy/management/commands/reapply_deletions.py`, `apps/privacy/tests/test_delete.py`
