@@ -26,3 +26,34 @@ progress.signatures { width: 100%; height: 1rem; }
 /* htmx would add its own <style> element for the loading indicator; we switch that off and keep the rules here. */
 .htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
 .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
+
+/* Accessibility (P14.T11) -------------------------------------------------- */
+
+/* "Skip to content": hidden until the keyboard reaches it. */
+.skip-link {
+  position: absolute; left: 0.5rem; top: -4rem; z-index: 2000;
+  padding: 0.5rem 1rem; background: #212529; color: #fff; border-radius: 0 0 0.375rem 0.375rem;
+}
+.skip-link:focus { top: 0; }
+
+/* Focus is always visible, on every kind of control. */
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible,
+summary:focus-visible, [tabindex]:focus-visible, .form-check-input:focus-visible {
+  outline: 3px solid #1a1a8c; outline-offset: 2px; box-shadow: 0 0 0 5px #fff;
+}
+main:focus { outline: none; }
+
+/* Contrast of at least 4.5:1: Bootstrap's grey for muted text (#6c757d) is just under it on light-grey backgrounds. */
+.text-muted, .text-body-secondary { color: #565e64 !important; }
+
+/* Links inside text are underlined, so they do not rely on colour alone. */
+main p a, main li a, main td a, .alert a { text-decoration: underline; }
+main .btn, main .nav-link, main .list-group-item-action, main .page-link, main .badge { text-decoration: none; }
+
+/* Error text next to a field is bold and starts with a word, never only red. */
+.invalid-feedback, .errorlist { font-weight: 600; }
+
+/* People who ask their system for less motion get none. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

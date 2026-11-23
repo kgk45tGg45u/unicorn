@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
+  <meta name="htmx-config" content='{"includeIndicatorStyles": false, "allowEval": false}'>
   <title>{% block title %}Unicorn{% endblock %}</title>
   <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
   <meta name="theme-color" content="#3b3b98">
@@ -16,16 +16,17 @@
   {% block extra_head %}{% endblock %}
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  <a class="skip-link" href="#content">{% translate "Skip to content" %}</a>
   {% include "partials/nav.html" %}
   {% if request.acting_helper %}
-  <div class="bg-warning-subtle border-bottom border-warning py-2" role="status">
+  <div class="bg-warning-subtle border-bottom border-warning py-2" role="region" aria-label="{% translate 'Acting for another member' %}">
     <div class="container d-flex flex-wrap gap-2 justify-content-between align-items-center">
       <strong>{% blocktranslate with name=request.member.display_name number=request.member.number %}You are acting for {{ name }} ({{ number }}){% endblocktranslate %}</strong>
       <form method="post" action="{% url 'members:assist_stop' %}">{% csrf_token %}<button class="btn btn-sm btn-dark">{% translate "Stop acting" %}</button></form>
     </div>
   </div>
   {% endif %}
-  <main class="container py-4">
+  <main id="content" class="container py-4" tabindex="-1">
     {% if messages %}
       {% for message in messages %}
         <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
@@ -34,6 +35,7 @@
     {% block content %}{% endblock %}
   </main>
   <footer class="container py-3 border-top small">
+   <nav aria-label="{% translate 'About Unicorn' %}">
     <a class="me-3" href="{% url 'ledger:open_books' %}">{% translate "Open books" %}</a>
     <a class="me-3" href="{% url 'rules:index' %}">{% translate "Rules" %}</a>
     <a class="me-3" href="{% url 'core:imprint' %}">{% translate "Imprint" %}</a>
@@ -43,6 +45,7 @@
     <a class="me-3" href="{% url 'core:third_party' %}">{% translate "Third-party notices" %}</a>
     <a class="me-3" href="{{ SOURCE_URL }}">{% translate "Source code" %}</a>
     <span class="text-muted">{% blocktranslate with v=UNICORN_VERSION %}Version {{ v }}{% endblocktranslate %}</span>
+   </nav>
   </footer>
   {% block extra_body %}{% endblock %}
 </body>

@@ -20,7 +20,8 @@ def item_page(request, pk):
 
 def item_search(request):
     """HTMX endpoint: a list of items matching `q`, used by the recipe editor."""
-    return render(request, "catalogue/_item_results.html", {"items": services.find_items(request.GET.get("q", ""))})
+    text = request.GET.get("q") or request.GET.get("name", "")
+    return render(request, "catalogue/_item_results.html", {"items": services.find_items(text)})
 
 
 # --- Creating an offer and editing its recipe ---

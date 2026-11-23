@@ -1,7 +1,10 @@
 {% load i18n %}<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Unicorn</title><link rel="stylesheet" href="/static/css/plain.css"></head>
+<title>{% translate "You are offline" %} – Unicorn</title><link rel="stylesheet" href="/static/css/plain.css"></head>
 <body class="plain-page">
+<main>
 <h1>{% translate "You are offline" %}</h1>
-<p>{% translate "Unicorn cannot reach the network right now. Please check your connection and try again." %}</p>
+<p>{% translate "Unicorn needs a connection to work. For now you cannot use it without one." %}</p>
+<p>{% translate "Please check your connection and try again." %}</p>
+</main>
 </body></html>

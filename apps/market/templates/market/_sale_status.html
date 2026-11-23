@@ -1,5 +1,5 @@
 {% load i18n %}
-<div id="sale-status"{% if sale.status == "open" %} hx-get="{% url 'market:sale' sale.code %}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+<div id="sale-status" aria-live="polite"{% if sale.status == "open" %} hx-get="{% url 'market:sale' sale.code %}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
   {% if sale.status == "paid" %}
     <div class="alert alert-success">{% translate "Paid. The buyer confirmed the payment." %}</div>
   {% elif sale.status == "expired" %}

@@ -1,4 +1,5 @@
-const CACHE = "unicorn-static-v1";
+// The release script puts the version in the name, so each release replaces the old files (P14.T11).
+const CACHE = "unicorn-static-__UNICORN_VERSION__";
 const OFFLINE = "/offline/";
 
 self.addEventListener("install", (event) => {

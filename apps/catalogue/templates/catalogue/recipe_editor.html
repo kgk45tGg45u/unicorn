@@ -22,8 +22,8 @@
 </ul>
 <form method="post" action="{% url 'catalogue:add_input' offer.pk %}" class="row g-2 mb-4">{% csrf_token %}
   <div class="col-12 col-md-4"><label class="form-label" for="in-name">{% translate "Item (type a new name if it does not exist)" %}</label>
-    <input class="form-control" id="in-name" name="name" required hx-get="{% url 'catalogue:item_search' %}" hx-trigger="keyup changed delay:300ms" hx-target="#in-results" hx-vals='js:{q: document.getElementById("in-name").value}'>
-    <div id="in-results" class="small"></div></div>
+    <input class="form-control" id="in-name" name="name" required hx-get="{% url 'catalogue:item_search' %}" hx-trigger="keyup changed delay:300ms" hx-target="#in-results" autocomplete="off" aria-describedby="in-results">
+    <div id="in-results" class="small" aria-live="polite"></div></div>
   <div class="col-6 col-md-2"><label class="form-label" for="in-q">{% translate "Quantity" %}</label><input class="form-control" id="in-q" name="quantity" required></div>
   <div class="col-6 col-md-2"><label class="form-label" for="in-uom">{% translate "Measured in" %}</label><select class="form-select" id="in-uom" name="uom">{% for u in uoms %}<option value="{{ u.code }}">{{ u.name }}</option>{% endfor %}</select></div>
   <div class="col-12 col-md-4"><span class="form-label d-block">{% translate "Where does it come from?" %}</span>

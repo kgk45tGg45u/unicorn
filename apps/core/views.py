@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 from django.conf import settings
@@ -42,6 +43,7 @@ def offline(request):
 def service_worker(request):
     """Serve sw.js from the site root so it can control every page."""
     js = (Path(settings.BASE_DIR) / "static" / "sw.js").read_text()
+    js = js.replace("__UNICORN_VERSION__", re.sub(r"[^A-Za-z0-9._-]", "-", str(settings.UNICORN_VERSION)))
     response = HttpResponse(js, content_type="application/javascript")
     response["Service-Worker-Allowed"] = "/"
     return response

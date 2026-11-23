@@ -254,7 +254,7 @@
 
 ---
 
-### - [ ] P14.T11 — Accessibility and the installable app
+### - [x] P14.T11 — Accessibility and the installable app
 
 **Read:** docs/09 ("Install on phones"); docs/05 principle 5 (anyone can take part).
 **Files:** `templates/base.html`, `templates/partials/*.html`, `static/css/unicorn.css`, `static/sw.js`, `apps/core/tests/test_accessibility.py`
