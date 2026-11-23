@@ -9,6 +9,8 @@
 
 ### - [ ] P15.T01 — Check the server
 
+*Status 2026-11-23: the files and the written steps are in the repository; the steps on the server itself have not been done yet (they need the box and its administrator). See docs/deploy_log.md.*
+
 **Files:** `deploy/check_server.sh`, `docs/deploy_log.md`
 
 **Do:**
@@ -39,6 +41,8 @@
 
 ### - [ ] P15.T02 — Install the packages (root)
 
+*Status 2026-11-23: the files and the written steps are in the repository; the steps on the server itself have not been done yet (they need the box and its administrator). See docs/deploy_log.md.*
+
 **Files:** `docs/deploy_log.md`
 
 **Do:**
@@ -62,6 +66,8 @@
 ---
 
 ### - [ ] P15.T03 — Virtual servers, databases, certificates (root)
+
+*Status 2026-11-23: the files and the written steps are in the repository; the steps on the server itself have not been done yet (they need the box and its administrator). See docs/deploy_log.md.*
 
 **Files:** `docs/deploy_log.md`
 
@@ -91,6 +97,8 @@
 ---
 
 ### - [ ] P15.T04 — The app, its settings and its files
+
+*Status 2026-11-23: the files and the written steps are in the repository; the steps on the server itself have not been done yet (they need the box and its administrator). See docs/deploy_log.md.*
 
 **Read:** docs/09 section 3, items 4–5.
 **Files:** `deploy/manage.sh`, `deploy/first_setup.sh`, `.env.example` (the production variables), `unicorn/settings.py` (`STATIC_ROOT`, `PRIVATE_MEDIA_ROOT`, `UNICORN_VERSION` and `TEST_DATABASE_NAME` from the environment)
@@ -131,6 +139,8 @@
 ---
 
 ### - [ ] P15.T05 — gunicorn and the Apache proxy (root)
+
+*Status 2026-11-23: the files and the written steps are in the repository; the steps on the server itself have not been done yet (they need the box and its administrator). See docs/deploy_log.md.*
 
 **Files:** `deploy/unicorn.service`, `deploy/apache_directives.conf`, `deploy/sudoers_unicorn`, `deploy/README.md`
 
@@ -190,6 +200,8 @@
 
 ### - [ ] P15.T06 — Releases: staging first, then production
 
+*Status 2026-11-23: the files and the written steps are in the repository; the steps on the server itself have not been done yet (they need the box and its administrator). See docs/deploy_log.md.*
+
 **Read:** P07.T06 (hard-frame releases).
 **Files:** `deploy/release.sh`, `CHANGELOG.md`, `deploy/README.md`
 
@@ -216,6 +228,8 @@
 ---
 
 ### - [ ] P15.T07 — Cron, email and backups
+
+*Status 2026-11-23: the files and the written steps are in the repository; the steps on the server itself have not been done yet (they need the box and its administrator). See docs/deploy_log.md.*
 
 **Read:** docs/09 section 3, item 7; P14.T09.
 **Files:** `deploy/crontab.txt`, `deploy/README.md`, `docs/deploy_log.md`
