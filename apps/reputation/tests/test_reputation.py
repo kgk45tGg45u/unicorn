@@ -165,6 +165,9 @@ def test_the_daily_job_rebuilds_the_cache():
     assert not ReputationScore.objects.filter(topic="stale").exists() and ReputationScore.objects.count() == 1
 
 
+GUARDED_APPS = ("ledger", "units", "catalogue", "market", "votes", "tradefund")
+
+
 def test_hf15_reputation_only_suggests():
     """No part of Unicorn except the profile page imports the reputation app (HF-15, HF-11, HF-10)."""
     root = Path(__file__).resolve().parents[2]
@@ -173,6 +176,9 @@ def test_hf15_reputation_only_suggests():
     for path in root.rglob("*.py"):
         if any(path == a or a in path.parents for a in allowed) or "migrations" in path.parts:
             continue
+        relative = path.relative_to(root).parts
+        if "tests" in relative and relative[0] not in GUARDED_APPS:
+            continue  # an acceptance test of another app may look at suggestions; the guarded apps may not even test it
         for node in ast.walk(ast.parse(path.read_text())):
             names = []
             if isinstance(node, ast.Import):

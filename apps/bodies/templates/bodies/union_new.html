@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Form a union" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Form a union" %}</h1>
+<p>{% translate "A union brings together units of related trades. It gives advice, trade standards and recipe templates. It cannot command any unit. Your unit's council first decides whether your unit joins." %}</p>
+{% if not units %}<div class="alert alert-warning">{% translate "Only the responsible of a unit can form a union. You do not speak for any unit yet." %}</div>{% else %}
+<form method="post">{% csrf_token %}
+  <div class="mb-3"><label class="form-label" for="unit">{% translate "Your unit" %}</label>
+    <select class="form-select" id="unit" name="unit">{% for u in units %}<option value="{{ u.pk }}">{{ u.name }}</option>{% endfor %}</select></div>
+  <div class="mb-3"><label class="form-label" for="name">{% translate "Name of the union" %}</label><input class="form-control" id="name" name="name" required maxlength="80"></div>
+  <div class="mb-3"><label class="form-label" for="trade_codes">{% translate "Trade codes it covers (separated by commas)" %}</label><input class="form-control" id="trade_codes" name="trade_codes" required></div>
+  <div class="mb-3"><label class="form-label" for="description">{% translate "What is it for?" %}</label><textarea class="form-control" id="description" name="description" rows="3"></textarea></div>
+  <button class="btn btn-primary">{% translate "Form the union" %}</button>
+</form>
+{% endif %}
+{% endblock %}

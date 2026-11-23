@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ union.name }} · Unicorn{% endblock %}
+{% block content %}
+<h1>{{ union.name }} <span class="badge text-bg-secondary fs-6">{{ union.get_status_display }}</span></h1>
+<p class="text-muted">{% translate "Trades" %}: {{ union.trade_codes|join:", " }}</p>
+{% if union.description %}<p>{{ union.description }}</p>{% endif %}
+{% if union.status == "forming" %}<div class="alert alert-info">{% blocktranslate with n=min_units %}This union is forming. It becomes active when {{ n }} units have joined. It is dissolved if it stays too small for 90 days.{% endblocktranslate %}</div>{% endif %}
+<p class="small text-muted">{% translate "A union advises. It cannot give orders to any unit, change an offer or an hours entry, or change a rule of Unicorn." %}</p>
+
+<h2 class="h5">{% translate "Member units and their delegates" %}</h2>
+<ul class="list-group mb-3">
+  {% for u in units %}<li class="list-group-item d-flex flex-wrap justify-content-between">
+    <a href="{% url 'units:unit' u.slug %}">{{ u.name }}</a>
+    <span class="text-muted">{% for d in delegates %}{% if d.unit_id == u.pk %}{{ d.member.display_name }}{% endif %}{% endfor %}</span>
+    {% if u in my_units %}<form method="post" action="{% url 'bodies:union_leave' union.slug u.slug %}">{% csrf_token %}<button class="btn btn-sm btn-link">{% translate "Ask to leave" %}</button></form>{% endif %}</li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "No units yet." %}</li>{% endfor %}
+</ul>
+{% if can_act and union.status != "dissolved" %}
+<form method="post" action="{% url 'bodies:union_invite' union.slug %}" class="d-flex gap-2 mb-3">{% csrf_token %}
+  <input class="form-control" name="unit" aria-label="{% translate 'Address of the unit' %}" placeholder="{% translate 'The unit page name, for example woodshop-a' %}">
+  <button class="btn btn-outline-primary">{% translate "Invite a unit" %}</button></form>
+{% endif %}
+
+{% if rules %}<h2 class="h5">{% translate "Rules" %}</h2>
+<p>{% blocktranslate with rule=rules.get_decision_rule_display quorum=rules.quorum days=rules.vote_days months=rules.rotation_months v=rules.version %}Version {{ v }}: decisions by {{ rule }}, a quorum of {{ quorum }}, votes stay open {{ days }} days, delegates change every {{ months }} months.{% endblocktranslate %}</p>{% endif %}
+
+<h2 class="h5">{% translate "Open decisions" %}</h2>
+<ul class="list-group mb-3">
+  {% for row in open_decisions %}<li class="list-group-item">
+    <strong>{{ row.decision.title }}</strong> <span class="text-muted">{{ row.decision.get_kind_display }} · {% blocktranslate with n=row.votes %}{{ n }} votes so far{% endblocktranslate %}</span>
+    {% if row.can_vote %}<form method="post" action="{% url 'bodies:union_vote' row.decision.pk %}" class="d-flex gap-2 mt-2">{% csrf_token %}
+      <button class="btn btn-sm btn-success" name="choice" value="yes">{% translate "Yes" %}</button>
+      <button class="btn btn-sm btn-outline-danger" name="choice" value="no">{% translate "No" %}</button>
+      <button class="btn btn-sm btn-outline-secondary" name="choice" value="abstain">{% translate "Abstain" %}</button></form>{% endif %}
+  </li>{% empty %}<li class="list-group-item text-muted">{% translate "Nothing is open." %}</li>{% endfor %}
+</ul>
+{% if is_delegate and union.status == "active" %}
+<details class="mb-3"><summary>{% translate "Open a decision" %}</summary>
+  <form method="post" action="{% url 'bodies:union_decide' union.slug %}" class="mt-2">{% csrf_token %}
+    <div class="mb-2"><label class="form-label" for="kind">{% translate "What kind?" %}</label>
+      <select class="form-select" id="kind" name="kind"><option value="standard">{% translate "A trade standard (published as a page)" %}</option><option value="other">{% translate "Something to record" %}</option></select></div>
+    <div class="mb-2"><label class="form-label" for="title">{% translate "Title" %}</label><input class="form-control" id="title" name="title" required></div>
+    <div class="mb-2"><label class="form-label" for="text">{% translate "Text" %}</label><textarea class="form-control" id="text" name="text" rows="4"></textarea></div>
+    <button class="btn btn-primary">{% translate "Open it" %}</button></form></details>
+{% endif %}
+
+<h2 class="h5">{% translate "Trade standards and training material" %}</h2>
+{% for p in pages %}<details class="mb-2"><summary>{{ p.title }} <span class="text-muted small">{% blocktranslate with v=p.version %}version {{ v }}{% endblocktranslate %}</span></summary><div>{{ p.body_md|linebreaks }}</div></details>
+{% empty %}<p class="text-muted">{% translate "No pages yet." %}</p>{% endfor %}
+
+<h2 class="h5">{% translate "Recipe templates" %}</h2>
+<ul>{% for t in templates %}<li>{{ t.title }} <span class="text-muted">({{ t.item.name }})</span></li>{% empty %}<li class="text-muted">{% translate "No templates yet." %}</li>{% endfor %}</ul>
+
+<h2 class="h5">{% translate "Tickets this union is asked to advise on" %}</h2>
+<ul>{% for a in advice %}<li><a href="{% url 'tickets:detail' a.ticket.number %}">{{ a.ticket.number }} {{ a.ticket.title }}</a></li>{% empty %}<li class="text-muted">{% translate "None." %}</li>{% endfor %}</ul>
+
+<h2 class="h5">{% translate "Expert advisers named for the planning group" %}</h2>
+<ul>{% for n in nominations %}<li>{{ n.member.display_name }} · {{ n.get_status_display }}</li>{% empty %}<li class="text-muted">{% translate "None." %}</li>{% endfor %}</ul>
+{% endblock %}

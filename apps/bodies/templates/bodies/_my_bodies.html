@@ -1,0 +1,14 @@
+{% load i18n %}
+<section aria-labelledby="my-bodies">
+  <h2 class="h4" id="my-bodies">{% translate "My bodies" %}</h2>
+  {% if mine.waiting %}
+  <div class="alert alert-info"><strong>{% translate "Waiting for you" %}</strong>
+    <ul class="mb-0">{% for w in mine.waiting %}<li><a href="{{ w.url }}">{{ w.text }}</a></li>{% endfor %}</ul></div>
+  {% endif %}
+  <ul class="list-unstyled">
+    {% for u in mine.unions %}<li>{% translate "Union" %}: <a href="{% url 'bodies:union' u.slug %}">{{ u.name }}</a></li>{% endfor %}
+    {% for c in mine.local %}<li>{% translate "Local council" %}: <a href="{% url 'bodies:local' c.pk %}">{{ c.name }}</a></li>{% endfor %}
+    {% for c in mine.consumers %}<li>{% translate "Consumers' council" %}: <a href="{% url 'bodies:consumer' c.pk %}">{{ c.name }}</a></li>{% endfor %}
+    {% if not mine.unions and not mine.local and not mine.consumers %}<li class="text-muted">{% translate "You do not belong to any union or council yet." %} <a href="{% url 'bodies:index' %}">{% translate "See what exists" %}</a></li>{% endif %}
+  </ul>
+</section>

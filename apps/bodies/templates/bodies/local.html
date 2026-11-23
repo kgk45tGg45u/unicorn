@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ council.name }} · Unicorn{% endblock %}
+{% block content %}
+<h1>{{ council.name }}</h1>
+<p class="text-muted">{{ council.get_level_display }} · {{ council.country }} {{ council.postcode_prefix }} · {% blocktranslate with n=member_count %}{{ n }} members live here{% endblocktranslate %}</p>
+<p class="small text-muted">{% translate "Local matters are decided by random members who live in this area. Who belongs is worked out from each member's postcode, so moving house changes it at once." %}</p>
+
+<h2 class="h5">{% translate "The responsible" %}</h2>
+{% if responsible %}<p>{{ responsible.member.display_name }} <span class="text-muted">{% blocktranslate with d=responsible.starts_at|date:"Y-m-d" %}since {{ d }}{% endblocktranslate %}</span></p>
+{% else %}<p class="text-muted">{% translate "Nobody is the responsible yet. A member of the area can volunteer." %}</p>{% endif %}
+{% if belongs %}
+<form method="post" action="{% url 'bodies:local_volunteer' council.pk %}">{% csrf_token %}
+  {% if i_volunteer %}<button class="btn btn-sm btn-outline-secondary" name="do" value="withdraw">{% translate "Stop volunteering" %}</button>
+  {% else %}<button class="btn btn-sm btn-outline-primary" name="do" value="volunteer">{% translate "I volunteer to be the responsible in turn" %}</button>{% endif %}</form>
+{% endif %}
+<p class="small text-muted">{% blocktranslate with n=volunteers|length %}{{ n }} volunteers{% endblocktranslate %}</p>
+
+<h2 class="h5">{% translate "What the area needs" %}</h2>
+<ul>
+  {% for m in needs.misses %}<li>{% blocktranslate with text=m.text n=m.count %}Members searched for "{{ text }}" and found nothing ({{ n }} times){% endblocktranslate %}</li>{% endfor %}
+  {% for w in needs.wanted %}<li>{% blocktranslate with item=w.offer.item.name %}{{ item }} is wanted{% endblocktranslate %}</li>{% endfor %}
+  {% if not needs.misses and not needs.wanted %}<li class="text-muted">{% translate "Nothing yet." %}</li>{% endif %}
+</ul>
+
+<h2 class="h5">{% translate "Pickup points" %}</h2>
+<ul>{% for p in points %}<li>{{ p.name }} · {{ p.address_public }}, {{ p.postcode }}</li>{% empty %}<li class="text-muted">{% translate "None yet." %}</li>{% endfor %}</ul>
+
+<h2 class="h5">{% translate "Helpers for members without a device" %}</h2>
+<ul>{% for h in helpers %}<li>{{ h.display_name }}</li>{% empty %}<li class="text-muted">{% translate "None yet." %}</li>{% endfor %}</ul>
+
+<h2 class="h5">{% translate "Local matters" %}</h2>
+<ul>{% for t in tickets %}<li><a href="{% url 'tickets:detail' t.number %}">{{ t.number }} {{ t.title }}</a> <span class="text-muted">{{ t.get_status_display }}</span></li>{% empty %}<li class="text-muted">{% translate "No local tickets yet." %}</li>{% endfor %}</ul>
+{% if task_lists %}<h3 class="h6">{% translate "Local task lists" %}</h3><ul>{% for t in task_lists %}<li><a href="{% url 'tickets:detail' t.number %}">{{ t.title }}</a></li>{% endfor %}</ul>{% endif %}
+{% if belongs %}
+<details class="mb-3"><summary>{% translate "Propose something for the area" %}</summary>
+  <form method="post" action="{% url 'bodies:local_decide' council.pk %}" class="mt-2">{% csrf_token %}
+    <div class="mb-2"><label class="form-label" for="title">{% translate "Title" %}</label><input class="form-control" id="title" name="title" required></div>
+    <div class="mb-2"><label class="form-label" for="text">{% translate "What should happen, and why?" %}</label><textarea class="form-control" id="text" name="text" rows="4" required></textarea></div>
+    <button class="btn btn-primary">{% translate "Send to random members of the area" %}</button></form></details>
+{% endif %}
+{% endblock %}

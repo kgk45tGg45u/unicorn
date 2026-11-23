@@ -24,8 +24,15 @@ def home(request):
                 status__in=("delivered", "cancelled", "refused")
             )[:5],
             "seats": my_open_seats(member),
+            "my_bodies": _my_bodies(member),
         }
     return render(request, "core/home.html", context)
+
+
+def _my_bodies(member):
+    from apps.bodies.views import my_bodies
+
+    return my_bodies(member)
 
 
 def offline(request):

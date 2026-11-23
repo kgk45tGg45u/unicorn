@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Unions and councils" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Unions and councils" %}</h1>
+<p class="text-muted">{% translate "Unions of related trades, councils of the members who live in an area, and consumers' councils. They advise and propose. None of them gives orders to anyone." %}</p>
+<form method="get" class="d-flex gap-2 mb-3" role="search">
+  <input class="form-control" type="search" name="q" value="{{ q }}" aria-label="{% translate 'Search' %}" placeholder="{% translate 'Search by name, trade, topic or postcode' %}">
+  <button class="btn btn-outline-primary">{% translate "Search" %}</button>
+</form>
+
+<h2 class="h4">{% translate "Unions" %}</h2>
+<ul class="list-group mb-2">
+  {% for u in unions %}<li class="list-group-item"><a href="{% url 'bodies:union' u.slug %}">{{ u.name }}</a> <span class="badge text-bg-secondary">{{ u.get_status_display }}</span></li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "No unions yet." %}</li>{% endfor %}
+</ul>
+{% if request.member %}<p><a href="{% url 'bodies:union_new' %}">{% translate "Form a union" %}</a></p>{% endif %}
+
+<h2 class="h4">{% translate "Local councils" %}</h2>
+<ul class="list-group mb-2">
+  {% for c in councils %}<li class="list-group-item"><a href="{% url 'bodies:local' c.pk %}">{{ c.name }}</a> <span class="text-muted">{{ c.get_level_display }} · {{ c.country }} {{ c.postcode_prefix }}</span></li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "No local councils yet." %}</li>{% endfor %}
+</ul>
+{% if request.member %}<p><a href="{% url 'bodies:local_new' %}">{% translate "Ask for a council in my area" %}</a></p>{% endif %}
+
+<h2 class="h4">{% translate "Consumers' councils" %}</h2>
+<ul class="list-group mb-2">
+  {% for c in consumer_councils %}<li class="list-group-item"><a href="{% url 'bodies:consumer' c.pk %}">{{ c.name }}</a> <span class="text-muted">{{ c.topic }}</span></li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "No consumers' councils yet." %}</li>{% endfor %}
+</ul>
+{% if request.member %}<p><a href="{% url 'bodies:consumer_new' %}">{% translate "Form a consumers' council" %}</a></p>{% endif %}
+{% endblock %}

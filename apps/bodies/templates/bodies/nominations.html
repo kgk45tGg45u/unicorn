@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Nominations" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Named as an expert adviser" %}</h1>
+<p class="text-muted">{% translate "An expert adviser helps the planning group with analyses and answers. Advisers do not vote in the group. The group decides whether to approve you." %}</p>
+<ul class="list-group">
+  {% for n in rows %}<li class="list-group-item">
+    <strong>{{ n.union.name }}</strong> {% translate "names you." %} {% if n.statement %}<br><em>{{ n.statement }}</em>{% endif %}
+    <form method="post" action="{% url 'bodies:nomination_answer' n.pk %}" class="d-flex gap-2 mt-2">{% csrf_token %}
+      <button class="btn btn-sm btn-primary" name="answer" value="accept">{% translate "Accept" %}</button>
+      <button class="btn btn-sm btn-outline-secondary" name="answer" value="decline">{% translate "Decline" %}</button></form></li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "Nobody has named you." %}</li>{% endfor %}
+</ul>
+{% endblock %}

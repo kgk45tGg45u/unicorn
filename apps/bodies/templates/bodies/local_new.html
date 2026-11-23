@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Ask for a local council" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Ask for a local council" %}</h1>
+<p>{% blocktranslate with n=needed %}A council can open when at least {{ n }} members live in its area. Random members of that area decide whether it opens.{% endblocktranslate %}</p>
+<form method="post">{% csrf_token %}
+  <div class="mb-3"><label class="form-label" for="name">{% translate "Name of the council" %}</label><input class="form-control" id="name" name="name" required></div>
+  <div class="mb-3"><label class="form-label" for="prefix">{% translate "Postcodes starting with" %}</label><input class="form-control" id="prefix" name="prefix" required maxlength="12"></div>
+  <div class="mb-3"><label class="form-label" for="level">{% translate "Level" %}</label>
+    <select class="form-select" id="level" name="level">{% for value, label in levels %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div>
+  <button class="btn btn-primary">{% translate "Ask" %}</button>
+</form>
+{% endblock %}

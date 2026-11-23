@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ council.name }} · Unicorn{% endblock %}
+{% block content %}
+<h1>{{ council.name }}</h1>
+<p class="text-muted">{{ council.topic }}</p>
+{% if council.description %}<p>{{ council.description }}</p>{% endif %}
+{% if request.member %}
+<form method="post" action="{% url 'bodies:consumer_membership' council.pk %}">{% csrf_token %}
+  {% if is_member %}<button class="btn btn-sm btn-outline-secondary" name="do" value="leave">{% translate "Leave this council" %}</button>
+  {% else %}<button class="btn btn-sm btn-primary" name="do" value="join">{% translate "Join this council" %}</button>{% endif %}</form>
+{% endif %}
+
+<h2 class="h5 mt-3">{% translate "Members" %}</h2>
+<p>{% for m in members %}{{ m.display_name }}{% if not forloop.last %}, {% endif %}{% empty %}{% translate "Nobody yet." %}{% endfor %}</p>
+
+<h2 class="h5">{% translate "Guidelines" %}</h2>
+{% for g in published %}<details class="mb-2"><summary>{{ g.title }} <span class="text-muted small">{% blocktranslate with v=g.version %}version {{ v }}{% endblocktranslate %}</span></summary><div>{{ g.body_md|linebreaks }}</div></details>
+{% empty %}<p class="text-muted">{% translate "No guidelines yet." %}</p>{% endfor %}
+
+{% if open_votes %}<h3 class="h6">{% translate "Being voted on" %}</h3>
+<ul class="list-group mb-3">{% for row in open_votes %}<li class="list-group-item"><strong>{{ row.guideline.title }}</strong> <span class="text-muted">{% blocktranslate with n=row.votes d=row.guideline.closes_at|date:"Y-m-d" %}{{ n }} votes so far, open until {{ d }}{% endblocktranslate %}</span>
+  <div>{{ row.guideline.body_md|linebreaks }}</div>
+  {% if row.can_vote %}<form method="post" action="{% url 'bodies:guideline_vote' row.guideline.pk %}" class="d-flex gap-2">{% csrf_token %}
+    <button class="btn btn-sm btn-success" name="choice" value="yes">{% translate "Yes" %}</button>
+    <button class="btn btn-sm btn-outline-danger" name="choice" value="no">{% translate "No" %}</button>
+    <button class="btn btn-sm btn-outline-secondary" name="choice" value="abstain">{% translate "Abstain" %}</button></form>{% endif %}</li>{% endfor %}</ul>{% endif %}
+{% if is_member %}
+<details class="mb-3"><summary>{% translate "Propose a guideline" %}</summary>
+  <form method="post" action="{% url 'bodies:guideline_propose' council.pk %}" class="mt-2">{% csrf_token %}
+    <div class="mb-2"><label class="form-label" for="title">{% translate "Title" %}</label><input class="form-control" id="title" name="title" required></div>
+    <div class="mb-2"><label class="form-label" for="text">{% translate "Text" %}</label><textarea class="form-control" id="text" name="text" rows="4" required></textarea></div>
+    <button class="btn btn-primary">{% translate "Start the vote (7 days)" %}</button></form></details>
+{% endif %}
+
+<h2 class="h5">{% translate "Tickets by its members" %}</h2>
+<ul>{% for t in tickets %}<li><a href="{% url 'tickets:detail' t.number %}">{{ t.number }} {{ t.title }}</a></li>{% empty %}<li class="text-muted">{% translate "None." %}</li>{% endfor %}</ul>
+{% endblock %}

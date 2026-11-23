@@ -239,7 +239,7 @@
 
 ---
 
-### - [ ] P13.T11 — Pages for the bodies
+### - [x] P13.T11 — Pages for the bodies
 
 **Files:** `apps/bodies/views.py`, `apps/bodies/urls.py`, `apps/bodies/templates/bodies/*.html`, `apps/bodies/tests/test_pages.py`
 

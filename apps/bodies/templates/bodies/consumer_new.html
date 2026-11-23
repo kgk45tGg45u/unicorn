@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Form a consumers' council" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Form a consumers' council" %}</h1>
+<p>{% translate "Any members can form one around a topic. It has no special power: it files tickets and reports like any member, and proposes guidelines that units may choose to follow." %}</p>
+<form method="post">{% csrf_token %}
+  <div class="mb-3"><label class="form-label" for="name">{% translate "Name" %}</label><input class="form-control" id="name" name="name" required></div>
+  <div class="mb-3"><label class="form-label" for="topic">{% translate "Topic" %}</label><input class="form-control" id="topic" name="topic" required placeholder="{% translate 'for example food quality or accessibility' %}"></div>
+  <div class="mb-3"><label class="form-label" for="description">{% translate "What do you want to look after?" %}</label><textarea class="form-control" id="description" name="description" rows="3"></textarea></div>
+  <button class="btn btn-primary">{% translate "Form the council" %}</button>
+</form>
+{% endblock %}
