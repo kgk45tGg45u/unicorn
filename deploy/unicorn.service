@@ -1,0 +1,22 @@
+# systemd unit for the Unicorn web app (P15.T05). A TEMPLATE: replace <user> with the virtual server's Unix user.
+#
+# Production:  copy to /etc/systemd/system/unicorn.service          (port 8001)
+# Staging:     copy to /etc/systemd/system/unicorn-staging.service  (change the port to 8002)
+# Then:        systemctl daemon-reload && systemctl enable --now unicorn
+[Unit]
+Description=Unicorn web app (gunicorn)
+After=network.target mariadb.service
+
+[Service]
+User=<user>
+Group=<user>
+WorkingDirectory=/home/<user>/app
+Environment=UNICORN_ENV_FILE=/home/<user>/.env
+ExecStart=/home/<user>/venv/bin/gunicorn unicorn.wsgi:application --bind 127.0.0.1:8001 --workers 3 --timeout 60 --max-requests 1000 --max-requests-jitter 100
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
