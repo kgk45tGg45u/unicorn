@@ -290,6 +290,7 @@ def publish_offer(offer, member, approved_by=None):
 
             briefs.offer_red_check(offer, member, result)  # HF-15: people decide, the check never refuses
             return offer
+        first_maker = not Offer.objects.filter(item=offer.item).exclude(pk=offer.pk).exclude(status="draft").exists()
         offer.status = "active"
         offer.status_note = ""
         offer.save(update_fields=["status", "status_note"])
@@ -297,6 +298,10 @@ def publish_offer(offer, member, approved_by=None):
         for hook in PUBLISH_HOOKS:
             hook(offer, member)
         on_publish(offer)
+        if first_maker:  # recognition, never pay (HF-2)
+            from apps.core.hooks import RECOGNITION_HOOK
+
+            RECOGNITION_HOOK(member, "first_maker", offer)
         request_recompute()
         return offer
 

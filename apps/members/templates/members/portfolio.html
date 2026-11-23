@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n reputation_tags %}
 {% block title %}{% translate "My work portfolio" %} · Unicorn{% endblock %}
 {% block content %}
 <h1>{% translate "My work portfolio" %}</h1>
@@ -53,4 +53,5 @@
     <label class="form-check-label" for="public_profile">{% translate "Show my skills and verified licences on my public profile" %}</label></div>
   <button class="btn btn-primary" type="submit">{% translate "Save" %}</button>
 </form>
+{% my_recognitions member %}
 {% endblock %}

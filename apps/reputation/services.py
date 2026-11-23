@@ -153,3 +153,91 @@ def set_suggestions(member, on: bool):
     member.suggest_me = bool(on)
     member.save(update_fields=["suggest_me"])
     return member
+
+
+# --- Recognition instead of extra pay (P13.T09) ---
+
+MAX_TEXT = 280
+
+
+def _record(kind, unit, item=None, review=None, text="", from_member=None):
+    """One row for the unit and one for each of its workers at this moment. Nothing is paid (HF-2)."""
+    from apps.units import services as unit_services
+
+    from .models import Recognition
+
+    rows = [
+        Recognition.objects.create(
+            unit=unit, kind=kind, item=item, review=review, text=text[:MAX_TEXT], from_member=from_member
+        )
+    ]
+    for worker in unit_services.workers(unit):
+        rows.append(
+            Recognition.objects.create(
+                member=worker.member,
+                unit=unit,
+                kind=kind,
+                item=item,
+                review=review,
+                text=text[:MAX_TEXT],
+                from_member=from_member,
+            )
+        )
+    return rows
+
+
+def on_recognition(member, kind, obj):
+    """Called through `apps.core.hooks.RECOGNITION_HOOK`. Other apps never import this module."""
+    from apps.catalogue.models import Offer
+    from apps.units import services as unit_services
+
+    from .models import Recognition
+
+    if kind == "first_maker":  # obj is the offer that was just published
+        if Recognition.objects.filter(kind="first_maker", item=obj.item, member__isnull=True).exists():
+            return []
+        return _record("first_maker", obj.unit, item=obj.item)
+    if kind == "filled_need":  # obj is the item; the maker's own offer of it says which unit
+        offers = Offer.objects.filter(item=obj, status="active").select_related("unit").order_by("-id")
+        offer = next((o for o in offers if unit_services.is_worker(member, o.unit)), None)
+        return _record("filled_need", offer.unit, item=obj) if offer is not None else []
+    if kind == "thanks":  # obj is the review
+        if Recognition.objects.filter(kind="thanks", review=obj, member__isnull=True).exists():
+            return []
+        return _record("thanks", obj.offer.unit, item=obj.offer.item, review=obj, text=obj.text, from_member=obj.author)
+    return []
+
+
+def unit_recognitions(unit, limit=30):
+    """What the unit page shows: the unit's own rows, without thanks that members reported and hid."""
+    from apps.tickets import flags
+
+    from .models import Recognition
+
+    hidden = flags.hidden_ids("thanks")
+    rows = Recognition.objects.filter(unit=unit, member__isnull=True).select_related("item", "from_member")
+    return [r for r in rows[:limit] if r.pk not in hidden]
+
+
+def member_recognitions(member):
+    """What the portfolio shows: the member's rows. The member may hide any of them."""
+    from .models import Recognition
+
+    return list(Recognition.objects.filter(member=member).select_related("item", "unit", "from_member"))
+
+
+def set_hidden(member, recognition, hidden: bool):
+    if recognition.member_id != member.pk:
+        raise ValueError(_("This recognition is not yours."))
+    recognition.hidden_by_owner = bool(hidden)
+    recognition.save(update_fields=["hidden_by_owner"])
+    return recognition
+
+
+def label(recognition) -> str:
+    item = recognition.item.name if recognition.item_id else ""
+    if recognition.kind == "first_maker":
+        return _("First maker of %(item)s") % {"item": item}
+    if recognition.kind == "filled_need":
+        return _("Filled a need: %(item)s") % {"item": item}
+    return _("Thanks for %(item)s") % {"item": item}

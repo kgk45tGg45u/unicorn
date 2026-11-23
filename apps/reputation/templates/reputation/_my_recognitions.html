@@ -1,0 +1,15 @@
+{% load i18n %}
+<h2 class="h4 mt-4">{% translate "Recognition" %}</h2>
+{% if rows %}
+<ul class="list-unstyled">
+  {% for row in rows %}
+  <li class="mb-2">
+    <strong>{{ row.label }}</strong> · {{ row.r.unit.name }}
+    {% if row.r.kind == "thanks" and row.r.text %}<br>&ldquo;{{ row.r.text }}&rdquo;{% endif %}
+    {% if row.r.hidden_by_owner %}<span class="badge text-bg-secondary">{% translate "hidden" %}</span>{% endif %}
+    <form method="post" action="{% url 'reputation:hide' row.r.pk %}" class="d-inline">{% csrf_token %}
+      <button class="btn btn-link btn-sm" type="submit">{% if row.r.hidden_by_owner %}{% translate "Show on my portfolio" %}{% else %}{% translate "Hide from my portfolio" %}{% endif %}</button></form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}<p class="text-muted">{% translate "No recognition yet." %}</p>{% endif %}

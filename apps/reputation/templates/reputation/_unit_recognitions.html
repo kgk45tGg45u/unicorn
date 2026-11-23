@@ -1,0 +1,13 @@
+{% load i18n %}
+{% if rows %}
+<h2 class="h5">{% translate "Recognition" %}</h2>
+<ul class="list-unstyled">
+  {% for row in rows %}
+  <li class="mb-2">
+    <strong>{{ row.label }}</strong>{% if row.r.kind == "thanks" and row.r.text %}<br><span>&ldquo;{{ row.r.text }}&rdquo;</span>{% endif %}
+    <span class="small text-muted">· {{ row.r.created_at|date:"Y-m-d" }}</span>
+    {% if row.r.kind == "thanks" %}{% include "partials/flag_button.html" with target_type="thanks" target_id=row.r.pk %}{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}

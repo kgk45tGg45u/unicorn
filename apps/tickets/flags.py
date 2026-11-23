@@ -1,5 +1,8 @@
 """Flags: notice and action for content members find wrong (docs/05 section 9, the Digital Services Act)."""
 
+from collections.abc import Callable
+from dataclasses import dataclass
+
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.utils.translation import gettext as _
@@ -20,7 +23,7 @@ REASONS = {
     "privacy": _("It shows private data"),
     "other": _("Something else"),
 }
-TARGET_TYPES = ("offer", "comment", "ticket", "profile", "hours", "payment", "review", "guideline")
+TARGET_TYPES = ("offer", "comment", "ticket", "profile", "hours", "payment", "review", "guideline", "thanks")
 # the model class name -> the flag's target type, for the template filter
 CLASS_TO_TARGET = {
     "Offer": "offer",
@@ -34,6 +37,24 @@ CLASS_TO_TARGET = {
 
 class FlagError(ValueError):
     """A plain-words reason why something cannot be done."""
+
+
+@dataclass
+class FlagTarget:
+    """A kind of content another app lets members report: how to find it, who owns it, how to describe it."""
+
+    model: type
+    owners: Callable  # owners(obj) -> (members, unit ids)
+    describe: Callable  # describe() -> "a thank-you"
+    excerpt: Callable  # excerpt(obj) -> a short text for the confirmers
+
+
+EXTRA_TARGETS: dict = {}
+
+
+def register_target(name, target):
+    """Let another app add a reportable kind (the name is at most 10 characters, the length of the column)."""
+    EXTRA_TARGETS[name] = target
 
 
 def _target(target_type, target_id):
@@ -55,6 +76,8 @@ def _target(target_type, target_id):
         "review": Review,
         "guideline": GuidelineDeclaration,
     }.get(target_type)
+    if model is None and target_type in EXTRA_TARGETS:
+        model = EXTRA_TARGETS[target_type].model
     return model.objects.filter(pk=target_id).first() if model else None
 
 
@@ -64,6 +87,8 @@ def _owners(target_type, obj):
 
     if obj is None:
         return [], []
+    if target_type in EXTRA_TARGETS:
+        return EXTRA_TARGETS[target_type].owners(obj)
     if target_type == "offer":
         return [w.member for w in unit_services.workers(obj.unit)], [obj.unit_id]
     if target_type in ("comment", "review"):
@@ -84,6 +109,8 @@ def owners(target_type, target_id) -> list:
 
 
 def _describe(target_type):
+    if target_type in EXTRA_TARGETS:
+        return EXTRA_TARGETS[target_type].describe()
     return {
         "offer": _("an offer"),
         "comment": _("a comment"),
@@ -99,6 +126,8 @@ def _describe(target_type):
 def _excerpt(target_type, obj) -> str:
     if obj is None:
         return ""
+    if target_type in EXTRA_TARGETS:
+        return EXTRA_TARGETS[target_type].excerpt(obj)
     if target_type == "offer":
         return _("An offer of %(item)s by the unit %(unit)s.") % {"item": obj.item.name, "unit": obj.unit.name}
     if target_type == "comment":

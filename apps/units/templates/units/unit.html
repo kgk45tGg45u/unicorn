@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n reputation_tags %}
 {% block title %}{{ unit.name }} · Unicorn{% endblock %}
 {% block content %}
 <h1>{{ unit.name }}</h1>
@@ -37,4 +37,5 @@
     </form>
   {% endfor %}
 {% endif %}
+{% unit_recognitions unit %}
 {% endblock %}

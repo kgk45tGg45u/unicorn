@@ -184,7 +184,7 @@
 
 ---
 
-### - [ ] P13.T09 — Recognition instead of extra pay
+### - [x] P13.T09 — Recognition instead of extra pay
 
 **Read:** docs/05 section 11 ("Incentives"); docs/01 HF-2.
 **Files:** `apps/reputation/models.py` (Recognition), `apps/reputation/services.py`, `apps/reputation/apps.py` (register the handler), `apps/catalogue/services.py` (`publish_offer` calls the hook for `first_maker`), `apps/reputation/tests/test_recognition.py`

@@ -77,7 +77,8 @@ def test_a_booking_can_be_reviewed_once_confirmed(salon):
 
 def test_the_thank_you_box_calls_the_recognition_hook(world):
     seen = []
-    hooks.RECOGNITION_HANDLERS.append(lambda member, kind, obj: seen.append((member, kind, obj)))
+    handler = lambda member, kind, obj: seen.append((member, kind, obj))  # noqa: E731
+    hooks.RECOGNITION_HANDLERS.append(handler)
     try:
         buyer, line = delivered_line(world)
         review = services.write_review(buyer, order_line=line, stars=5, text="Thank you!", as_thanks=True)
@@ -86,11 +87,10 @@ def test_the_thank_you_box_calls_the_recognition_hook(world):
         services.write_review(other, order_line=line2, stars=5, text="Thank you!")  # box not ticked
         assert len(seen) == 1
     finally:
-        hooks.RECOGNITION_HANDLERS.clear()
+        hooks.RECOGNITION_HANDLERS.remove(handler)
 
 
-def test_the_thank_you_hook_does_nothing_until_phase_13(world):
-    assert hooks.RECOGNITION_HANDLERS == []
+def test_a_thank_you_review_is_saved_with_the_recognition_handlers_attached(world):
     buyer, line = delivered_line(world)
     assert services.write_review(buyer, order_line=line, stars=5, text="Thanks", as_thanks=True)
 

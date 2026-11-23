@@ -251,7 +251,8 @@ def test_publishing_an_offer_for_a_wanted_item_thanks_the_maker_and_tells_the_wa
     item = honey()
     needs.join_waiting_list(waiting, item, 2)
     seen = []
-    hooks.RECOGNITION_HANDLERS.append(lambda member, kind, obj: seen.append((member, kind, obj)))
+    handler = lambda member, kind, obj: seen.append((member, kind, obj))  # noqa: E731
+    hooks.RECOGNITION_HANDLERS.append(handler)
     try:
         maker = make_member("bee@x.org", "Bee")
         unit = unit_for(maker, "bees")
@@ -259,15 +260,16 @@ def test_publishing_an_offer_for_a_wanted_item_thanks_the_maker_and_tells_the_wa
         mail.outbox.clear()
         cat.publish_offer(offer, maker)
     finally:
-        hooks.RECOGNITION_HANDLERS.clear()
-    assert seen == [(maker, "filled_need", item)]
+        hooks.RECOGNITION_HANDLERS.remove(handler)
+    assert [s for s in seen if s[1] == "filled_need"] == [(maker, "filled_need", item)]
     assert WaitingListEntry.objects.get().fulfilled_at is not None
     assert any("is available now" in m.subject for m in mail.outbox)
 
 
 def test_a_placeholder_made_for_the_first_time_counts_as_a_filled_need(world):
     seen = []
-    hooks.RECOGNITION_HANDLERS.append(lambda member, kind, obj: seen.append(kind))
+    handler = lambda member, kind, obj: seen.append(kind)  # noqa: E731
+    hooks.RECOGNITION_HANDLERS.append(handler)
     try:
         salt = cat.Item.objects.get(name="Salt")
         maker = make_member("salt@x.org", "Salter")
@@ -276,18 +278,19 @@ def test_a_placeholder_made_for_the_first_time_counts_as_a_filled_need(world):
         )
         cat.publish_offer(offer, maker)
     finally:
-        hooks.RECOGNITION_HANDLERS.clear()
-    assert seen == ["filled_need"]
+        hooks.RECOGNITION_HANDLERS.remove(handler)
+    assert "filled_need" in seen
 
 
 def test_an_ordinary_offer_is_not_a_filled_need():
     seen = []
-    hooks.RECOGNITION_HANDLERS.append(lambda member, kind, obj: seen.append(kind))
+    handler = lambda member, kind, obj: seen.append(kind)  # noqa: E731
+    hooks.RECOGNITION_HANDLERS.append(handler)
     try:
         World()
     finally:
-        hooks.RECOGNITION_HANDLERS.clear()
-    assert seen == []
+        hooks.RECOGNITION_HANDLERS.remove(handler)
+    assert "filled_need" not in seen
 
 
 # --- HF-10 ---

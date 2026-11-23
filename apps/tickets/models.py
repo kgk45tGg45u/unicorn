@@ -220,7 +220,9 @@ class Seat(models.Model):
 class Flag(models.Model):
     """One member's report of something wrong (docs/05 section 9). Flags on the same thing share one ticket."""
 
-    TARGETS = [(t, t) for t in ("offer", "comment", "ticket", "profile", "hours", "payment", "review", "guideline")]
+    TARGETS = [
+        (t, t) for t in ("offer", "comment", "ticket", "profile", "hours", "payment", "review", "guideline", "thanks")
+    ]
     REASONS = [
         ("illegal", _("illegal")),
         ("wrong_data", _("wrong data or fraud")),
