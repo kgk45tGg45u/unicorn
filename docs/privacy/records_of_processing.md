@@ -94,7 +94,7 @@ This is the record the association must keep under GDPR Article 30. It is built 
 ## Also recorded (not a purpose of its own)
 
 - **Logs:** web server logs 14 days, application logs 30 days, with member numbers only (6(1)(f)).
-- **Backups:** daily for 14 days, monthly for 12 months, encrypted (6(1)(f)). After a restore, `reapply_deletions` is run so deleted people stay deleted.
+- **Backups:** daily for 30 days, monthly for 12 months, encrypted (6(1)(f)). After a restore, `reapply_deletions` is run so deleted people stay deleted.
 - **Data exports** made for a member: kept 7 days.
 
 ## Review

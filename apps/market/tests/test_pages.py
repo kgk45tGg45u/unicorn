@@ -215,6 +215,8 @@ def test_booking_buttons_from_my_orders(salon, client):
     slot2 = salon.slot(days=2)
     booking2 = services.book(customer, slot2)
     with freeze_time(timezone.now() + timedelta(days=2, hours=3)):
+        client.logout()  # two days idle ended the session (P14.T06)
+        client.force_login(customer.user)
         services.mark_performed(slot2, salon.provider)
         booking2.refresh_from_db()
         assert services.booking_actions(booking2) == {"confirm", "dispute"}
@@ -285,6 +287,8 @@ def test_the_work_page_offers_sessions_and_marks_them_performed(salon, client):
     slot = salon.offer.slots.first()
     booking = services.book(customer, slot)
     with freeze_time(slot.starts_at + timedelta(hours=2)):
+        client.logout()  # the days in between ended the session (P14.T06)
+        client.force_login(salon.provider.user)
         assert "The session took place" in page(client, "market:work", "hair")
         post(client, salon.unit, "no_show", id=booking.pk)
         post(client, salon.unit, "performed", id=slot.pk)

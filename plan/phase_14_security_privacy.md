@@ -294,7 +294,7 @@
 
 ---
 
-### - [ ] P14.T13 — A security check before going live
+### - [x] P14.T13 — A security check before going live
 
 **Files:** `docs/security_checklist.md`, `apps/core/tests/test_permissions_matrix.py`
 

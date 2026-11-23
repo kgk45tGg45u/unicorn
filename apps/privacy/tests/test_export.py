@@ -108,6 +108,7 @@ def test_the_job_builds_the_export_and_the_link_expires_after_seven_days(client,
     client.force_login(me.user)
     assert client.get(f"/me/data/{row.pk}/download/").status_code == 200
     with freeze_time(timezone.now() + timedelta(days=8)):
+        client.logout()  # eight days idle: the session has ended (P14.T06), so log in again
         client.force_login(me.user)
         assert client.get(f"/me/data/{row.pk}/download/").status_code == 404
         assert "ended" in client.get(f"/me/data/{row.pk}/").content.decode()
