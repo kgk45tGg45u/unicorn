@@ -11,6 +11,7 @@ check:
 	.venv/bin/ruff format --check .
 	$(PY) manage.py check
 	$(PY) manage.py makemigrations --check --dry-run
+	$(PY) scripts/hf_coverage.py > /dev/null
 	.venv/bin/pytest -q
 
 test:

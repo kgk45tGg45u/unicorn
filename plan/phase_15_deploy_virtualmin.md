@@ -314,7 +314,7 @@
 
 ---
 
-### - [ ] P15.T10 — Every hard-frame rule is tested
+### - [x] P15.T10 — Every hard-frame rule is tested
 
 **Files:** `scripts/hf_coverage.py`, any test files that are missing
 
