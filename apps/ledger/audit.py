@@ -22,6 +22,8 @@ APPEND_ONLY_TABLES = [
     "members_inpersoncheck",
     "votes_ballot",
     "votes_voterrecord",
+    "ledger_dailyfingerprint",
+    "tradefund_fundentry",
 ]
 
 
@@ -104,6 +106,11 @@ def run_audit(full=False) -> AuditRun:
     for table, present in triggers_present(APPEND_ONLY_TABLES).items():
         if not present:
             findings.append(f"Warning: the table {table} has no database protection against changes.")
+
+    # The trade fund's books (P08.T03): the chain, the hashes, and no holding below zero.
+    from apps.tradefund import books
+
+    findings.extend(books.audit_findings())
 
     # 7: (from P09) every closed period has its cancellation.
 

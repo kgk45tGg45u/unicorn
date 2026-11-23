@@ -39,7 +39,7 @@
 
 ---
 
-### - [ ] P08.T03 — The fund's books
+### - [x] P08.T03 — The fund's books
 
 **Read:** docs/07 section 4 ("The fund's books"); docs/08 section 5.
 **Files:** `apps/tradefund/models.py` (FundEntry), `apps/tradefund/books.py`, `apps/tradefund/migrations/000X_fund_chain.py`, `apps/ledger/audit.py`, `apps/ledger/jobs.py`, `apps/tradefund/tests/test_books.py`

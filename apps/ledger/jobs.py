@@ -23,7 +23,12 @@ def make_fingerprint(day=None, chain="uniq"):
     if DailyFingerprint.objects.filter(date=day, chain=chain).exists():
         return None
     end = datetime.combine(day + timedelta(days=1), time.min, tzinfo=BERLIN)
-    last = Transaction.objects.filter(created_at__lt=end).order_by("-seq").first()
+    if chain == "fund":
+        from apps.tradefund.models import FundEntry
+
+        last = FundEntry.objects.filter(created_at__lt=end).order_by("-seq").first()
+    else:
+        last = Transaction.objects.filter(created_at__lt=end).order_by("-seq").first()
     if last is not None:
         seq, hash_ = last.seq, last.hash
     else:
@@ -35,3 +40,4 @@ def make_fingerprint(day=None, chain="uniq"):
 @job("ledger.fingerprint")
 def fingerprint_job(payload):
     make_fingerprint()
+    make_fingerprint(chain="fund")
