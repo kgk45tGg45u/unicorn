@@ -6,11 +6,11 @@
 <p>{% translate "A holder keeps part of the group's euros in their own bank account. The euros belong to the group. Unicorn never moves money: it only asks you to pay, and you confirm that you did." %}</p>
 {% if template %}
 <details class="mb-3"><summary>{% translate "Read the holder agreement" %}</summary>
-  <div class="border rounded p-3 mt-2" style="white-space: pre-wrap">{{ template.body_md }}</div></details>
+  <div class="ws-pre-wrap border rounded p-3 mt-2">{{ template.body_md }}</div></details>
 {% endif %}
 <form method="post" class="mb-4">{% csrf_token %}
   <div class="mb-3"><label class="form-label" for="currency">{% translate "Currency of your account" %}</label>
-    <input class="form-control" id="currency" name="currency" maxlength="3" value="{{ currency }}" style="max-width:8rem"></div>
+    <input class="mw-8 form-control" id="currency" name="currency" maxlength="3" value="{{ currency }}"></div>
   <div class="mb-3"><label class="form-label" for="iban">{% translate "Account number (IBAN)" %}</label>
     <input class="form-control" id="iban" name="iban" autocomplete="off"></div>
   <div class="mb-3"><label class="form-label" for="bic">{% translate "Bank code (BIC), if your bank needs it" %}</label>

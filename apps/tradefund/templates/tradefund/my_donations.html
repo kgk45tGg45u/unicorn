@@ -7,13 +7,13 @@
 <ul class="list-group mb-4">
   {% for d in pledged %}<li class="list-group-item"><form method="post" class="d-flex gap-2 align-items-center">{% csrf_token %}<input type="hidden" name="donation" value="{{ d.pk }}">
     <span>{{ d.reference }} · {% translate "promised" %} {{ d.amount }} {{ d.currency }}</span>
-    <input class="form-control form-control-sm" name="amount" value="{{ d.amount }}" style="max-width:8rem" aria-label="{% translate 'Amount that arrived' %}">
+    <input class="mw-8 form-control form-control-sm" name="amount" value="{{ d.amount }}" aria-label="{% translate 'Amount that arrived' %}">
     <button class="btn btn-sm btn-primary" type="submit">{% translate "It arrived" %}</button></form></li>
   {% empty %}<li class="list-group-item text-muted">{% translate "Nothing to confirm." %}</li>{% endfor %}
 </ul>
 <h2 class="h5">{% translate "I gave from my own money" %}</h2>
 <form method="post" class="d-flex gap-2 mb-4">{% csrf_token %}<input type="hidden" name="do" value="own">
-  <input class="form-control" name="amount" inputmode="decimal" style="max-width:10rem" aria-label="{% translate 'Amount' %}"><button class="btn btn-outline-primary" type="submit">{% translate "Record my donation" %}</button></form>
+  <input class="mw-10 form-control" name="amount" inputmode="decimal" aria-label="{% translate 'Amount' %}"><button class="btn btn-outline-primary" type="submit">{% translate "Record my donation" %}</button></form>
 <h2 class="h5">{% translate "Received" %}</h2>
 <ul class="list-group">{% for d in received %}<li class="list-group-item">{{ d.reference }} · {{ d.amount }} {{ d.currency }} · {{ d.received_at|date:"Y-m-d" }}</li>{% empty %}<li class="list-group-item text-muted">{% translate "None yet." %}</li>{% endfor %}</ul>
 {% endblock %}

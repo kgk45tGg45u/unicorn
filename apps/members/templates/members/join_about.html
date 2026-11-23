@@ -3,7 +3,7 @@
 {% block content %}
 <h1>{% translate "About you" %}</h1>
 <p>{% translate "Your legal name, date of birth and phone are stored encrypted. Other members see only your member number and display name." %}</p>
-<form method="post" novalidate>
+<form method="post" novalidate data-bootstrap-fields>
   {% csrf_token %}
   {{ form.non_field_errors }}
   {% for field in form %}
@@ -18,6 +18,4 @@
   {% endfor %}
   <button class="btn btn-primary" type="submit">{% translate "Continue to the contract" %}</button>
 </form>
-<script>document.querySelectorAll("form input:not([type=checkbox])").forEach(function (i) { i.classList.add("form-control"); });
-document.querySelectorAll("form input[type=checkbox]").forEach(function (i) { i.classList.add("form-check-input"); });</script>
 {% endblock %}

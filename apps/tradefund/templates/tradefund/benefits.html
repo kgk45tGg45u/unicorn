@@ -18,7 +18,7 @@
     <div class="col-md-2"><input class="form-control" name="amount{{ i }}" inputmode="decimal" placeholder="{% translate 'Euros a month' %}" aria-label="{% translate 'Euros a month' %}"></div>
     <div class="col-md-3"><input class="form-control" name="payee{{ i }}" placeholder="{% translate 'Who is paid (landlord, insurer)' %}" aria-label="{% translate 'Who is paid' %}"></div>
     <div class="col-md-4"><input class="form-control" name="iban{{ i }}" autocomplete="off" placeholder="{% translate 'Their account number (IBAN); empty: pay me' %}" aria-label="IBAN"></div></div>{% endfor %}
-  <div class="mb-2"><label class="form-label" for="inc">{% translate "My own income in euros a month" %}</label><input class="form-control" id="inc" name="income" inputmode="decimal" style="max-width:12rem"></div>
+  <div class="mb-2"><label class="form-label" for="inc">{% translate "My own income in euros a month" %}</label><input class="mw-12 form-control" id="inc" name="income" inputmode="decimal"></div>
   <div class="mb-3"><label class="form-label" for="docs">{% translate "Documents (rental contract, insurance letter; PDF, JPEG or PNG)" %}</label><input class="form-control" id="docs" type="file" name="documents" multiple></div>
   <button class="btn btn-primary" type="submit">{% translate "Send my claim" %}</button>
 </form>

@@ -17,14 +17,14 @@
 {% if can_send %}
 <form method="post" class="mb-3">{% csrf_token %}<input type="hidden" name="do" value="sent">
   <label class="form-label" for="a1">{% translate "I sent this amount" %}</label>
-  <div class="input-group" style="max-width:20rem"><input class="form-control" id="a1" name="amount" value="{{ pr.amount }}"><span class="input-group-text">{{ pr.currency }}</span></div>
+  <div class="mw-20 input-group"><input class="form-control" id="a1" name="amount" value="{{ pr.amount }}"><span class="input-group-text">{{ pr.currency }}</span></div>
   <button class="btn btn-primary mt-2" type="submit">{% translate "I sent it" %}</button>
 </form>
 {% endif %}
 {% if can_receive %}
 <form method="post" class="mb-3">{% csrf_token %}<input type="hidden" name="do" value="received">
   <label class="form-label" for="a2">{% translate "The amount that arrived" %}</label>
-  <div class="input-group" style="max-width:20rem"><input class="form-control" id="a2" name="amount" value="{{ pr.amount }}"><span class="input-group-text">{{ pr.currency }}</span></div>
+  <div class="mw-20 input-group"><input class="form-control" id="a2" name="amount" value="{{ pr.amount }}"><span class="input-group-text">{{ pr.currency }}</span></div>
   <button class="btn btn-primary mt-2" type="submit">{% translate "It arrived" %}</button>
 </form>
 {% endif %}

@@ -15,7 +15,7 @@
   {% for part in parts %}
     <section class="mb-4">
       <h2 class="h5">{{ forloop.counter }}. {{ part.title }}</h2>
-      <div style="white-space: pre-line">{{ part.text }}</div>
+      <div class="ws-pre-line">{{ part.text }}</div>
       {% if not already %}
       <div class="form-check mt-2">
         <input class="form-check-input" type="checkbox" id="accept_{{ forloop.counter0 }}" name="accept_{{ forloop.counter0 }}" value="1">

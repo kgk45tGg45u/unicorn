@@ -1,0 +1,5 @@
+body { font-family: system-ui, sans-serif; max-width: 46rem; margin: 2rem auto; padding: 0 1rem; }
+table { width: 100%; border-collapse: collapse; }
+td, th { padding: .4rem; border-bottom: 1px solid #ccc; text-align: left; }
+.r { text-align: right; }
+@media print { @page { size: A4; margin: 18mm; } body { margin: 0; } .noprint { display: none; } }

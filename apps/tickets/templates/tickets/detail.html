@@ -74,7 +74,7 @@
 {% endif %}
 <h2 class="h5">{% translate "Comments" %}</h2>
 {% for row in comments %}
-<div class="card mb-2" style="margin-left: {{ row.depth }}rem" id="c{{ row.comment.pk }}">
+<div class="indent-{{ row.depth }} card mb-2" id="c{{ row.comment.pk }}">
   <div class="card-body py-2">
     <div class="small text-muted">{{ row.comment.author.display_name }}{% if row.comment.acted_by %} ({% blocktranslate with helper=row.comment.acted_by.display_name number=row.comment.acted_by.number %}written by {{ helper }} ({{ number }}) on their behalf{% endblocktranslate %}){% endif %} · {{ row.comment.created_at|date:"Y-m-d H:i" }}{% if row.comment.edited_at %} · {% translate "edited" %}{% endif %}</div>
     {% if row.hidden and not row.mine %}

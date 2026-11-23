@@ -125,7 +125,7 @@
 
 ---
 
-### - [ ] P14.T06 — Headers, cookies, content rules, the admin
+### - [x] P14.T06 — Headers, cookies, content rules, the admin
 
 **Read:** docs/08 sections 3–4.
 **Files:** `unicorn/settings.py`, `apps/core/middleware.py`, `templates/base.html`, `static/css/unicorn.css`, `unicorn/urls.py`, `apps/core/tests/test_security_headers.py`

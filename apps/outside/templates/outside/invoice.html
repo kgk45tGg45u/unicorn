@@ -1,9 +1,9 @@
-{% load i18n %}<!doctype html>
+{% load i18n static %}<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% translate "Invoice" %} {{ invoice.number }}</title>
-<style>body{font-family:system-ui,sans-serif;max-width:46rem;margin:2rem auto;padding:0 1rem}table{width:100%;border-collapse:collapse}td,th{padding:.4rem;border-bottom:1px solid #ccc;text-align:left}.r{text-align:right}@media print{@page{size:A4;margin:18mm}body{margin:0}.noprint{display:none}}</style></head>
+<link rel="stylesheet" href="{% static 'css/invoice.css' %}"><script src="{% static 'js/print.js' %}" defer></script></head>
 <body>
-<p class="noprint"><a href="javascript:window.print()">{% translate "Print" %}</a></p>
+<p class="noprint"><a href="#" data-print>{% translate "Print" %}</a></p>
 <h1>{% translate "Invoice" %} {{ invoice.number }}</h1>
 <p><strong>{{ seller.trader_name }}</strong><br>{{ address|linebreaksbr }}{% if seller.vat_id %}<br>{% translate "VAT ID" %}: {{ seller.vat_id }}{% endif %}</p>
 <p>{% translate "To" %}:<br>{{ customer|linebreaksbr }}</p>

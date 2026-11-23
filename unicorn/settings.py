@@ -99,6 +99,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "csp.middleware.CSPMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -107,6 +108,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    "apps.core.middleware.IdleSessionMiddleware",
+    "apps.core.middleware.AdminGateMiddleware",
     "apps.members.middleware.CurrentMemberMiddleware",
     "apps.members.middleware.LastActiveMiddleware",
     "apps.members.assist.ActingForMiddleware",
@@ -181,9 +184,44 @@ MFA_SUPPORTED_TYPES = ["webauthn", "recovery_codes"]
 MFA_PASSKEY_LOGIN_ENABLED = True
 MFA_PASSKEY_SIGNUP_ENABLED = False
 MFA_WEBAUTHN_ALLOW_INSECURE_ORIGIN = DEBUG
-SESSION_COOKIE_AGE = 14 * 24 * 3600
+
+# Sessions, cookies, headers (docs/08 sections 3-4, P14.T06)
+SESSION_COOKIE_AGE = 14 * 24 * 3600  # two weeks
+SESSION_IDLE_SECONDS = 12 * 3600  # and an idle member is logged out after twelve hours
 SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = not DEBUG
+CSRF_TRUSTED_ORIGINS = [SITE_URL] if SITE_URL.startswith("https://") else []
+X_FRAME_OPTIONS = "DENY"
+SECURE_REFERRER_POLICY = "same-origin"
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = not DEBUG
+# 3600 at first; 31536000 once the site has run for a week without problems.
+SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=3600) if not DEBUG else 0
+
+# Content security policy (django-csp 4): our own files only, no inline scripts or styles.
+from csp.constants import NONE, SELF  # noqa: E402
+
+CONTENT_SECURITY_POLICY = {
+    "DIRECTIVES": {
+        "default-src": [SELF],
+        "script-src": [SELF],
+        "style-src": [SELF],
+        "img-src": [SELF, "data:"],
+        "font-src": [SELF],
+        "connect-src": [SELF],
+        "frame-ancestors": [NONE],
+        "form-action": [SELF],
+        "base-uri": [SELF],
+        "object-src": [NONE],
+    }
+}
+
+# The admin lives at a secret path and is read-only (CLAUDE.md section 7). Only staff with a passkey get in.
+ADMIN_PATH = env("ADMIN_PATH", default="backoffice").strip("/")
 LOGIN_REDIRECT_URL = "/me/"
 ACCOUNT_SIGNUP_REDIRECT_URL = "/join/"
 

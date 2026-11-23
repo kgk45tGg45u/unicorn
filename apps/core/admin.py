@@ -24,3 +24,15 @@ class AuditEventAdmin(ReadOnlyAdmin):
 @admin.register(Job)
 class JobAdmin(ReadOnlyAdmin):
     list_display = ("kind", "status", "run_after", "attempts")
+
+
+def lock_admin():
+    """Make every registered model read-only, including those of other packages (CLAUDE.md section 7).
+
+    Members change data through the app and its tickets, never through the admin.
+    """
+    for model_admin in admin.site._registry.values():
+        if not isinstance(model_admin, ReadOnlyAdmin):
+            model_admin.has_add_permission = lambda request, *args, **kwargs: False
+            model_admin.has_change_permission = lambda request, *args, **kwargs: False
+            model_admin.has_delete_permission = lambda request, *args, **kwargs: False

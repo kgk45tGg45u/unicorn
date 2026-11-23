@@ -1,0 +1,2 @@
+/* The error and offline pages stand alone, so they carry their own small style. */
+.plain-page { font-family: sans-serif; max-width: 32rem; margin: 3rem auto; padding: 0 1rem; }

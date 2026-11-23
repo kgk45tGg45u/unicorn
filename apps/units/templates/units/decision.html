@@ -5,7 +5,7 @@
 <h1>{{ d.title }}</h1>
 <p class="text-muted">{{ d.unit.name }} · {{ d.get_status_display }} · {% blocktranslate with when=d.closes_at|date:"Y-m-d H:i" %}open until {{ when }}{% endblocktranslate %}</p>
 {% for message in messages %}<div class="alert alert-info">{{ message }}</div>{% endfor %}
-<p style="white-space: pre-line">{{ d.text }}</p>
+<p class="ws-pre-line">{{ d.text }}</p>
 {% if d.status != "open" %}
   <p>{% blocktranslate with y=d.result.yes n=d.result.no a=d.result.abstain %}Yes: {{ y }}, no: {{ n }}, abstained: {{ a }}.{% endblocktranslate %}</p>
 {% endif %}

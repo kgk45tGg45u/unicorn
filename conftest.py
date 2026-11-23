@@ -2,6 +2,12 @@ import pytest
 from cryptography.fernet import Fernet
 
 
+@pytest.fixture(autouse=True)
+def plain_http_in_tests(settings):
+    """The test client speaks plain HTTP; the redirect to HTTPS is tested on its own (P14.T06)."""
+    settings.SECURE_SSL_REDIRECT = False
+
+
 @pytest.fixture
 def settings_en(settings):
     settings.LANGUAGE_CODE = "en"

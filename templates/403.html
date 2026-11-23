@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Not allowed" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "You cannot open this page" %}</h1>
+<p>{% if message %}{{ message }}{% else %}{% translate "You do not have the right to open this page. If you think you should, please tell the people who run Unicorn." %}{% endif %}</p>
+<a class="btn btn-primary" href="/">{% translate "Back to the start" %}</a>
+{% endblock %}

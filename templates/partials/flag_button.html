@@ -3,7 +3,7 @@
 {% if request.member %}
 <details class="d-inline-block">
   <summary class="small text-muted">{% translate "Report" %}</summary>
-  <form method="post" action="{% url 'tickets:flag' %}" class="border rounded p-2 mt-1" style="max-width: 22rem">{% csrf_token %}
+  <form method="post" action="{% url 'tickets:flag' %}" class="mw-22 border rounded p-2 mt-1">{% csrf_token %}
     <input type="hidden" name="target_type" value="{{ target_type }}">
     <input type="hidden" name="target_id" value="{{ target_id }}">
     <input type="hidden" name="next" value="{{ request.get_full_path }}">

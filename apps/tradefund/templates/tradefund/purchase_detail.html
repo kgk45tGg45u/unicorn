@@ -13,7 +13,7 @@
 {% if can_volunteer %}<form method="post" class="mb-3">{% csrf_token %}<input type="hidden" name="do" value="volunteer"><button class="btn btn-outline-primary" type="submit">{% translate "I can buy it" %}</button></form>{% endif %}
 {% if can_report_bought %}<form method="post" enctype="multipart/form-data" class="mb-3">{% csrf_token %}<input type="hidden" name="do" value="bought">
   <div class="mb-2"><label class="form-label" for="r">{% translate "Receipt or invoice (PDF, JPEG or PNG)" %}</label><input class="form-control" type="file" id="r" name="receipt"></div>
-  <div class="mb-2"><label class="form-label" for="a">{% translate "Price paid" %}</label><input class="form-control" id="a" name="actual_price" inputmode="decimal" style="max-width:12rem"></div>
+  <div class="mb-2"><label class="form-label" for="a">{% translate "Price paid" %}</label><input class="mw-12 form-control" id="a" name="actual_price" inputmode="decimal"></div>
   <button class="btn btn-primary" type="submit">{% translate "I bought it" %}</button></form>{% endif %}
 {% if can_deliver %}<form method="post">{% csrf_token %}<input type="hidden" name="do" value="delivered"><button class="btn btn-success" type="submit">{% translate "It arrived" %}</button></form>{% endif %}
 {% endblock %}
