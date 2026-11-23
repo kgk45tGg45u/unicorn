@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Tasks" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Tasks anyone can take" %}</h1>
+<ul class="list-group mb-4">
+  {% for t in open_tasks %}<li class="list-group-item"><a href="{% url 'tasks:ticket' t.ticket.number %}">{{ t.title }}</a> <span class="text-muted small">{{ t.standard_minutes }} {% translate "minutes" %} · {{ t.ticket.number }}</span></li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "No open tasks now." %}</li>{% endfor %}
+</ul>
+<h2 class="h5">{% translate "My tasks" %}</h2>
+<ul class="list-group mb-4">
+  {% for t in mine %}<li class="list-group-item"><a href="{% url 'tasks:ticket' t.ticket.number %}">{{ t.title }}</a> · {{ t.get_status_display }}</li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "You have no tasks." %}</li>{% endfor %}
+</ul>
+<h2 class="h5">{% translate "My mandates" %}</h2>
+<ul class="list-group">
+  {% for m in mandates %}<li class="list-group-item"><a href="{% url 'tasks:mandate' m.pk %}">{{ m.ticket.number }} {{ m.ticket.title }}</a> · {{ m.get_status_display }}</li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "You have no mandates." %}</li>{% endfor %}
+</ul>
+{% endblock %}

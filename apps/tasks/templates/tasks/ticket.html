@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ ticket.number }} · {% translate "Getting it done" %}{% endblock %}
+{% block content %}
+<p class="text-muted mb-1">{{ ticket.number }} · <a href="{% url 'tickets:detail' ticket.number %}">{% translate "See the ticket" %}</a></p>
+<h1>{{ ticket.title }}</h1>
+{% if open_for_applications %}
+<h2 class="h5">{% translate "Volunteer to carry this out" %}</h2>
+<p>{% blocktranslate with n=applications %}{{ n }} members have applied so far.{% endblocktranslate %}</p>
+<form method="post" action="{% url 'tasks:apply' ticket.number %}">{% csrf_token %}
+  <textarea class="form-control mb-2" name="statement" rows="3" aria-label="{% translate 'Why you' %}">{{ applied.statement }}</textarea>
+  <button class="btn btn-primary">{% if applied %}{% translate "Change my application" %}{% else %}{% translate "Apply" %}{% endif %}</button>
+</form>
+{% endif %}
+{% for m in mandates %}<p><a href="{% url 'tasks:mandate' m.pk %}">{% blocktranslate with name=m.delegate.display_name status=m.get_status_display %}Delegate: {{ name }} ({{ status }}){% endblocktranslate %}</a></p>{% endfor %}
+{% if tasks %}
+<h2 class="h5">{% translate "Tasks" %}</h2>
+<ul class="list-group">
+  {% for t in tasks %}
+  <li class="list-group-item">
+    <strong>{{ t.title }}</strong> · {{ t.standard_minutes }} {% translate "minutes" %} · {{ t.get_status_display }}
+    {% if t.description %}<div class="small">{{ t.description }}</div>{% endif %}
+    {% if t.status == "open" %}<form method="post" action="{% url 'tasks:task_action' t.pk 'claim' %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-primary">{% translate "I take this" %}</button></form>{% endif %}
+    {% if t.status == "claimed" and t.claimed_by == request.member %}
+    <form method="post" action="{% url 'tasks:task_action' t.pk 'done' %}">{% csrf_token %}
+      <textarea class="form-control mb-1" name="evidence" rows="2" aria-label="{% translate 'How you know it is done' %}"></textarea>
+      <button class="btn btn-sm btn-success">{% translate "It is done" %}</button></form>{% endif %}
+    {% if t.status == "done" %}
+      {% if is_author and t.claimed_by != request.member %}<form method="post" action="{% url 'tasks:task_action' t.pk 'confirm' %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-primary">{% translate "Confirm" %}</button></form>{% endif %}
+      {% if not t.check_ticket %}<form method="post" action="{% url 'tasks:task_action' t.pk 'check' %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">{% translate "Ask one random member to check" %}</button></form>{% endif %}
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Mandate" %} · {{ m.ticket.number }}{% endblock %}
+{% block content %}
+<p class="text-muted mb-1">{{ m.ticket.number }} · <a href="{% url 'tickets:detail' m.ticket.number %}">{% translate "See the ticket" %}</a></p>
+<h1>{% translate "Mandate" %}: {{ m.ticket.title }}</h1>
+<p>{% blocktranslate with name=m.delegate.display_name status=m.get_status_display until=m.ends_at|date:"Y-m-d" %}Delegate: {{ name }} · {{ status }} · until {{ until }}{% endblocktranslate %}</p>
+<h2 class="h5">{% translate "What it covers" %}</h2>
+<div>{{ m.scope_md|linebreaks }}</div>
+<h2 class="h5">{% translate "Powers" %}</h2>
+<ul>
+  <li>{% translate "May spend up to" %}: {{ m.powers.spend_limit_eur|default:0 }} €, {% translate "only through payment requests that name this mandate" %}</li>
+  <li>{% translate "May sign" %}: {% if m.powers.may_sign %}{% translate "yes" %}{% else %}{% translate "no" %}{% endif %}</li>
+  <li>{% translate "May represent Unicorn" %}: {% if m.powers.may_represent %}{% translate "yes" %}{% else %}{% translate "no" %}{% endif %}</li>
+  {% if m.powers.other %}<li>{{ m.powers.other }}</li>{% endif %}
+</ul>
+{% if m.report_md %}<h2 class="h5">{% translate "Report" %}</h2><div>{{ m.report_md|linebreaks }}</div>{% endif %}
+{% if is_delegate and m.status == "active" and not m.hours_entry %}
+<h2 class="h5">{% translate "Write my report" %}</h2>
+<form method="post" action="{% url 'tasks:mandate_action' m.pk 'report' %}">{% csrf_token %}
+  <textarea class="form-control mb-2" name="report" rows="4" aria-label="{% translate 'Report' %}"></textarea>
+  <input class="form-control mb-2" name="minutes" type="number" min="1" placeholder="{% translate 'Minutes I worked' %}">
+  <button class="btn btn-primary">{% translate "Send the report" %}</button>
+</form>
+{% endif %}
+{% if m.status == "active" %}
+<form method="post" action="{% url 'tasks:mandate_action' m.pk 'revoke' %}" class="mt-4">{% csrf_token %}
+  <label class="form-label" for="reason">{% translate "Ask to take this mandate back" %}</label>
+  <input class="form-control mb-2" id="reason" name="reason" placeholder="{% translate 'Why?' %}">
+  <button class="btn btn-outline-danger btn-sm">{% translate "Ask random members" %}</button>
+</form>
+{% endif %}
+{% endblock %}
