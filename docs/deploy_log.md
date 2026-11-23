@@ -12,7 +12,7 @@ Every step done on a server, with its date and anything unexpected. **Never writ
 | T04 code, `~/.env`, `first_setup.sh` | operator | not yet | not yet |
 | T05 gunicorn service, sudoers line, Apache directives (root) | operator with root | not yet | not yet |
 | T06 first release through `release.sh` | operator | not yet | not yet |
-| T07 cron, email (DKIM, SPF, DMARC), backups, first restore test | operator | not yet | not yet |
+| T07 cron, email (DKIM, SPF, DMARC); first restore test of the owner's Borg backup | operator | not yet | not yet |
 | T08 uptime check from the second machine | operator | not yet | not yet |
 | T09 `launch_check` shows no FAIL; the founders' meeting | founders | not yet | not yet |
 

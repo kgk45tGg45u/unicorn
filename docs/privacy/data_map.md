@@ -66,5 +66,5 @@ The words in "who sees it": *the member* (about themselves), *confirmers* (rando
 |---|---|---|---|---|---|
 | Web server logs | Apache, on the server | errors and attacks | 6(1)(f) | 14 days (no personal data in application logs; IP addresses are shortened) | operators |
 | Application logs | the app's log files | errors | 6(1)(f) | 30 days; member numbers only, never personal data | operators |
-| Backups | encrypted dumps, local and off-site | recovery | 6(1)(f) | daily for 30 days, monthly for 12 months; after a restore, run `reapply_deletions` (P14.T04) | operators; encrypted fields stay unreadable once a key is destroyed. A plain email address in an old backup can be read until the backup is deleted (12 months) |
+| Backups | encrypted Borg repository, made by the owner, local and off-site | recovery | 6(1)(f) | `<to fill in: the Borg retention>`; after a restore, run `reapply_deletions` (P14.T04) | operators; encrypted fields stay unreadable once a key is destroyed. A plain email address in an old backup can be read until that backup is deleted |
 | Data exports | private storage | the member's right to their data | 6(1)(c) | 7 days | the member |

@@ -27,7 +27,7 @@ Before the meeting, an operator runs `deploy/manage.sh launch_check` on the stag
 ## 4. Choose two holders and two operators
 
 - **Two holders** keep the group's euros in their own bank accounts. Each reads the holder agreement, signs it in the app, and enters the account number (it is stored encrypted). Pick people the group trusts and who will not be away for months.
-- **Two operators** look after the server. They each keep the master key and the HMAC key in their own password managers (docs/09; losing the master key means losing every member's personal data). They also keep the private backup key offline, one each.
+- **Two operators** look after the server. They each keep the master key and the HMAC key in their own password managers (docs/09; losing the master key means losing every member's personal data). They also know where the Borg key and passphrase are kept.
 - Write the names in the minutes, not in the app's files.
 - *Look for:* launch_check, line "The holders" shows two.
 

@@ -59,7 +59,7 @@
   4. When it says `left to do: 0`, remove the old key from `UNICORN_OLD_MASTER_KEYS` in `.env` and restart. Then destroy every copy of the old key.
   5. Only if the HMAC key changed too: run `python manage.py rotate_hmac_key`. It recomputes every duplicate-detection hash. Do this before step 4 if the HMAC key is also being replaced, so that no duplicate goes unnoticed in between.
   6. Take a new backup, and write the date in the operators' log.
-- **Backups** are encrypted with a separate backup key, kept offline by two operators (section 6).
+- **Backups** are made by the owner with Borg, outside the app. The Borg repository must be encrypted, and its key kept apart from the box (section 6).
 - **Email addresses** are needed in plain text to log in and to send mail. They are kept in the accounts table only, protected by the database's access rules, and never shown to other members.
 
 ## 5. The books: persistence and proof
@@ -93,14 +93,17 @@
 
 ## 6. Backups and recovery
 
-- **Nightly:**
-  - `mysqldump --single-transaction --routines --triggers`, plus the private files directory;
-  - compressed and encrypted with the backup key (`age` or `gpg`);
-  - copied by `rsync` over SSH to a second machine in another place.
-- **Kept:** 30 daily and 12 monthly copies.
-- **Monthly restore test** on the staging server, checked by the nightly audit command. The result is recorded.
+The owner makes the backups with Borg, outside the app (decision of 2026-11-23). Unicorn contains no backup program. What the app needs from them:
+
+- **What a backup must contain:**
+  - a dump of the database: `mariadb-dump --single-transaction --routines --triggers --hex-blob --default-character-set=utf8mb4 <database>`;
+  - the private files directory (`~/private_media`);
+  - the keys. The master key and the HMAC key (in `~/.env`) are needed to read any personal data from a restored database. They are kept **separately** from the database backup (for example in two password managers); never both in the same place.
+- **Encrypted, off the box:** the Borg repository is encrypted, and a copy lies on another machine in the EU. The retention (how many daily and monthly copies) is the owner's choice: `<to fill in: the Borg retention>`.
+- **Before every release** a fresh backup is made (`deploy/release.sh` asks for it).
+- **A restore test every month**, on the staging server or any other place that is not production, and the result is recorded with `deploy/manage.sh record_restore_test` (the open-books page shows the last good one; if there was none for 35 days, a ticket goes to the elected auditors).
+- **After every restore**, before anybody uses the database: `reapply_deletions` (people who were deleted since the backup stay deleted), then `audit_books --full`, then `compare_fingerprints` with the fingerprints published on the open-books page (the chain checkpoints let anyone confirm that a restored database is the true one, up to the last published fingerprint).
 - **Targets:** at most one day of data lost; service back within one day.
-- **Hash-chain checkpoints** let anyone confirm that a restored database is the true one, up to the last published fingerprint.
 
 ## 7. Privacy (GDPR)
 

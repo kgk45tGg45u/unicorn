@@ -51,16 +51,9 @@ Tests create `test_unicorn_dev` themselves. Creating the append-only triggers ne
 
 (Done in phase 15; written here so the owner knows what to expect.)
 
-1. **Check versions** with `deploy/check_server.sh` (task P15.T01): `cat /etc/almalinux-release`, `mariadb --version` (10.6+ recommended; 10.5 still works, see P15.T01), `httpd -v`, SELinux, the time zone tables.
-2. **Packages** (as root):
-
-   ```
-   dnf install -y epel-release
-   dnf install -y python3.12 python3.12-devel gcc git pkgconf-pkg-config mariadb-connector-c-devel age
-   ```
-
-3. **Virtual servers:** one for `unicorn.<domain>` (production) and one for `staging.unicorn.<domain>`. Each has its own Unix user, MariaDB database and Let's Encrypt certificate. The database server also needs its time zone tables (`mariadb-tzinfo-to-sql /usr/share/zoneinfo | mariadb -u root mysql`), and, with SELinux enforcing, `setsebool -P httpd_can_network_connect 1` (task P15.T03).
-4. **Layout under the virtual server's home** (`/home/<user>/`):
+1. **Look at the box** with `deploy/check_programs.sh` (read only: it lists the needed programs as FOUND or MISSING) and `deploy/check_server.sh`. Nothing is installed from a repository: Unicorn uses what the box already has (Python 3.12, git, MariaDB with its client tools, Apache with the proxy, headers and ssl modules, systemd, cron, flock, mail). The database driver is the pure-Python **PyMySQL** (`requirements-server.txt`), because the database development files that `mysqlclient` needs are not on the box. Unicorn's own Python libraries are installed with `pip` into the site's own folder (`~/venv`), not into the system.
+2. **Virtual servers:** one for `unicorn.<domain>` (production) and one for `staging.unicorn.<domain>`. Each has its own Unix user, MariaDB database and Let's Encrypt certificate. The database server needs its time zone tables (`mariadb-tzinfo-to-sql /usr/share/zoneinfo | mariadb -u root mysql`, once). SELinux is off on this box, so nothing more is needed for Apache to reach gunicorn.
+3. **Layout under the virtual server's home** (`/home/<user>/`):
 
    ```
    app/            the repository (git clone, a release tag checked out)
@@ -68,12 +61,12 @@ Tests create `test_unicorn_dev` themselves. Creating the append-only triggers ne
    .env            secrets, chmod 600
    public_html/static/   collectstatic target, served by Apache
    private_media/  uploaded files, never served directly
-   backups/        local encrypted backups before copying off-site
+   before_release.sh   optional: your Borg command, run before each release
    run/            lock files
    ```
 
-5. **gunicorn as a systemd service** (`/etc/systemd/system/unicorn.service`, user = the virtual server's user, `--bind 127.0.0.1:8001 --workers 3`; staging uses port 8002). A sudoers line lets the user restart only its own service (task P15.T05).
-6. **Apache proxy** in the virtual server's configuration (`deploy/apache_directives.conf`):
+4. **gunicorn as a systemd service** (`/etc/systemd/system/unicorn.service`, user = the virtual server's user, `--bind 127.0.0.1:8001 --workers 3`; staging uses port 8002). A sudoers line lets the user restart only its own service (task P15.T05).
+5. **Apache proxy** in the virtual server's configuration (`deploy/apache_directives.conf`):
 
    ```
    ProxyPreserveHost On
@@ -85,18 +78,17 @@ Tests create `test_unicorn_dev` themselves. Creating the append-only triggers ne
    LimitRequestBody 12582912
    ```
 
-7. **Cron** for the virtual server's user (Virtualmin → Scheduled Cron Jobs). `deploy/manage.sh` sets the path of the settings file and runs `manage.py` (task P15.T04):
+6. **Cron** for the virtual server's user (Virtualmin → Scheduled Cron Jobs; `deploy/crontab.txt`). `deploy/manage.sh` sets the path of the settings file and runs `manage.py` (task P15.T04):
 
    ```
    * * * * *  flock -n ~/run/jobs.lock ~/app/deploy/manage.sh run_jobs --max-seconds 55
    5 0 * * *  flock -n ~/run/daily.lock ~/app/deploy/manage.sh daily
    15 0 1 * * flock -n ~/run/close.lock ~/app/deploy/manage.sh close_period
-   30 2 * * *  flock -n ~/run/backup.lock ~/app/deploy/backup.sh
    ```
 
-8. **Releases** with `deploy/release.sh <tag>`, on staging first (with the tests against MariaDB), then on production. The script makes a backup, checks out the tag, installs, migrates, collects the static files, restarts the service, and rolls back if `/healthz` fails (task P15.T06).
+7. **Releases** with `deploy/release.sh <tag>`, on staging first, then on production. The script asks for a fresh backup (your own), checks out the tag, installs, migrates, collects the static files, restarts the service, and rolls back if `/healthz` fails (task P15.T06).
 
 ## 4. Where the data lives
 
 - The box must stand in the EU/EEA (GDPR). If it does not, this is an open question for the owner (docs/12).
-- Backups go to a second machine, also in the EU.
+- Backups are the owner's (Borg), with a copy on another machine, also in the EU.

@@ -1,5 +1,7 @@
 # Phase 15 — Running Unicorn on the Virtualmin box
 
+*Changed 2026-11-23 by the owner: nothing new is installed on the box (no `age`, no database development files: the database driver is PyMySQL, `requirements-server.txt`), backups are the owner's own (Borg), and `release.sh` asks for a backup instead of making one. The steps are now in `deploy/README.md`, numbered, each with an undo line.*
+
 **Goal:** Unicorn runs on the owner's Virtualmin server (AlmaLinux, Apache, MariaDB), with a staging copy and production. Releases are tested on staging first. Cron runs the jobs, the daily work and the monthly close. Email reaches people's inboxes. Backups go off-site and are restore-tested. The founders can launch.
 **Read first:** docs/09 sections 3–4; docs/08 section 6; plan/phase_14_security_privacy.md T09 (backups).
 

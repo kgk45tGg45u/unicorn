@@ -6,9 +6,8 @@
 # Berlin time.
 #
 # `flock -n` means: if the last run is still going, skip this one (one runner at a time).
-# Staging gets the same lines WITHOUT the backup line, until the owner decides otherwise.
+# Backups are the owner's own (Borg) and are not in this file.
 MAILTO=operators@example.org
 * * * * *   flock -n ~/run/jobs.lock  ~/app/deploy/manage.sh run_jobs --max-seconds 55
 5 0 * * *   flock -n ~/run/daily.lock ~/app/deploy/manage.sh daily
 15 0 1 * *  flock -n ~/run/close.lock ~/app/deploy/manage.sh close_period
-30 2 * * *  flock -n ~/run/backup.lock ~/app/deploy/backup.sh

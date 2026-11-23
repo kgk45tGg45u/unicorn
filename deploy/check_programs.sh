@@ -62,11 +62,9 @@ echo; echo "== Mail (login codes, error mails)"
 for m in sendmail postfix mail mailx; do show "$m" "email" "$m"; done
 
 echo; echo "== Backups"
-show "borg"             "your working backup setting"        borg "borg --version"
+show "borg"             "your backups"        borg "borg --version"
 show "rsync"            "copy to a second machine"           rsync "rsync --version"
 show "ssh"              "copy to a second machine"           ssh "ssh -V"
-show "age"              "encryption the backup script uses now" age "age --version"
-show "gpg"              "other encryption option"            gpg "gpg --version"
 show "tar"              "packs files"                        tar "tar --version"
 show "gzip"             "compresses"                         gzip "gzip --version"
 

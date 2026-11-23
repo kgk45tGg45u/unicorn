@@ -193,6 +193,8 @@
 
 ### - [x] P14.T09 — Backups and the restore test
 
+*Changed 2026-11-23 by the owner: the owner makes the backups with Borg, outside the app. `deploy/backup.sh` and `deploy/restore_test.sh` were removed. What stays: the `RestoreTest` record, `record_restore_test`, the 35-day warning, the open-books line, `reapply_deletions`, `audit_books` and `compare_fingerprints`; see docs/08 section 6 and `deploy/README.md`.*
+
 **Read:** docs/08 section 6.
 **Files:** `deploy/backup.sh`, `deploy/restore_test.sh`, `deploy/README.md`, `apps/core/models.py` (RestoreTest), `apps/core/management/commands/record_restore_test.py`, `apps/core/tests/test_restore_record.py`
 

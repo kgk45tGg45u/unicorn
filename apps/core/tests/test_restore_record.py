@@ -1,11 +1,8 @@
 import json
-import subprocess
 from datetime import date
 from io import StringIO
-from pathlib import Path
 
 import pytest
-from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.utils import timezone
@@ -75,22 +72,6 @@ def test_the_open_books_page_shows_the_last_successful_restore_test(client):
     run("--ok", "--backup-date", "2027-03-01")
     page = client.get("/open-books/").content.decode()
     assert "2027-03-01" in page and "restored successfully" in page
-
-
-def test_the_shell_scripts_have_no_syntax_errors():
-    scripts = sorted((Path(settings.BASE_DIR) / "deploy").glob("*.sh"))
-    assert {s.name for s in scripts} >= {"backup.sh", "restore_test.sh"}
-    for script in scripts:
-        result = subprocess.run(["bash", "-n", str(script)], capture_output=True, text=True)
-        assert result.returncode == 0, f"{script.name}: {result.stderr}"
-
-
-def test_the_scripts_never_take_the_password_or_the_private_key_on_the_command_line():
-    backup = (Path(settings.BASE_DIR) / "deploy" / "backup.sh").read_text()
-    restore_script = (Path(settings.BASE_DIR) / "deploy" / "restore_test.sh").read_text()
-    assert ".my.cnf" in backup and "--password" not in backup and '-p"' not in backup
-    assert "age -d -i -" in restore_script  # the private key arrives on standard input
-    assert "backup_recipient.txt" in backup and ".key" not in backup.replace("backup.key", "")
 
 
 def test_the_fingerprints_are_published_as_data_and_compared_with_a_restored_database(client):

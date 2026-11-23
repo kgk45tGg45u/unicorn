@@ -1,175 +1,338 @@
-# Operators' guide: the server, releases, backups and disaster recovery
+# Putting Unicorn on the box: step by step
 
-Written for the people who run the server. Plain steps, no surprises. The rules behind it are in `docs/08_security_privacy_persistence.md`, sections 4 and 6, and in `docs/09_stack_and_hosting.md`, section 3. Write every step you take, with the date, in `docs/deploy_log.md` (never a secret).
+Written for the owner and the people who run the server. Nothing is installed from a repository. Unicorn uses what the box already has (checked with `deploy/check_programs.sh` on 2026-11-23: AlmaLinux 10.3, Python 3.12, MariaDB 10.11 tools, Apache with the proxy, headers and ssl modules, systemd, cron, flock, mail, git, Borg; SELinux off; time zone Berlin).
 
-**Contents:** [Setting up a box](#setting-up-a-box-phase-15-t01-t05) · [Releases](#releases) · [Cron, email and backups](#cron-email-and-backups) · [Watching the service](#watching-the-service) · [What runs by itself](#what-runs-by-itself) · [Backups: one-time setup](#one-time-setup) · [Restore tests](#the-monthly-restore-test-staging-server) · [After a disaster](#after-a-disaster)
+**Backups are yours** (Borg). Unicorn has no backup program. The section "Your backups" says what a backup must contain and what Unicorn needs from you.
 
-## What runs by itself
+## What changes on the box, in total
 
-- **Every night** `deploy/backup.sh` runs from cron as the virtual server's user. It dumps the database, packs the private files, encrypts both to the backup **public** key, copies the result to a second machine and keeps 30 daily and 12 monthly copies on both machines. It writes the time of success to `~/run/last_backup`, which the health check reads.
-- **Every day** the app checks when a restore test last worked. If there has been none for 35 days, a ticket goes to the elected auditors.
+| Where | What | Step |
+|---|---|---|
+| Virtualmin | two virtual servers (staging, production), their databases and certificates | 1, 2 |
+| Database | character set, time zone tables (if missing) | 3 |
+| The site user's home | `~/unicorn.git`, `~/app`, `~/venv`, `~/.env`, `~/private_media`, `~/run`, `~/public_html/static` | 4–7 |
+| `/etc/systemd/system/` | one service file per site | 8 |
+| `/etc/sudoers.d/` | one small file per site | 9 |
+| Apache (Virtualmin "Edit Directives") | the proxy lines | 10 |
+| The site user's crontab | four lines | 11 |
 
-## One-time setup
+**No program is installed.** The only things fetched from the internet are Unicorn's own Python libraries (Django and the like), by `pip`, into `~/venv`. Nothing outside the site user's home gets Python libraries.
 
-1. **Make the backup key pair, on an operator's own computer, never on the server:**
+## How to read the steps
 
-   ```
-   age-keygen -o unicorn-backup.key
-   ```
+- **[Mac]** your computer. **[site user]** logged in by SSH as the virtual server's user (the user Virtualmin made for the site). **[root]** logged in as the administrator. **[Virtualmin]** the Virtualmin web screens.
+- `<domain>` is your domain, `<site user>` the Unix user of the site. Do **staging first**, then production (step 14).
+- Each step ends with **Undo:** one line that puts it back.
+- If a step does not give what it says under **You should see**, stop and send me the screen.
 
-   It prints a line that starts with `age1...`: that is the public key. Copy only that line to the server, as `~/backup_recipient.txt`.
-2. **Keep the private key (`unicorn-backup.key`) in two places, offline,** held by two different operators (for example on two encrypted USB sticks in two homes). Never put it on the server, in the repository, in an email or in a chat. Without it no backup can be read, and anyone who has it can read every backup.
-3. **On the server** (as the virtual server's user):
-   - `~/.my.cnf` with the database user and password, `chmod 600 ~/.my.cnf`;
-   - `~/.backup.env` with `DB_NAME=<database>` and `BACKUP_TARGET=<user>@<second-machine>:<folder>`;
-   - an SSH key that may only write to the backup folder on the second machine (restrict it with `command=` or a chrooted `rsync` account);
-   - the cron line: it is in `deploy/crontab.txt` (see "Cron, email and backups").
-4. Run `deploy/backup.sh` once by hand and look at `~/backups/` and the second machine.
+---
 
-## The monthly restore test (staging server)
+## Step 1 — [Virtualmin] The staging site
 
-A backup that was never restored is only a hope. Once a month an operator tests one:
+Create Virtual Server: name `staging.unicorn.<domain>`. Features on: **Apache website**, **SSL website**, **MariaDB database**, **Mail for domain** (only if mail should come from this name; DKIM needs it). Let it make its own Unix user and database. Write down the user name, the database name and the database password (Virtualmin shows them under "Edit Databases" and "Edit Users").
 
-1. Fetch a backup from the second machine to the staging server, for example `unicorn-2027-03-01.tar.age`.
-2. Optionally fetch the published fingerprints: `curl -s https://<production>/open-books/fingerprints.json > ~/published.json` and set `PUBLISHED_FINGERPRINTS=~/published.json`.
-3. Run the test from your own computer. The private key goes through standard input, so it never touches the disk of the server:
+**You should see:** the site in the list of virtual servers, and Virtualmin's placeholder page at `http://staging.unicorn.<domain>/` once DNS works.
 
-   ```
-   ssh staging '~/app/deploy/restore_test.sh /path/unicorn-2027-03-01.tar.age' < ~/keys/unicorn-backup.key
-   ```
+**Undo:** Virtualmin → select the server → *Delete Virtual Server*.
 
-   The script decrypts the backup, loads it into a separate database, checks the books from the first transaction (`audit_books --full`), compares the chain heads with the published fingerprints, repeats every account deletion (`reapply_deletions`), drops the database again, and prints `RESTORE TEST OK` or `RESTORE TEST FAILED` with the reasons.
-4. Write the result down on production, so that the open-books page can show it:
+## Step 2 — [Virtualmin] DNS and the certificate
 
-   ```
-   ssh production '~/app/deploy/manage.sh record_restore_test --ok --backup-date 2027-03-01 --notes "all fine"'
-   ```
+An A record (and AAAA if the box has IPv6) for `staging.unicorn.<domain>` pointing to the box. Then *Server Configuration → SSL Certificate → Let's Encrypt*: request it for the name, with automatic renewal. In *Web Configuration → Website Options*, "Redirect HTTP to HTTPS" on.
 
-   Use `--failed` and write the reasons in `--notes` when it failed. A failed test is urgent: fix the backup before anything else.
+**You should see:** `https://staging.unicorn.<domain>/` shows the placeholder page, with a valid lock.
 
-Staging never has the production master key, so personal fields in the restored database stay unreadable there. That is on purpose.
+**Undo:** delete the DNS record, and *Server Configuration → SSL Certificate → Let's Encrypt* "Remove".
 
-## After a disaster
+## Step 3 — [site user] The database
 
-Targets: at most one day of data lost, service back within one day.
-
-1. Get a new box and do phase 15 steps T02 to T05 (packages, virtual servers, the app, gunicorn and Apache). Put the **same `.env` secrets** back from the operators' sealed copy. Without the old master key, personal data cannot be read.
-2. Fetch the newest backup from the second machine and check it: `sha256sum -c unicorn-<date>.tar.age.sha256`.
-3. Decrypt it with the private key: `age -d -i unicorn-backup.key unicorn-<date>.tar.age | tar -x`. This gives `database.sql.gz` and `private_media.tar.gz`.
-4. Load the database: `gunzip -c database.sql.gz | mariadb <database>`. Unpack the private files into `~/private_media`.
-5. **Run `reapply_deletions`:** `deploy/manage.sh reapply_deletions`. The backup still holds the plain email address and name of members who were deleted since, and this removes them again.
-6. **Run `audit_books --full`** and **compare with the last published fingerprint:** `deploy/manage.sh compare_fingerprints --published published.json`, using the JSON from the open-books page (or a copy you saved earlier). Every published fingerprint up to the last restored transaction must match.
-7. Tell the members what happened and how much was lost, on the home page and by email.
-
-
-## Setting up a box (phase 15, T01–T05)
-
-Steps marked **(root)** need the server's administrator. Do staging first, then production. The `<user>` is the virtual server's Unix user.
-
-### T01 — Look at the server (read only)
-
-If nothing new may be installed on the box, run `bash deploy/check_programs.sh` first: it lists every program Unicorn needs as FOUND or MISSING, and installs nothing. Send its output to whoever adapts the plan to what the box already has.
+Open the database with the name and password from step 1:
 
 ```
-bash deploy/check_server.sh
+mariadb -u <database user> -p <database name>
 ```
 
-It only reads. Copy its answers into `docs/deploy_log.md` and fill in the table "What it means". What is needed: AlmaLinux 8.10 or 9; MariaDB 10.6 or newer (10.5 still works); the time zone tables loaded; Apache with the proxy, proxy_http, headers and ssl modules; Python 3.12; SELinux off, permissive, or on with the `httpd_can_network_connect` switch; a synchronised clock; at least 10 GB free in `/home`; and a box in the EU/EEA.
-
-### T02 — Packages **(root)**
+Run these three lines and look at the answers:
 
 ```
-dnf install -y epel-release
-dnf install -y python3.12 python3.12-devel gcc git pkgconf-pkg-config mariadb-connector-c-devel age
-python3.12 -m venv /tmp/check && /tmp/check/bin/pip install mysqlclient && rm -rf /tmp/check
+SELECT @@version, @@log_bin, @@log_bin_trust_function_creators, @@character_set_database;
+SELECT CONVERT_TZ('2026-01-01 00:00:00','UTC','Europe/Berlin');
+SHOW GRANTS;
 ```
 
-If MariaDB comes from the official MariaDB repository, the development package is called `MariaDB-devel`. If `age` is not available, install `gnupg2` (backup.sh uses either). The last line must end without an error: it proves the database driver builds.
+What the answers must be:
 
-### T03 — Virtual servers, databases, certificates **(root)**
+1. `@@version`: 10.6 or newer.
+2. `@@character_set_database`: `utf8mb4`. If it says something else: `ALTER DATABASE <database name> CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;` (the database is still empty; this only sets its defaults).
+3. `CONVERT_TZ` gives `2026-01-01 01:00:00`. If it gives `NULL`, the time zone tables are not loaded. **[root]** once for the whole database server: `mariadb-tzinfo-to-sql /usr/share/zoneinfo | mariadb -u root mysql`.
+4. `SHOW GRANTS` must include `TRIGGER` (or `ALL PRIVILEGES`). Virtualmin normally gives it.
+5. If `@@log_bin` is `1` and `@@log_bin_trust_function_creators` is `0`: **[root]** add `log_bin_trust_function_creators = 1` under `[mysqld]` in `/etc/my.cnf.d/server.cnf` and run `systemctl restart mariadb`. Without it the append-only triggers cannot be created and the books are only protected by the program and the nightly audit.
 
-1. In Virtualmin, "Create Virtual Server" twice: `unicorn.<domain>` (production) and `staging.unicorn.<domain>` (staging; the founders' pilot runs here first). Features: Apache website, SSL website, MariaDB database, mail for the domain. Each gets its own Unix user, home folder and database.
-2. DNS: A (and AAAA, if the box has IPv6) records for both names.
-3. Certificates: "Server Configuration → SSL Certificate → Let's Encrypt" for each, with automatic renewal, and "Redirect HTTP to HTTPS".
-4. Databases:
-   - `ALTER DATABASE <db> CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;` for each;
-   - on staging also create `<staging user>_test` (for the tests) and `<staging user>_restore` (for the restore test);
-   - the database user needs all rights on its own databases, including `TRIGGER` (`SHOW GRANTS`);
-   - if `@@log_bin` is ON, add `log_bin_trust_function_creators = 1` under `[mysqld]` in `/etc/my.cnf.d/server.cnf` and restart MariaDB. Without it the append-only triggers cannot be created, and then only the model guards and the nightly audit protect the books.
-5. Time zone tables, once for the database server: `mariadb-tzinfo-to-sql /usr/share/zoneinfo | mariadb -u root mysql`.
-6. SELinux: if `getenforce` says `Enforcing`: `setsebool -P httpd_can_network_connect 1`.
-7. Set the box to Berlin time: `timedatectl set-timezone Europe/Berlin` (the cron lines assume it).
+**Undo:** the time zone tables and the setting do no harm; to take the setting out again, delete the line from `server.cnf` and restart MariaDB.
 
-Done when both sites show Virtualmin's placeholder page over HTTPS, `SELECT CONVERT_TZ('2026-01-01 00:00:00','UTC','Europe/Berlin');` is not NULL, and `SHOW GRANTS` includes `TRIGGER`.
+## Step 4 — [Mac] and [site user] The code gets to the box
 
-### T04 — The app, its settings and its files
+The code travels by `git`, from your Mac to a bare repository in the site's home. No hosting service, no key to hand out.
 
-As the virtual server's user (not root):
+**[site user]**
 
 ```
-cd ~ && git clone <repository URL> app && cd app && git checkout <tag>
+git init --bare ~/unicorn.git
+```
+
+**[Mac]**, in the Unicorn folder (the first time, tag the version that goes live):
+
+```
+git tag -a v0.0.1 -m "first install"
+git remote add staging <site user>@staging.unicorn.<domain>:unicorn.git
+git push staging main --tags
+```
+
+**[site user]**
+
+```
+git clone ~/unicorn.git ~/app
+cd ~/app && git checkout --detach v0.0.1 && echo v0.0.1 > .version
+```
+
+**You should see:** the folder `~/app` with `manage.py` and `deploy/` in it, and `cat ~/app/.version` says `v0.0.1`.
+
+**Undo:** **[site user]** `rm -rf ~/app ~/unicorn.git` (and **[Mac]** `git remote remove staging`).
+
+## Step 5 — [site user] Python libraries, in the site's own folder
+
+```
 python3.12 -m venv ~/venv
-~/venv/bin/pip install --upgrade pip && ~/venv/bin/pip install -r requirements.txt
-mkdir -p ~/private_media ~/backups ~/run && chmod 700 ~/private_media ~/backups
-cp .env.example ~/.env && chmod 600 ~/.env
+~/venv/bin/pip install --upgrade pip
+~/venv/bin/pip install -r ~/app/requirements-server.txt
+mkdir -p ~/private_media ~/run ~/public_html/static && chmod 700 ~/private_media
 ```
 
-Use a **read-only deploy key** for the repository. Fill in `~/.env` (outside the code and the web root):
+`requirements-server.txt` has the pure-Python database driver PyMySQL instead of `mysqlclient`, because `mysqlclient` needs database development files that are not on the box. This takes a few minutes and about 700 MB; check `df -h ~` first (each site needs its own `~/venv`).
 
-- `DEBUG=False`, `ALLOWED_HOSTS`, `SITE_URL`, `DATABASE_URL`;
-- `SECRET_KEY`, `UNICORN_MASTER_KEY`, `UNICORN_HMAC_KEY`: make them with `deploy/manage.sh generate_keys` (it prints them on the screen and writes nothing). **Two operators write the master key and the HMAC key into their password managers.** Losing the master key means losing every member's personal data, and nobody can recover it;
-- `EMAIL_URL=smtp://localhost:25`, `DEFAULT_FROM_EMAIL=no-reply@<site host>`, `ADMIN_EMAILS` (the operators), `SERVER_EMAIL`, `SECURITY_CONTACT`;
-- `ADMIN_PATH` (a long random path), `SOURCE_URL` (the repository's public address, HF-19), `SECURE_HSTS_SECONDS=3600`;
-- `STATIC_ROOT=/home/<user>/public_html/static`, `PRIVATE_MEDIA_ROOT=/home/<user>/private_media`;
-- on production `BACKUP_EXPECTED=True`; on staging `TEST_DATABASE_NAME=<staging user>_test`.
+**You should see:** the last `pip` line ends with `Successfully installed ...`; and `~/venv/bin/python -c "import django, pymysql; print(django.__version__)"` prints `5.2.19`.
 
-Then, once: `deploy/first_setup.sh` (migrate, cache table, contracts, static files, defaults, `check --deploy`). It is never run again: on later releases the defaults change only through tickets.
+**Undo:** `rm -rf ~/venv`.
 
-Done when `deploy/manage.sh check --deploy` prints no errors on staging. (Two warnings, `security.W005` and `security.W021`, stay on purpose; see docs/12.)
+## Step 6 — [site user] The settings file, `~/.env`
 
-### T05 — gunicorn and Apache **(root)**
+```
+cp ~/app/.env.example ~/.env && chmod 600 ~/.env
+```
 
-1. Copy `deploy/unicorn.service` to `/etc/systemd/system/unicorn.service` (production, port 8001), and as `unicorn-staging.service` with port 8002 for staging. Replace `<user>`. Then `systemctl daemon-reload && systemctl enable --now unicorn`.
-2. Copy `deploy/sudoers_unicorn` to `/etc/sudoers.d/unicorn` (replace `<user>`; staging gets the same line with `unicorn-staging.service`), and check it with `visudo -c`. This lets the user restart and look at its own service, and nothing else.
-3. In Virtualmin, "Web Configuration → Edit Directives" of the **SSL** site: paste `deploy/apache_directives.conf` (port 8002 on staging). Then `apachectl configtest && systemctl reload httpd`.
-4. Check: `curl -fsS https://staging.unicorn.<domain>/healthz`. It answers `{"status": "ok"}` once cron runs (see "Cron, email and backups"); until then it names `jobs` and `daily`.
+Make four secrets (each command prints one value; copy it on your screen, nothing is saved):
 
-Done when the staging site works over HTTPS with its static files, and the user can run `sudo systemctl restart unicorn-staging.service`.
+```
+~/venv/bin/python -c "import secrets; print(secrets.token_urlsafe(50))"
+~/venv/bin/python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+~/venv/bin/python -c "import secrets; print(secrets.token_hex(32))"
+~/venv/bin/python -c "import secrets; print(secrets.token_hex(8))"
+```
 
-## Releases
+They are, in order: `SECRET_KEY`, `UNICORN_MASTER_KEY`, `UNICORN_HMAC_KEY` and `ADMIN_PATH`. Open `~/.env` (`nano ~/.env`) and set:
 
-Version tags look like `v0.9.0`. Each release adds a section to `CHANGELOG.md` in plain words. A release that carries an approved change to the hard frame names its ticket there, and an operator records it with `record_release` (P07.T06).
+```
+SECRET_KEY=<the first value>
+DEBUG=False
+ALLOWED_HOSTS=staging.unicorn.<domain>
+SITE_URL=https://staging.unicorn.<domain>
+DATABASE_URL=mysql://<database user>:<database password>@127.0.0.1:3306/<database name>
+UNICORN_MASTER_KEY=<the second value>
+UNICORN_HMAC_KEY=<the third value>
+ADMIN_PATH=<the fourth value>
+EMAIL_URL=smtp://localhost:25
+DEFAULT_FROM_EMAIL=no-reply@staging.unicorn.<domain>
+SERVER_EMAIL=unicorn@staging.unicorn.<domain>
+ADMIN_EMAILS=<your email address>
+SECURITY_CONTACT=<your email address>
+SOURCE_URL=<the public address of the source code, if there is one yet; else leave it empty>
+SECURE_HSTS_SECONDS=3600
+STATIC_ROOT=/home/<site user>/public_html/static
+PRIVATE_MEDIA_ROOT=/home/<site user>/private_media
+DISK_CHECK_PATH=/home/<site user>
+REQUIREMENTS_FILE=requirements-server.txt
+```
 
-**The migration rule:** every migration must let the **previous** release still run. New columns are empty-able or have a default; a column is removed or renamed only one release later. That is what makes the automatic rollback safe.
+If the database password has characters like `@`, `/`, `:` or `#`, write them as `%40`, `%2F`, `%3A`, `%23` in `DATABASE_URL`.
 
-**On staging first:**
+**Write the master key and the HMAC key into your password manager now, and into a second place** (another person's manager, or a printed sheet in a safe). **Losing the master key means losing every member's personal data, and nobody can get it back.** The keys must not be only in the same place as your database backup.
 
-1. `deploy/release.sh v0.9.0 unicorn-staging.service`. It remembers the current version, switches the code, installs the packages, makes a fresh backup, runs `check --deploy`, `migrate`, `createcachetable` and `collectstatic`, restarts the service, waits 5 seconds and asks `/healthz`. If anything fails it puts the old version back and says "Release failed, rolled back to <tag>". The database stays migrated.
-2. Install `requirements-dev.txt` and run the tests against the staging test database: `~/venv/bin/pytest -q --reuse-db` (with `TEST_DATABASE_NAME` set in `~/.env`). If the test runner cannot use that database, write it in docs/12.
-3. The founders or testers click through the main pages.
-4. Go through `docs/security_checklist.md`.
+**You should see:** `ls -l ~/.env` shows `-rw-------`.
 
-**Then production:** `deploy/release.sh v0.9.0`, and write both releases in `docs/deploy_log.md`.
+**Undo:** `rm ~/.env`. Only do this before step 7: afterwards the master key is needed to read the data.
 
-**To try the rollback** (on staging, once): `HEALTH_URL=https://staging.unicorn.<domain>/no-such-page deploy/release.sh v0.0.1 unicorn-staging.service` makes the health check fail on purpose; the old version must come back.
+## Step 7 — [site user] First setup (once)
 
-## Cron, email and backups
+```
+~/app/deploy/first_setup.sh
+```
 
-1. **Cron** for each virtual server's user: install `deploy/crontab.txt` (`crontab -e`, or "Scheduled Cron Jobs" in Virtualmin) after putting the operators' address in `MAILTO`. Staging gets the same lines without the backup line, until the owner decides otherwise. The box must be on Berlin time (T03 step 7).
-2. **Email** through the box's Postfix:
-   - DKIM on in Virtualmin ("Email Settings → DomainKeys Identified Mail"), and the DKIM record published in DNS;
-   - SPF: `v=spf1 a mx -all` (or with the box's IP address);
-   - DMARC: `v=DMARC1; p=quarantine; rua=mailto:<operators' address>`;
-   - test with `deploy/manage.sh sendtestemail <an operator's address>`, and check that the message arrives in the inbox with DKIM passed.
-3. **Backups:** follow "One-time setup" below; run `deploy/backup.sh` once by hand; then run the first restore test on staging. Until the second machine exists the backups stay only on the box, and `docs/deploy_log.md` says so **in capitals**. Choosing the second machine (in the EU) is an open question for the owner (docs/12).
+It makes the tables, the cache table, loads the contracts, collects the static files, loads the democratic defaults and checks the settings. It is run **once**. Later releases never run it again.
 
-Done when jobs run every minute, `daily` ran at 00:05, a login code arrives by email, and a backup exists and has been restore-tested.
+**You should see:** a long list of `Applying ... OK`, and at the end `First setup done.` Warnings from `check --deploy` named `security.W005` and `security.W021` are expected and kept on purpose; any line that says `ERROR` is not.
+
+**Undo:** Virtualmin → *Edit Databases* → delete the database and create it again empty (set the character set as in step 3), and `rm -rf ~/public_html/static/*`.
+
+## Step 8 — [root] The service that runs Unicorn
+
+```
+SITE_USER=<site user>
+sed -e "s/<user>/$SITE_USER/g" -e "s/8001/8002/" /home/$SITE_USER/app/deploy/unicorn.service > /etc/systemd/system/unicorn-staging.service
+systemctl daemon-reload && systemctl enable --now unicorn-staging
+systemctl status unicorn-staging --no-pager
+```
+
+(Staging uses port 8002; production uses 8001 and the file name `unicorn.service`, see step 14.)
+
+**You should see:** `Active: active (running)`. And, as a check from the box:
+
+```
+curl -s -H "X-Forwarded-Proto: https" -H "Host: staging.unicorn.<domain>" http://127.0.0.1:8002/healthz
+```
+
+answers `{"status": "fail", "checks": ["jobs", "daily"]}`. That is right for now: cron does not run yet (step 11).
+
+**Undo:** `systemctl disable --now unicorn-staging && rm /etc/systemd/system/unicorn-staging.service && systemctl daemon-reload`
+
+## Step 9 — [root] Let the site user restart its own service
+
+```
+SITE_USER=<site user>
+sed -e "s/<user>/$SITE_USER/g" -e "s/unicorn.service/unicorn-staging.service/g" /home/$SITE_USER/app/deploy/sudoers_unicorn > /etc/sudoers.d/unicorn-staging
+chmod 440 /etc/sudoers.d/unicorn-staging && visudo -c
+```
+
+**You should see:** `visudo -c` ends with `parsed OK`, and as the site user `sudo /usr/bin/systemctl status unicorn-staging.service` works without a password. The line lets the user only restart and look at this one service, nothing else.
+
+**Undo:** `rm /etc/sudoers.d/unicorn-staging`
+
+## Step 10 — [Virtualmin] Apache sends the pages to Unicorn
+
+*Services → Configure Website → Edit Directives*, for the **SSL** website (the one on port 443). Paste the lines of `deploy/apache_directives.conf`, with `8001` changed to `8002` (staging), and save. Then **[root]**: `apachectl configtest && systemctl reload httpd`.
+
+**You should see:** `Syntax OK`, and `curl -s https://staging.unicorn.<domain>/healthz` answers `{"status": "fail", "checks": ["jobs", "daily"]}`; the home page opens in the browser with its styles.
+
+**Undo:** remove the pasted lines in *Edit Directives* and save; `systemctl reload httpd`.
+
+## Step 11 — [site user] Cron: the jobs, the daily work, the monthly close
+
+```
+crontab -l                       # look at what is there; keep it
+sed 's/operators@example.org/<your email address>/' ~/app/deploy/crontab.txt > /tmp/unicorn.cron
+(crontab -l 2>/dev/null; cat /tmp/unicorn.cron) | crontab - && rm /tmp/unicorn.cron
+crontab -l
+```
+
+Then once by hand, so that you do not wait for midnight: `~/app/deploy/manage.sh daily`.
+
+The box is on Berlin time, so the lines (daily at 00:05, close on the 1st at 00:15) are right as they are.
+
+**You should see:** after two minutes, `curl -s https://staging.unicorn.<domain>/healthz` answers `{"status": "ok"}`.
+
+**Undo:** `crontab -e` and delete the lines that start with `MAILTO`, `* * * * *`, `5 0`, `15 0`.
+
+## Step 12 — Email
+
+1. **[Virtualmin]** *Email Settings → DomainKeys Identified Mail* on; publish the DKIM record it shows in DNS.
+2. In DNS, a TXT record with the SPF text `v=spf1 a mx -all`, and a TXT record `_dmarc` with `v=DMARC1; p=quarantine; rua=mailto:<your email address>`.
+3. **[site user]** `~/app/deploy/manage.sh sendtestemail <your email address>`
+
+**You should see:** the message in your inbox (not spam); in "show original" `dkim=pass`.
+
+**Undo:** remove the DNS records.
+
+## Step 13 — [Mac] and [site user] A release, and the rollback
+
+The way every new version gets onto a site (staging first):
+
+1. **[Mac]** make the change, tag it, and push: `git tag -a v0.0.2 -m "test" && git push staging main --tags`
+2. **[site user]** `BACKUP_DONE=1 ~/app/deploy/release.sh v0.0.2 unicorn-staging.service`
+   (Make your Borg backup first and add `BACKUP_DONE=1`, or let `~/before_release.sh` do it for you; see "Your backups".)
+
+   It remembers the current version, switches the code, installs the libraries, runs `check --deploy`, `migrate`, `createcachetable` and `collectstatic`, restarts the service, waits 5 seconds and asks `/healthz`. If anything goes wrong it puts the old version back and says `Release failed, rolled back to <tag>`; the database stays migrated, which is safe because every migration lets the previous release still run.
+3. **Try the rollback once, on staging:**
+   `BACKUP_DONE=1 HEALTH_URL=https://staging.unicorn.<domain>/no-such-page ~/app/deploy/release.sh v0.0.2 unicorn-staging.service`
+   makes the health check fail on purpose.
+4. The founders or testers click through the main pages. Go through `docs/security_checklist.md`.
+5. Write the release in `docs/deploy_log.md`.
+
+**You should see:** after step 2 `Released v0.0.2.`; after step 3 `Release failed, rolled back to ...` and the site still works.
+
+**Undo:** `BACKUP_DONE=1 ~/app/deploy/release.sh <the earlier tag> unicorn-staging.service`
+
+## Step 14 — Production
+
+Repeat steps 1 to 13 for `unicorn.<domain>`. What is different:
+
+| | Staging | Production |
+|---|---|---|
+| Name | `staging.unicorn.<domain>` | `unicorn.<domain>` |
+| Git remote on the Mac | `staging` | `production` (`git remote add production <site user>@unicorn.<domain>:unicorn.git`) |
+| Port | 8002 | 8001 |
+| Service file | `unicorn-staging.service` | `unicorn.service` (no `sed` for the port) |
+| Sudoers | `unicorn-staging.service`, file `unicorn-staging` | `unicorn.service`, file `unicorn` (no second `sed`) |
+| `~/.env` | its own keys | its own, **different** keys |
+| `release.sh` | `release.sh <tag> unicorn-staging.service` | `release.sh <tag>` |
+
+A release goes to production only after it has run well on staging.
+
+**Undo:** the same undo lines, one step at a time, for the production names.
+
+---
+
+## Your backups
+
+Made by you with Borg; Unicorn does not touch them. A backup of one site must contain:
+
+1. **A dump of the database:** `mariadb-dump --single-transaction --routines --triggers --hex-blob --default-character-set=utf8mb4 -u <database user> -p <database name> > ~/unicorn.sql` (or with your own login file), taken by your backup job.
+2. **The private files:** `~/private_media`.
+3. **The keys**, kept **apart** from the rest: the master key and the HMAC key from `~/.env`. Without the master key a restored database cannot be read; with it next to the database backup, whoever has the backup can read everything.
+
+And these rules:
+
+- The Borg repository is encrypted, and a copy lies on another machine in the EU.
+- Write the retention (how many daily and monthly copies) in `docs/privacy/records_of_processing.md`.
+- **Before every release** a fresh backup. Either make it yourself and run `release.sh` with `BACKUP_DONE=1`, or put your Borg command in an executable file `~/before_release.sh`: `release.sh` runs it first, and releases nothing if it fails.
+- **Optional:** if your backup job's last line is `date -u +%Y-%m-%dT%H:%M:%SZ > ~/run/last_backup` and `BACKUP_EXPECTED=True` is in `~/.env`, `/healthz` also goes red when no backup was made for 26 hours.
+
+### The monthly restore test
+
+A backup that was never restored is only a hope. Once a month, on staging (never on production), restore the newest backup into a **separate database** and look at it. Then write the result into production, so that the open-books page shows it:
+
+```
+~/app/deploy/manage.sh record_restore_test --ok --backup-date 2027-03-01 --notes "all fine"
+```
+
+Use `--failed` and write the reasons in `--notes` when it failed. A failed test is urgent. If there has been no good test for 35 days, a ticket goes to the elected auditors.
+
+### After a restore (a test or a disaster)
+
+Before anybody uses a restored database (for a test, put `DATABASE_NAME_OVERRIDE=<the restored database>` in the site's `.env` for the time of the test):
+
+1. `deploy/manage.sh reapply_deletions` — people who were deleted since the backup stay deleted (the backup still has their email and name).
+2. `deploy/manage.sh audit_books --full` — the books are in order from the first transaction.
+3. `deploy/manage.sh compare_fingerprints --published published.json` — with the JSON from the open-books page (or a copy you saved). Every published fingerprint up to the last restored transaction must match.
+
+In a disaster: a new box, steps 1 to 11 with the **same `~/.env` secrets** from your sealed copy, then restore the database and `~/private_media` from Borg, then the three lines above. Tell the members what happened and how much was lost, on the home page and by email. Targets: at most one day of data lost, service back within one day.
 
 ## Watching the service
 
-- **`/healthz`** answers `{"status": "ok"}`, or HTTP 503 with the names of the failed checks: `database`, `jobs` (the job runner has not finished a run in 5 minutes), `daily` (not run in 26 hours), `audit` (the last audit of the books found something), `backup` (production only: no backup in 26 hours). It never says more than the names. For the details, look at the logs and at the open-books page.
-- **The uptime check** runs from the **second machine**, every 5 minutes, so it still works when the box is down: copy `deploy/uptime_check.sh` there and add
-  `*/5 * * * * ~/uptime_check.sh https://unicorn.<domain> <operators' address>`. It emails the operators on the first failure and when the service recovers. No outside monitoring company is needed. It needs a command called `mail` on that machine.
-- **Logs:** journald keeps gunicorn's logs for 30 days: in `/etc/systemd/journald.conf` set `SystemMaxUse=500M` and `MaxRetentionSec=30day`, then `systemctl restart systemd-journald` **(root)**. Apache's access logs are rotated weekly and kept for 2 weeks (Virtualmin "Log file rotation"), because they contain IP addresses.
-- **Disk space:** `daily` emails the operators when the disk of `DISK_CHECK_PATH` (default `/home`) is more than 80 % full.
-- **`/.well-known/security.txt`** shows `SECURITY_CONTACT` to people who find a security problem.
+- **`/healthz`** answers `{"status": "ok"}`, or HTTP 503 with the names of the checks that failed: `database`, `jobs` (the job runner has not finished a run in 5 minutes), `daily` (not run in 26 hours), `audit` (the last audit of the books found something), `backup` (only if you turned it on). It never says more than the names; for the details look at the logs and the open-books page.
+- **The uptime check** emails you on the first failure and when the service is back: add to the site user's crontab
+  `*/5 * * * * ~/app/deploy/uptime_check.sh https://unicorn.<domain> <your email address>`.
+  Run from the same box it tells you when Unicorn is down but not when the whole box is down. For that, run the same line from any other machine that has `curl` and `mail` (copy the file `deploy/uptime_check.sh` there).
+- **Logs:** **[root]** in `/etc/systemd/journald.conf` set `SystemMaxUse=500M` and `MaxRetentionSec=30day`, then `systemctl restart systemd-journald`; in Virtualmin set the Apache log rotation to weekly, keeping 2 weeks (they hold IP addresses).
+- **Disk space:** the `daily` job emails you when the disk of `DISK_CHECK_PATH` is more than 80 % full.
+- **`/.well-known/security.txt`** shows `SECURITY_CONTACT` to anyone who finds a security problem.
+
+## When something does not work
+
+| You see | Probably | Do |
+|---|---|---|
+| `pip` stops with `error: ... mysql.h` | the list `requirements.txt` was used instead of `requirements-server.txt` | `~/venv/bin/pip install -r ~/app/requirements-server.txt` |
+| The page says "Bad Request (400)" | `ALLOWED_HOSTS` does not name this site | fix it in `~/.env`, restart the service |
+| `/healthz` says `jobs` or `daily` | cron does not run | step 11; look at `crontab -l` and your mail |
+| `/healthz` says `audit` | the audit of the books found something | open the open-books page; do not release anything; send me the text |
+| The styles are missing | Apache does not serve `/static/` | step 10 (the `ProxyPass /static/ !` line), and check `ls ~/public_html/static` is filled |
+| `release.sh` says "Make your backup first" | it wants a backup | make it, then `BACKUP_DONE=1` |
+
+Write every step you take, with the date, in `docs/deploy_log.md` (never a secret).

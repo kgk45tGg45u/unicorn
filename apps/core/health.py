@@ -4,7 +4,7 @@
 - ``jobs``      the job runner finished a run in the last 5 minutes (cron runs it every minute);
 - ``daily``     `daily` ran in the last 26 hours;
 - ``audit``     the last audit of the books found nothing wrong;
-- ``backup``    last night's backup is less than 26 hours old (only where ``BACKUP_EXPECTED`` is on: production).
+- ``backup``    the owner's backup wrote ~/run/last_backup less than 26 hours ago (only if ``BACKUP_EXPECTED`` is on).
 """
 
 import shutil
@@ -28,7 +28,7 @@ def _recent(moment, limit, now):
 
 
 def backup_time():
-    """When the last backup finished: the time that backup.sh wrote in ~/run/last_backup, or None."""
+    """When the last backup finished: the time the owner's backup job wrote in ~/run/last_backup, or None."""
     path = Path(settings.BACKUP_RUN_DIR) / "last_backup"
     try:
         text = path.read_text().strip()

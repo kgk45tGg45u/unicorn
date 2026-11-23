@@ -8,8 +8,15 @@
 # service restarted. The database stays migrated; that is safe because every migration lets the previous
 # release still run (CLAUDE.md, "Database").
 #
-# Environment (all optional): APP_DIR, VENV_DIR, UNICORN_ENV_FILE, HEALTH_URL (to test the rollback, point it at
-# an address that fails), HEALTH_WAIT (seconds to wait before looking, default 5).
+# Backups are the owner's own (Borg). Before anything is changed this script wants to know that a fresh one exists:
+#   - if ~/before_release.sh exists and can be run, it is run first (put your Borg command in it; if it fails,
+#     nothing is released);
+#   - otherwise make the backup yourself, and run this script again with BACKUP_DONE=1.
+#
+# Environment (all optional): APP_DIR, VENV_DIR, UNICORN_ENV_FILE, BACKUP_DONE, HEALTH_URL (to test the rollback,
+# point it at an address that fails), HEALTH_WAIT (seconds to wait before looking, default 5).
+# In ~/.env you may set REQUIREMENTS_FILE=requirements-server.txt (the list with PyMySQL, for a box without the
+# database development files).
 set -euo pipefail
 
 TAG="${1:-}"
@@ -24,6 +31,8 @@ MANAGE="${HERE}/manage.sh"
 cd "${APP_DIR}"
 
 SITE_URL="$(grep -E '^SITE_URL=' "${UNICORN_ENV_FILE}" | tail -1 | cut -d= -f2- || true)"
+REQUIREMENTS_FILE="$(grep -E '^REQUIREMENTS_FILE=' "${UNICORN_ENV_FILE}" | tail -1 | cut -d= -f2- || true)"
+REQUIREMENTS_FILE="${REQUIREMENTS_FILE:-requirements.txt}"
 HEALTH_URL="${HEALTH_URL:-${SITE_URL%/}/healthz}"
 [[ "${HEALTH_URL}" == http* ]] || { echo "No SITE_URL in ${UNICORN_ENV_FILE}, and no HEALTH_URL given." >&2; exit 2; }
 
@@ -32,6 +41,18 @@ PREVIOUS="$(cat .version 2>/dev/null || true)"
 [ -n "${PREVIOUS}" ] || PREVIOUS="$(git describe --tags --exact-match 2>/dev/null || git rev-parse HEAD)"
 echo "Now running: ${PREVIOUS}. Going to: ${TAG}."
 
+# 1b. A fresh backup before anything changes (the owner's own: Borg).
+if [ -x "${HOME}/before_release.sh" ]; then
+  echo "Running ~/before_release.sh (your backup)."
+  "${HOME}/before_release.sh" || { echo "Your backup step failed. Nothing was changed." >&2; exit 3; }
+elif [ "${BACKUP_DONE:-}" = "1" ]; then
+  echo "Backup: you said it is done."
+else
+  echo "Make your backup first (Borg), then run this again with BACKUP_DONE=1." >&2
+  echo "(Or make ~/before_release.sh run it for you.) Nothing was changed." >&2
+  exit 3
+fi
+
 switched=0
 rollback() {
   trap - ERR
@@ -39,7 +60,7 @@ rollback() {
   if [ "${switched}" = "1" ]; then
     git checkout --detach "${PREVIOUS}" >/dev/null 2>&1 || true
     echo "${PREVIOUS}" > .version
-    "${VENV_DIR}/bin/pip" install -q -r requirements.txt || true
+    "${VENV_DIR}/bin/pip" install -q -r "${REQUIREMENTS_FILE}" || true
     sudo /usr/bin/systemctl restart "${SERVICE}" || true
   fi
   echo "Release failed, rolled back to ${PREVIOUS}" >&2
@@ -54,21 +75,18 @@ switched=1
 echo "${TAG}" > .version
 
 # 3. Packages.
-"${VENV_DIR}/bin/pip" install -q -r requirements.txt
+"${VENV_DIR}/bin/pip" install -q -r "${REQUIREMENTS_FILE}"
 
-# 4. A fresh backup before any migration.
-"${HERE}/backup.sh"
-
-# 5. Checks, migrations, static files.
+# 4. Checks, migrations, static files.
 "${MANAGE}" check --deploy
 "${MANAGE}" migrate --noinput
 "${MANAGE}" createcachetable
 "${MANAGE}" collectstatic --noinput
 
-# 6. Restart.
+# 5. Restart.
 sudo /usr/bin/systemctl restart "${SERVICE}"
 
-# 7. Look at /healthz.
+# 6. Look at /healthz.
 sleep "${HEALTH_WAIT:-5}"
 if ! curl -fsS --max-time 20 "${HEALTH_URL}" >/dev/null; then
   echo "/healthz did not answer well at ${HEALTH_URL}." >&2
