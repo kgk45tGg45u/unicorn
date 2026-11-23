@@ -1,5 +1,7 @@
 """Small middlewares for the session and the admin (P14.T06)."""
 
+import re
+import secrets
 import time
 
 from django.conf import settings
@@ -8,6 +10,8 @@ from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.template.loader import render_to_string
 from django.utils.translation import gettext as _
+
+from . import logging as unicorn_logging
 
 
 class IdleSessionMiddleware:
@@ -58,3 +62,24 @@ class AdminGateMiddleware:
     def _refused(self, request, message):
         body = render_to_string("403.html", {"message": message}, request=request)
         return HttpResponse(body, status=403)
+
+
+_VALID_ID = re.compile(r"^[A-Za-z0-9\-]{8,64}$")
+
+
+class RequestIdMiddleware:
+    """Gives every request an id (X-Request-ID if it looks like one), for the response and every log line."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        sent = request.META.get("HTTP_X_REQUEST_ID", "")
+        request.id = sent if _VALID_ID.match(sent) else secrets.token_hex(8)
+        token = unicorn_logging.start_request(request.id)
+        try:
+            response = self.get_response(request)
+            response["X-Request-ID"] = request.id
+            return response
+        finally:
+            unicorn_logging.end_request(token)

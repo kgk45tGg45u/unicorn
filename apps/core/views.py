@@ -78,3 +78,14 @@ def legal_page(request, name):
         raise Http404 from None
     text = (Path(settings.BASE_DIR) / path).read_text()
     return render(request, "core/legal.html", {"title": title, "html": markdown(text)})
+
+
+def server_error(request):
+    """The error page shows the request id, so that a member can report it without sending any personal data."""
+    from django.http import HttpResponseServerError
+    from django.template.loader import render_to_string
+
+    from .logging import current_request_id
+
+    body = render_to_string("500.html", {"request_id": getattr(request, "id", "") or current_request_id()})
+    return HttpResponseServerError(body)

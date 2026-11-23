@@ -46,3 +46,5 @@ urlpatterns = [
     path("rules/", include("apps.rules.urls")),
     path("", include("apps.core.urls")),
 ]
+
+handler500 = "apps.core.views.server_error"

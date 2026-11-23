@@ -19,6 +19,10 @@ class CurrentMemberMiddleware:
         user = getattr(request, "user", None)
         if user is not None and user.is_authenticated:
             request.member = Member.objects.filter(user=user, deleted=False).first()
+            if request.member is not None:
+                from apps.core import logging as unicorn_logging
+
+                unicorn_logging.set_member(request.member.number)
         return self.get_response(request)
 
 

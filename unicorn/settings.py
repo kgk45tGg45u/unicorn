@@ -103,6 +103,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "apps.core.middleware.RequestIdMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "csp.middleware.CSPMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -233,3 +234,41 @@ ACCOUNT_SIGNUP_REDIRECT_URL = "/join/"
 
 # allauth declares conditional unique constraints that MySQL ignores; allauth also checks them in code.
 SILENCED_SYSTEM_CHECKS = ["models.W036"]
+
+
+# Logs (docs/08 section 8, P14.T10): standard error (gunicorn and journald keep it), errors mailed to the operators.
+# No personal data: every handler redacts, and SQL is never logged.
+ADMINS = [("Operator", address) for address in env.list("ADMIN_EMAILS", default=[])]
+SERVER_EMAIL = env("SERVER_EMAIL", default="unicorn@localhost")
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "context": {"()": "apps.core.logging.RequestContextFilter"},
+        "redact": {"()": "apps.core.logging.RedactFilter"},
+        "production": {"()": "django.utils.log.RequireDebugFalse"},
+    },
+    "formatters": {
+        "plain": {"format": "%(asctime)s %(levelname)s %(request_id)s %(member)s %(name)s %(message)s"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "plain",
+            "filters": ["context", "redact"],
+        },
+        "mail_admins": {
+            "class": "django.utils.log.AdminEmailHandler",
+            "level": "ERROR",
+            "filters": ["context", "redact", "production"],
+            "include_html": False,
+        },
+    },
+    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.request": {"handlers": ["console", "mail_admins"], "level": "WARNING", "propagate": False},
+        "django.security": {"handlers": ["console", "mail_admins"], "level": "WARNING", "propagate": False},
+        "django.db.backends": {"handlers": ["console"], "level": "WARNING", "propagate": False},  # never SQL
+    },
+}

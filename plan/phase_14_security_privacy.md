@@ -235,7 +235,7 @@
 
 ---
 
-### - [ ] P14.T10 — Logs without personal data
+### - [x] P14.T10 — Logs without personal data
 
 **Read:** docs/08 section 8.
 **Files:** `unicorn/settings.py` (LOGGING, ADMINS), `apps/core/logging.py`, `apps/core/middleware.py` (request id), `apps/core/tests/test_logging.py`

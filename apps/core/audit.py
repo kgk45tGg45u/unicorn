@@ -1,4 +1,5 @@
 from . import acting
+from . import logging as unicorn_logging
 from .models import AuditEvent
 
 
@@ -10,6 +11,7 @@ def record(actor_ref, verb, obj=None, **data):
     helper = acting.current_helper()
     return AuditEvent.objects.create(
         acted_by=helper.number if helper is not None else "",
+        request_id=unicorn_logging.current_request_id()[:36],
         actor_ref=str(actor_ref),
         verb=verb,
         object_type=obj.__class__.__name__ if obj is not None else "",
