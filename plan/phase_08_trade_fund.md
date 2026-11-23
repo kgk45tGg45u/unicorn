@@ -20,7 +20,7 @@
 
 ---
 
-### - [ ] P08.T02 — Holders and the holder agreement
+### - [x] P08.T02 — Holders and the holder agreement
 
 **Read:** docs/07 section 2.
 **Files:** `apps/tradefund/models.py` (Holder), `apps/tradefund/services.py`, `apps/tradefund/views.py`, `apps/members/fixtures/contracts.json` (add `holder_agreement` v1), `apps/tradefund/tests/test_holders.py`

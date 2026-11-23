@@ -29,6 +29,7 @@ urlpatterns = [
     path("", include("apps.tickets.urls")),
     path("", include("apps.votes.urls")),
     path("", include("apps.tasks.urls")),
+    path("", include("apps.tradefund.urls")),
     path("rules/", include("apps.rules.urls")),
     path("", include("apps.core.urls")),
 ]

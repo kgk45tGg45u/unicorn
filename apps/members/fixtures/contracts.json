@@ -11,5 +11,18 @@
       "valid_from": "2026-11-22T00:00:00Z",
       "is_current": true
     }
+  },
+  {
+    "model": "members.contracttemplate",
+    "pk": 2,
+    "fields": {
+      "kind": "holder_agreement",
+      "version": 1,
+      "title": "Holder agreement",
+      "body_md": "## 1. What a holder is\n\n**DRAFT — to be written with lawyers (docs/12, section 2)**\n\nA holder is a verified member who keeps part of the trade fund in their own bank account. The euros you hold belong to the group, not to you. They are not your income and not your savings.\n\n## 2. Passing the euros on\n\nYou send the held euros on when a decision of the members asks for it: a payment request tells you the amount, the receiver, the reference and the date. You pay it, and you and the receiver both confirm it in the app. Unicorn never moves money and never reads your bank account.\n\n## 3. A separate account\n\nYou keep the held euros in a separate account where possible, so that the group's euros are never mixed with your own. You give the app the account number so that it can be shown to the people who pay you, and it is stored encrypted.\n\n## 4. Caps and trust\n\nYou may hold only up to your cap. Your cap starts small and grows slowly when you pay on time. It falls fast when a payment is late or missed. The trust rating behind it only limits how many euros you may hold; it never touches your work, pay, votes or prices. You can see it, contest it and get a human review.\n\n## 5. The loss reserve\n\nA small share of every amount that comes in is marked as a loss reserve, kept by the holders with the highest trust. It covers thefts and missed payments, so that members' bills and materials are not hit.\n\n## 6. Leaving\n\nIf you want to stop being a holder, or leave Unicorn, you first pass your part on to other holders, and the receivers confirm it.",
+      "sha256": "0a31becd3de2f7f52e780a128a5237fcc5f91e2a6ecfa6e640272c3c18d84e6f",
+      "valid_from": "2026-11-22T00:00:00Z",
+      "is_current": true
+    }
   }
 ]

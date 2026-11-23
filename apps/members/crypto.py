@@ -42,3 +42,27 @@ def decrypt_for(member, token: bytes) -> bytes:
 
 def shred_key(member) -> None:
     DataKey.objects.filter(member=member).update(wrapped=b"", destroyed_at=timezone.now())
+
+
+# --- The system key, for outside parties (sellers, landlords, donors) who have no account ---
+
+
+def _system_fernet() -> Fernet:
+    """A key derived from the master key with HKDF. It encrypts data of people outside Unicorn (HF-14)."""
+    import base64
+
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+
+    key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b"unicorn-system-v1").derive(
+        settings.UNICORN_MASTER_KEY.encode()
+    )
+    return Fernet(base64.urlsafe_b64encode(key))
+
+
+def system_encrypt(data: bytes) -> bytes:
+    return _system_fernet().encrypt(data)
+
+
+def system_decrypt(token: bytes) -> bytes:
+    return _system_fernet().decrypt(bytes(token))

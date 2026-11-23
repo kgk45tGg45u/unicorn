@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "My holding" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "My holding" %}</h1>
+{% if not holder %}
+  <p>{% translate "You do not hold any euros for the group." %}</p>
+  <a class="btn btn-primary" href="{% url 'tradefund:become_holder' %}">{% translate "Become a holder" %}</a>
+{% else %}
+  <p>{% translate "You are a holder." %} {{ holder.get_status_display }}, {{ holder.currency }}.</p>
+{% endif %}
+{% endblock %}
