@@ -7,7 +7,7 @@
 
 ---
 
-### - [ ] P14.T01 — The data map
+### - [x] P14.T01 — The data map
 
 **Read:** docs/08 section 7.
 **Files:** `docs/privacy/data_map.md`, `apps/core/tests/test_data_map.py`
