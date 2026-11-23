@@ -58,3 +58,37 @@ def forecast_data_csv(request):
 
 def tax_explanation():
     return tax.EXPLANATION or _("")
+
+
+def my_world(request):
+    """Optional: "I have a capitalist job" and "my net hourly wage", for the world tracker and attractiveness."""
+    from django.contrib import messages
+    from django.contrib.auth.decorators import login_required
+    from django.shortcuts import redirect
+
+    @login_required
+    def view(request):
+        from decimal import Decimal, InvalidOperation
+
+        from apps.members import services as member_services
+
+        member = request.member
+        if request.method == "POST":
+            choice = request.POST.get("has_job", "")
+            member.has_capitalist_job = {"yes": True, "no": False}.get(choice)
+            member.save(update_fields=["has_capitalist_job"])
+            wage = request.POST.get("wage", "").replace(",", ".").strip()
+            try:
+                member_services.set_private(member, net_hourly_wage_eur=str(Decimal(wage)) if wage else "")
+                messages.success(request, _("Thank you. This is saved."))
+            except InvalidOperation:
+                messages.error(request, _("Please enter the wage as a number, for example 17.50."))
+            return redirect("macro:my_world")
+        private = member_services.get_private(member)
+        return render(
+            request,
+            "macro/my_world.html",
+            {"member": member, "wage": private.get("net_hourly_wage_eur", "")},
+        )
+
+    return view(request)

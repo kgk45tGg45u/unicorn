@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "My outside job" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "My outside job" %}</h1>
+<p class="text-muted">{% translate "This is optional. It only helps to measure whether Unicorn is attractive and how many members can live without a capitalist job. Nobody else sees your wage." %}</p>
+<form method="post" class="mb-4" style="max-width:28rem">{% csrf_token %}
+  <div class="mb-3"><label class="form-label" for="job">{% translate "I have a capitalist job" %}</label>
+    <select class="form-select" id="job" name="has_job"><option value="">{% translate "I would rather not say" %}</option>
+      <option value="yes"{% if member.has_capitalist_job %} selected{% endif %}>{% translate "Yes" %}</option>
+      <option value="no"{% if member.has_capitalist_job == False %} selected{% endif %}>{% translate "No" %}</option></select></div>
+  <div class="mb-3"><label class="form-label" for="wage">{% translate "My net hourly wage in euros" %}</label><input class="form-control" id="wage" name="wage" inputmode="decimal" value="{{ wage }}"></div>
+  <button class="btn btn-primary" type="submit">{% translate "Save" %}</button>
+</form>
+{% endblock %}
