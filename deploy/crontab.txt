@@ -1,0 +1,14 @@
+# Cron for one virtual server's user (P15.T07). Install it with "crontab -e", or in Virtualmin under
+# "Scheduled Cron Jobs". Replace the address in MAILTO with the operators' list.
+#
+# The times are the SERVER'S local time. The box should be set to Europe/Berlin (timedatectl set-timezone
+# Europe/Berlin). If it is not, shift the lines: daily 00:05 and the monthly close 00:15 on the 1st must be
+# Berlin time.
+#
+# `flock -n` means: if the last run is still going, skip this one (one runner at a time).
+# Staging gets the same lines WITHOUT the backup line, until the owner decides otherwise.
+MAILTO=operators@example.org
+* * * * *   flock -n ~/run/jobs.lock  ~/app/deploy/manage.sh run_jobs --max-seconds 55
+5 0 * * *   flock -n ~/run/daily.lock ~/app/deploy/manage.sh daily
+15 0 1 * *  flock -n ~/run/close.lock ~/app/deploy/manage.sh close_period
+30 2 * * *  flock -n ~/run/backup.lock ~/app/deploy/backup.sh
