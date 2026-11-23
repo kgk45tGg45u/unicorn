@@ -5,7 +5,7 @@
 
 ---
 
-### - [ ] P08.T01 — Currencies and exchange rates
+### - [x] P08.T01 — Currencies and exchange rates
 
 **Read:** docs/07 section 11.
 **Files:** `apps/tradefund/` (new app), `apps/tradefund/models.py` (FxRate), `apps/tradefund/fx.py`, `apps/tradefund/jobs.py`, `apps/tradefund/tests/fixtures/eurofxref-daily.xml`, `apps/tradefund/tests/test_fx.py`
