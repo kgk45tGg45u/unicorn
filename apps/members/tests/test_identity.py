@@ -111,7 +111,7 @@ def test_bootstrap_founders_and_refuses_after_target():
 
     a, b = make("a@x.org"), make("b@x.org")
     for m in (a, b):
-        services.sign(m, ContractTemplate.objects.get(), "click")
+        services.sign(m, ContractTemplate.objects.get(kind="membership"), "click")
     call_command("bootstrap_founders", "--emails", "a@x.org", "b@x.org", stdout=StringIO())
     a.refresh_from_db()
     assert a.is_founder and a.status == Member.MEMBER

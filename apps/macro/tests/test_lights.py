@@ -1,8 +1,9 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
 from django.utils import timezone
+from freezegun import freeze_time
 
 from apps.core.models import Job
 from apps.ledger import services as ledger
@@ -40,14 +41,15 @@ def test_unspent_uniq_thresholds():
     assert lights.unspent_uniq(period())["color"] == "amber"
 
 
+@freeze_time("2026-11-15 12:00:00")
 def test_shelves_light():
     world = World()
     buyer = world.buyer(uniq=20)
     assert lights.shelves(period())["color"] == "grey"  # nothing due yet
     line = services.place_order(buyer, world.bread, D(1))
-    OrderLine.objects.filter(pk=line.pk).update(due_date=timezone.localdate())
+    OrderLine.objects.filter(pk=line.pk).update(due_date=date(2026, 11, 14))
     assert lights.shelves(period())["color"] == "red"  # due but not delivered: 0%
-    OrderLine.objects.filter(pk=line.pk).update(status="delivered", delivered_at=timezone.now())
+    OrderLine.objects.filter(pk=line.pk).update(status="delivered", delivered_at=timezone.now() - timedelta(days=1))
     assert lights.shelves(period())["color"] == "green"
     WaitingListEntry.objects.create(member=buyer, item=world.bread.item, quantity=1)
     assert lights.shelves(period())["value"] == "0.5000"  # a waiting-list entry counts as not served
@@ -77,12 +79,13 @@ def test_the_lights_have_colour_words():
         assert light["word"] in ("green", "amber", "red", "not measured")
 
 
+@freeze_time("2026-11-15 12:00:00")
 def test_item_red_turns_on_the_shortage_cap_in_place_order():
     world = World()
     buyer = world.buyer(uniq=20)
     other = world.buyer("other@x.org", uniq=20)
     first = services.place_order(other, world.bread, D(1))
-    OrderLine.objects.filter(pk=first.pk).update(due_date=timezone.localdate())  # due now, not delivered: red
+    OrderLine.objects.filter(pk=first.pk).update(due_date=date(2026, 11, 14))  # due now, not delivered: red
     assert lights.item_red(world.bread.item)
     services.place_order(buyer, world.bread, D(2))  # the cap is 2 a month
     with pytest.raises(services.MarketError):

@@ -68,7 +68,9 @@ def test_notify_sends_an_email_only_when_asked():
 
 def test_the_pages_work(client):
     a, b = make_member("a@x.org", "Ada"), make_member("b@x.org", "Bo")
-    t = services.create_ticket("benefit_claim", a, "Help", brief="Need help", check=CHECK)
+    t = services.create_ticket(
+        "benefit_claim", a, "Help", brief="Need help", check=CHECK, action_payload={"claim_id": 1}
+    )
     client.force_login(b.user)
     for tab in ("me", "all", "search"):
         assert client.get(reverse("tickets:list"), {"tab": tab, "q": "Help"}).status_code == 200

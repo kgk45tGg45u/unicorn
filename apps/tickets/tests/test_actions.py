@@ -213,8 +213,9 @@ def test_a_failing_action_leaves_the_ticket_in_action_and_tells_the_operators():
     assert op.notifications.filter(text__contains=ticket.number).exists()
 
 
-def test_an_action_that_nothing_carries_out_yet_stays_approved_with_a_note():
+def test_an_action_that_nothing_carries_out_yet_stays_approved_with_a_note(monkeypatch):
     pool(8)
+    monkeypatch.delitem(actions.ACTIONS, "start_benefit")  # as if nothing carried this action out
     ticket = services.create_ticket("benefit_claim", make_member("a@x.org", "Ada"), "Help", brief="b", check=CHECK)
     decide(ticket)
     assert ticket.status == "approved" and "pending" in ticket.action_result

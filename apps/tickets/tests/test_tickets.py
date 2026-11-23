@@ -23,13 +23,18 @@ def test_every_type_of_the_docs_exists():
     assert types.TYPES["one_person_check"].confirmers == 1
 
 
+CLAIM = {"claim_id": 1}  # the benefit action needs to know its claim
+
+
 def test_a_type_that_needs_a_check_question_refuses_without_one():
     m = make_member()
     with pytest.raises(services.TicketError):
-        services.create_ticket("benefit_claim", m, "Help", brief="I need help")
+        services.create_ticket("benefit_claim", m, "Help", brief="I need help", action_payload=CLAIM)
     with pytest.raises(services.TicketError):
-        services.create_ticket("benefit_claim", m, "Help", brief="I need help", check={"question": "x?"})
-    t = services.create_ticket("benefit_claim", m, "Help", brief="I need help", check=CHECK)
+        services.create_ticket(
+            "benefit_claim", m, "Help", brief="I need help", check={"question": "x?"}, action_payload=CLAIM
+        )
+    t = services.create_ticket("benefit_claim", m, "Help", brief="I need help", check=CHECK, action_payload=CLAIM)
     assert t.check_correct == 1 and t.decision_method == "confirmers" and t.action == "start_benefit"
 
 

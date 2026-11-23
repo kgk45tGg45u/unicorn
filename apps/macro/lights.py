@@ -68,9 +68,9 @@ def unspent_uniq(period):
 def _lines_due(period):
     from apps.market.models import OrderLine
 
-    return OrderLine.objects.filter(due_date__year=period.year, due_date__month=period.month).exclude(
-        status__in=("cancelled", "refused")
-    )
+    return OrderLine.objects.filter(
+        due_date__year=period.year, due_date__month=period.month, due_date__lt=timezone.localdate()
+    ).exclude(status__in=("cancelled", "refused"))
 
 
 def _served(lines):
@@ -195,9 +195,12 @@ def item_red(item) -> bool:
 
     period = current_period()
     lines = list(
-        OrderLine.objects.filter(offer__item=item, due_date__year=period.year, due_date__month=period.month).exclude(
-            status__in=("cancelled", "refused")
-        )
+        OrderLine.objects.filter(
+            offer__item=item,
+            due_date__year=period.year,
+            due_date__month=period.month,
+            due_date__lt=timezone.localdate(),  # only lines already past their date can be late
+        ).exclude(status__in=("cancelled", "refused"))
     )
     if not lines:
         return False
