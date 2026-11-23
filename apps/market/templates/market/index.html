@@ -1,8 +1,9 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n macro_tags %}
 {% block title %}{% translate "Market" %} · Unicorn{% endblock %}
 {% block content %}
 <h1>{% translate "Market" %}</h1>
+<details class="mb-3"><summary>{% translate "Warning lights" %}</summary>{% show_lights %}</details>
 <form method="get" class="row g-2 mb-4" role="search">
   <div class="col-12 col-md-4"><label class="visually-hidden" for="q">{% translate "Search" %}</label><input class="form-control" id="q" name="q" value="{{ q }}" placeholder="{% translate 'What are you looking for?' %}"></div>
   <div class="col-6 col-md-2"><label class="visually-hidden" for="kind">{% translate "Product or service" %}</label>

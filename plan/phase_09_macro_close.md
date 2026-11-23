@@ -122,7 +122,7 @@
 
 ---
 
-### - [ ] P09.T05 — Warning lights
+### - [x] P09.T05 — Warning lights
 
 **Read:** docs/03 section 10 (the lights table).
 **Files:** `apps/macro/lights.py`, `apps/macro/jobs.py`, `templates/partials/lights.html`, `apps/macro/tests/test_lights.py`
@@ -151,7 +151,7 @@
 
 ---
 
-### - [ ] P09.T06 — "Are we on track?", the planning rate, attractiveness
+### - [x] P09.T06 — "Are we on track?", the planning rate, attractiveness
 
 **Read:** docs/03 sections 8 and 10; docs/02 section 5; `config/benchmarks/default_world_path.csv`.
 **Files:** `apps/macro/world.py`, `apps/macro/views.py`, `apps/macro/templates/macro/on_track.html`, `apps/members/models.py` (Member `has_capitalist_job`, MemberPrivate `net_hourly_wage_eur`), `apps/macro/tests/test_world.py`
@@ -185,7 +185,7 @@
 
 ---
 
-### - [ ] P09.T07 — The equal pension and other transfers
+### - [x] P09.T07 — The equal pension and other transfers
 
 **Read:** docs/03 section 6.
 **Files:** `apps/macro/transfers.py`, `apps/macro/models.py` (TransferPlan, ActiveMonth), `apps/members/services.py` (`has_reached_pension_age`), `apps/macro/jobs.py`, `apps/macro/tests/test_pension.py`
@@ -209,7 +209,7 @@
 
 ---
 
-### - [ ] P09.T08 — Retirement suggestions and payouts
+### - [x] P09.T08 — Retirement suggestions and payouts
 
 **Read:** docs/03 section 5.
 **Files:** `apps/macro/jobs.py`, `apps/ledger/services.py`, `apps/macro/tests/test_retirement_suggest.py`
@@ -228,7 +228,7 @@
 
 ---
 
-### - [ ] P09.T09 — Open books per period, dashboard, data for forecasts
+### - [x] P09.T09 — Open books per period, dashboard, data for forecasts
 
 **Read:** docs/03 section 11.
 **Files:** `apps/macro/views.py`, `apps/ledger/templates/ledger/open_books.html`, `templates/core/home.html`, `apps/macro/models.py` (Forecast), `apps/macro/tests/test_open_books_periods.py`

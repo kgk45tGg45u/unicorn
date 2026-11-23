@@ -126,6 +126,10 @@ def open_books(request):
             "closed": [_period_totals(p) for p in Period.objects.filter(status=Period.CLOSED)[:24]],
             "fingerprints": DailyFingerprint.objects.all()[:30],
             "audit": AuditRun.objects.first(),
+            "snapshots": __import__(
+                "apps.macro.models", fromlist=["MacroSnapshot"]
+            ).MacroSnapshot.objects.select_related("period")[:24],
+            "tax_explanation": __import__("apps.macro.tax", fromlist=["EXPLANATION"]).EXPLANATION,
         },
     )
 

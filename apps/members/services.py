@@ -173,6 +173,10 @@ def _is_public_forecast(pf) -> bool:
 
     if Referendum.objects.filter(forecast=pf).exists():
         return True
+    from apps.macro.models import Forecast
+
+    if Forecast.objects.filter(file=pf).exists():  # a forecast attached to a ticket is open to every member
+        return True
     return any(
         (t.action_payload or {}).get("forecast_id") == pf.pk for t in Ticket.objects.filter(type="hard_frame_change")
     )

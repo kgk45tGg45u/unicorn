@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n macro_tags %}
 {% block title %}{% translate "Open books" %} · Unicorn{% endblock %}
 {% block content %}
 <h1>{% translate "Open books" %}</h1>
@@ -32,6 +32,21 @@
 </table></div>
 <p><a href="{% url 'ledger:open_books_csv' %}">{% translate "Download the period totals as CSV" %}</a></p>
 <p><a href="{% url 'votes:list' %}">{% translate "Votes of all members and their results" %}</a></p>
+<h2 class="h5 mt-4">{% translate "Warning lights" %}</h2>
+{% show_lights %}
+<h2 class="h5 mt-4">{% translate "Each closed month" %}</h2>
+<p class="small">{{ tax_explanation }}</p>
+<div class="table-responsive"><table class="table table-sm">
+  <thead><tr><th>{% translate "Month" %}</th><th class="text-end">{% translate "Hours paid" %}</th><th class="text-end">{% translate "Spent" %}</th><th class="text-end">{% translate "Cancelled" %}</th><th class="text-end">{% translate "Outstanding" %}</th><th class="text-end">{% translate "Months of spending" %}</th><th>{% translate "Hours went to" %}</th><th class="text-end">{% translate "Flat tax used" %}</th><th>{% translate "Next flat tax (H, C, S, T)" %}</th><th>{% translate "Books add up?" %}</th></tr></thead>
+  <tbody>{% for s in snapshots %}<tr>
+    <td>{{ s.period }}</td><td class="text-end">{{ s.hours_paid }}</td><td class="text-end">{{ s.spent }}</td><td class="text-end">{{ s.cancelled }}</td><td class="text-end">{{ s.outstanding }}</td><td class="text-end">{{ s.months_of_spending|default_if_none:"–" }}</td>
+    <td class="small">{% translate "buying" %} {{ s.consumption }} · {% translate "social" %} {{ s.social }} · {% translate "tools" %} {{ s.accumulation }} · {% translate "outside" %} {{ s.trade }} · {% translate "waste" %} {{ s.waste }} · {% translate "residual" %} {{ s.hours_residual }}</td>
+    <td class="text-end">{{ s.tax_rate_used }}</td>
+    <td class="small">{{ s.tax_rate_next }} <span class="text-muted">(H {{ s.tax_inputs.H|default:"–" }}, C {{ s.tax_inputs.C|default:"–" }}, S {{ s.tax_inputs.S|default:"–" }}, T {{ s.tax_inputs.T|default:"–" }})</span></td>
+    <td>{% if s.period.status == "closed" %}<span class="badge text-bg-success">{% translate "yes" %}</span>{% else %}<span class="badge text-bg-danger">{% translate "a check failed" %}</span>{% endif %}</td>
+  </tr>{% empty %}<tr><td colspan="10" class="text-muted">{% translate "No month has been closed yet." %}</td></tr>{% endfor %}</tbody>
+</table></div>
+<p><a href="{% url 'macro:snapshots_csv' %}">{% translate "Download all monthly accounts as CSV" %}</a> · <a href="{% url 'macro:forecast_data_csv' %}">{% translate "Data for forecasts (CSV)" %}</a> · <a href="{% url 'macro:on_track' %}">{% translate "Are we on track?" %}</a></p>
 <h2 class="h5 mt-4">{% translate "Daily fingerprints" %}</h2>
 <p class="small">{% translate "Copy a fingerprint today, and you can prove later that the books of that day were not changed." %}</p>
 <div class="table-responsive"><table class="table table-sm">

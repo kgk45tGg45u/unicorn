@@ -7,7 +7,25 @@ from django.shortcuts import render
 
 
 def home(request):
-    return render(request, "core/home.html")
+    context = {}
+    member = getattr(request, "member", None)
+    if member is not None:
+        from apps.ledger.services import current_period
+        from apps.market.models import OrderLine
+        from apps.tickets.services import my_open_seats
+        from apps.units.services import my_hours_totals
+
+        by_month, _by_unit = my_hours_totals(member)
+        key = f"{current_period().year}-{current_period().month:02d}"
+        this = next((row for row in by_month if row[0] == key), None)
+        context = {
+            "month": {"minutes": this[1], "gross": this[2], "tax": this[3], "net": this[4]} if this else None,
+            "orders": OrderLine.objects.filter(order__buyer=member).exclude(
+                status__in=("delivered", "cancelled", "refused")
+            )[:5],
+            "seats": my_open_seats(member),
+        }
+    return render(request, "core/home.html", context)
 
 
 def offline(request):

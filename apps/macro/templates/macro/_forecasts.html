@@ -1,0 +1,13 @@
+{% load i18n %}
+{% if forecasts %}
+<h2 class="h5">{% translate "Forecasts" %}</h2>
+<table class="table table-sm">
+  <thead><tr><th>{% translate "By" %}</th><th>{% translate "Attractive" %}</th><th>{% translate "Growing" %}</th><th>{% translate "Independent" %}</th><th>{% translate "Stable" %}</th><th>{% translate "Could live without a job, year 10 / 20 / 30" %}</th><th></th></tr></thead>
+  <tbody>{% for f in forecasts %}<tr>
+    <td>{{ f.author.number }}</td>
+    {% for key, ok in f.goals.items %}<td>{% if ok %}{% translate "met" %}{% else %}{% translate "not met" %}{% endif %}</td>{% endfor %}
+    <td>{{ f.can_live_y10|default_if_none:"–" }} / {{ f.can_live_y20|default_if_none:"–" }} / {{ f.can_live_y30|default_if_none:"–" }}</td>
+    <td>{% if f.file %}<a href="{% url 'members:private_file' f.file.pk %}">{% translate "Open the file" %}</a>{% endif %}{% if f.note %}<div class="small text-muted">{{ f.note }}</div>{% endif %}</td>
+  </tr>{% endfor %}</tbody>
+</table>
+{% endif %}

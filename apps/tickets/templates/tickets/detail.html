@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n ticket_tags %}
+{% load i18n ticket_tags macro_tags %}
 {% block title %}{{ ticket.number }} · Unicorn{% endblock %}
 {% block content %}
 <p class="text-muted mb-1">{{ ticket.number }} · {{ ticket.type_label }}</p>
@@ -17,6 +17,7 @@
 <div class="alert alert-secondary">{% translate "Hidden while members review a report" %}</div>
 {% else %}
 {% if ticket.brief_md %}<h2 class="h5">{% translate "Brief" %}</h2><div>{{ ticket.brief_md|linebreaks }}</div>{% endif %}
+{% show_forecasts ticket %}
 {% if ticket.body_md %}<div>{{ ticket.body_md|linebreaks }}</div>{% endif %}
 {% include "partials/flag_button.html" with target_type="ticket" target_id=ticket.pk %}
 {% endif %}

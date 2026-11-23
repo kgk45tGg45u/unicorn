@@ -4,9 +4,9 @@
 {% if user.is_authenticated %}
 <h1>{% translate "Your Unicorn" %}</h1>
 <div class="row g-3">
-  <div class="col-12 col-md-6"><div class="card"><div class="card-body"><h2 class="h5">{% translate "My work" %}</h2><p class="mb-0 text-muted">{% translate "Nothing here yet." %}</p></div></div></div>
-  <div class="col-12 col-md-6"><div class="card"><div class="card-body"><h2 class="h5">{% translate "My orders" %}</h2><p class="mb-0 text-muted">{% translate "Nothing here yet." %}</p></div></div></div>
-  <div class="col-12 col-md-6"><div class="card"><div class="card-body"><h2 class="h5">{% translate "Tickets for me" %}</h2><p class="mb-0 text-muted">{% translate "Nothing here yet." %}</p></div></div></div>
+  <div class="col-12 col-md-6"><div class="card"><div class="card-body"><h2 class="h5">{% translate "My month" %}</h2>{% if month %}<p class="mb-0">{% translate "Hours" %}: {{ month.minutes }} {% translate "minutes" %} · {% translate "gross" %} {{ month.gross }} · {% translate "tax" %} {{ month.tax }} · {% translate "net" %} {{ month.net }} UNIQ</p>{% else %}<p class="mb-0 text-muted">{% translate "No paid hours this month yet." %}</p>{% endif %}</div></div></div>
+  <div class="col-12 col-md-6"><div class="card"><div class="card-body"><h2 class="h5">{% translate "My orders" %}</h2>{% if orders %}<ul class="mb-0">{% for o in orders %}<li><a href="{% url 'market:my_orders' %}">{{ o.quantity|floatformat:"-2" }} × {{ o.offer.item.name }}</a> · {{ o.get_status_display }}</li>{% endfor %}</ul>{% else %}<p class="mb-0 text-muted">{% translate "Nothing here yet." %}</p>{% endif %}</div></div></div>
+  <div class="col-12 col-md-6"><div class="card"><div class="card-body"><h2 class="h5">{% translate "Tickets for me" %}</h2>{% if seats %}<ul class="mb-0">{% for s in seats %}<li><a href="{% url 'tickets:seat' s.pk %}">{{ s.confirmation.ticket.number }} {{ s.confirmation.ticket.title }}</a></li>{% endfor %}</ul>{% else %}<p class="mb-0 text-muted">{% translate "Nothing for you to decide now." %}</p>{% endif %}</div></div></div>
   <div class="col-12 col-md-6"><div class="card"><div class="card-body"><h2 class="h5">{% translate "Warning lights" %}</h2>{% show_lights %}</div></div></div>
 </div>
 {% else %}

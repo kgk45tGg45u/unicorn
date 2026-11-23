@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Retirement payout" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Retirement payout" %}</h1>
+<p>{% translate "Your retirement account holds" %} <strong>{{ balance }} UNIQ</strong>. {% translate "It stays yours. After pension age you can have it paid back to you in equal parts every month." %}</p>
+{% if not at_age %}<p class="text-muted">{% translate "A payout plan can start after pension age." %}</p>
+{% else %}
+<form method="post">{% csrf_token %}
+  {% if plan and plan.active %}<p>{% translate "Your plan is running." %}</p><input type="hidden" name="do" value="stop"><button class="btn btn-outline-secondary" type="submit">{% translate "Stop the plan" %}</button>
+  {% else %}<input type="hidden" name="do" value="start"><button class="btn btn-primary" type="submit">{% translate "Start a payout plan" %}</button>{% endif %}
+</form>
+{% endif %}
+{% endblock %}

@@ -92,3 +92,43 @@ def my_world(request):
         )
 
     return view(request)
+
+
+def retirement_payout(request):
+    """After pension age: start or stop a payout plan from the retirement account (docs/03 section 5)."""
+    from django.contrib import messages
+    from django.contrib.auth.decorators import login_required
+    from django.shortcuts import redirect
+
+    from apps.core.decorators import sensitive_action
+    from apps.ledger import services as ledger
+    from apps.members import services as member_services
+
+    from . import retirement
+    from .models import RetirementPlan
+
+    @login_required
+    @sensitive_action(allow_get=True)
+    def view(request):
+        member = request.member
+        if request.method == "POST":
+            try:
+                if request.POST.get("do") == "stop":
+                    retirement.stop_plan(member)
+                else:
+                    retirement.start_plan(member)
+                messages.success(request, _("Done."))
+            except ledger.LedgerError as e:
+                messages.error(request, str(e))
+            return redirect("macro:retirement_payout")
+        return render(
+            request,
+            "macro/retirement_payout.html",
+            {
+                "plan": RetirementPlan.objects.filter(member=member).first(),
+                "at_age": member_services.has_reached_pension_age(member),
+                "balance": ledger.balance(ledger.retirement_account(member)),
+            },
+        )
+
+    return view(request)
