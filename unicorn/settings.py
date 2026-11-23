@@ -40,6 +40,7 @@ CACHES = {  # shared by all workers; also holds the rate limits and allauth's lo
 PRIVATE_MEDIA_ROOT = env("PRIVATE_MEDIA_ROOT", default=str(BASE_DIR / "private_media"))
 UNICORN_MASTER_KEY = env("UNICORN_MASTER_KEY", default="")
 UNICORN_HMAC_KEY = env("UNICORN_HMAC_KEY", default="")
+UNICORN_OLD_MASTER_KEYS = env("UNICORN_OLD_MASTER_KEYS", default="")  # only while a rotation runs
 UNICORN_BACKUP_NOTE = env("UNICORN_BACKUP_NOTE", default="")
 EMAIL_CONFIG = env.email("EMAIL_URL", default="consolemail://")
 vars().update(EMAIL_CONFIG)

@@ -52,7 +52,13 @@
   - the data key is stored encrypted with the server's **master key**, which lives only in the `.env` file, outside the web root, readable only by the app's user;
   - `members.MemberPrivate` (legal name, address, phone, date of birth, IBAN) and private files (licences, receipts, benefit documents) are encrypted with the member's data key.
 - **Deletion by key** ("crypto-shredding"). Deleting a member's data key makes all their encrypted data unreadable, in backups too.
-- **Key rotation.** The command `rotate_master_key` re-encrypts every data key with a new master key. It is run yearly, and whenever an operator leaves.
+- **Key rotation** (task P14.T05). It is done yearly, and whenever an operator leaves. The steps:
+  1. On the server, run `python manage.py generate_keys`. It prints a new `UNICORN_MASTER_KEY` and a new `UNICORN_HMAC_KEY`. Copy them from the screen; nothing is written to a file or a log.
+  2. In `.env`, put the new master key in `UNICORN_MASTER_KEY` and the old one in `UNICORN_OLD_MASTER_KEYS` (several old keys are separated by commas). Restart the app. Everything can still be read.
+  3. Run `python manage.py rotate_master_key`. It re-wraps every member's data key and re-encrypts every system-encrypted field (customers, invoices, sellers, donors, payees) with the new key, in batches of 500. It prints only counts. It is safe to run again.
+  4. When it says `left to do: 0`, remove the old key from `UNICORN_OLD_MASTER_KEYS` in `.env` and restart. Then destroy every copy of the old key.
+  5. Only if the HMAC key changed too: run `python manage.py rotate_hmac_key`. It recomputes every duplicate-detection hash. Do this before step 4 if the HMAC key is also being replaced, so that no duplicate goes unnoticed in between.
+  6. Take a new backup, and write the date in the operators' log.
 - **Backups** are encrypted with a separate backup key, kept offline by two operators (section 6).
 - **Email addresses** are needed in plain text to log in and to send mail. They are kept in the accounts table only, protected by the database's access rules, and never shown to other members.
 

@@ -101,7 +101,7 @@
 
 ---
 
-### - [ ] P14.T05 — Changing the keys
+### - [x] P14.T05 — Changing the keys
 
 **Read:** docs/08 section 4 ("Key rotation").
 **Files:** `apps/members/crypto.py`, `apps/members/management/commands/rotate_master_key.py`, `apps/members/management/commands/rotate_hmac_key.py`, `apps/members/management/commands/generate_keys.py`, `apps/members/tests/test_rotation.py`

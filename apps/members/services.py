@@ -309,13 +309,8 @@ def _normalise(kind, value):
     return " ".join(value.lower().split())
 
 
-def update_hashes(member):
-    """Recompute the member's duplicate-detection hashes; flag a match with another member."""
-    from apps.core import audit
-    from apps.core.hashing import hmac_hex
-
-    from .models import Member, MemberHash
-
+def wanted_hashes(member) -> dict:
+    """The values whose hashes find a second account of the same person: kind -> raw value."""
     private = get_private(member)
     wanted = {"email": member.user.email}
     for kind in ("phone", "iban"):
@@ -323,10 +318,26 @@ def update_hashes(member):
             wanted[kind] = private[kind]
     if private.get("legal_name") and private.get("birth_date"):
         wanted["name_birth"] = f"{private['legal_name']}|{private['birth_date']}"
+    return wanted
+
+
+def hash_of(kind, raw) -> str:
+    from apps.core.hashing import hmac_hex
+
+    return hmac_hex(f"{kind}:{_normalise(kind, raw)}")
+
+
+def update_hashes(member):
+    """Recompute the member's duplicate-detection hashes; flag a match with another member."""
+    from apps.core import audit
+
+    from .models import Member, MemberHash
+
+    wanted = wanted_hashes(member)
     with transaction.atomic():
         MemberHash.objects.filter(member=member).delete()
         for kind, raw in wanted.items():
-            digest = hmac_hex(f"{kind}:{_normalise(kind, raw)}")
+            digest = hash_of(kind, raw)
             MemberHash.objects.create(member=member, kind=kind, value=digest)
             if MemberHash.objects.filter(kind=kind, value=digest).exclude(member=member).exists():
                 audit.record("system", "duplicate_suspected", member, kind=kind)
