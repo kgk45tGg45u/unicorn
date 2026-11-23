@@ -44,8 +44,15 @@ def my_account(request):
             "missing": missing,
             "vouches": member.vouches_received.select_related("voucher"),
             "checks": member.checks_received.select_related("helper"),
+            **_reputation_context(member),
         },
     )
+
+
+def _reputation_context(member):
+    from apps.reputation import services as reputation
+
+    return {"helpful_count": reputation.helpful_count(member), "my_topics": reputation.my_topics(member)}
 
 
 def public_profile(request, number):
@@ -335,6 +342,16 @@ def mediator_toggle(request):
     member = request.member
     member.is_mediator = not member.is_mediator
     member.save(update_fields=["is_mediator"])
+    return redirect("members:my_account")
+
+
+@login_required
+@require_POST
+def suggest_toggle(request):
+    """Switch "Suggest me for questions" on or off (P13.T08)."""
+    from apps.reputation import services as reputation
+
+    reputation.set_suggestions(request.member, not request.member.suggest_me)
     return redirect("members:my_account")
 
 

@@ -12,6 +12,7 @@ urlpatterns = [
     path("contract/", views.contract, name="contract"),
     path("me/mediator/", views.mediator_toggle, name="mediator_toggle"),
     path("me/notify/", views.notify_toggle, name="notify_toggle"),
+    path("me/suggest/", views.suggest_toggle, name="suggest_toggle"),
     path("files/<int:pk>/", views.private_file, name="private_file"),
     path("vouch/", views.vouch_page, name="vouch"),
     path("identity-checks/", views.identity_check_page, name="identity_check"),

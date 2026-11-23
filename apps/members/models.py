@@ -66,6 +66,7 @@ class Member(models.Model):
         null=True, blank=True
     )  # optional: "I have a capitalist job", for the world tracker
     is_mediator = models.BooleanField(default=False)  # volunteers for the mediator pool (P06.T09)
+    suggest_me = models.BooleanField(default=True)  # "Suggest me for questions" (P13.T08)
     email_all_notifications = models.BooleanField(default=False)  # "email me everything" (P06.T02)
     last_active_at = models.DateTimeField(null=True, blank=True)
 

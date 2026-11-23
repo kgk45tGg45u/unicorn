@@ -98,9 +98,19 @@ def _start_council(ticket):
     audit.record("system", "ticket.council_started", ticket, decision=decision.pk)
 
 
+# Functions called with (ticket) that return members who might know the answer. Reputation adds one (P13.T08).
+SUGGESTERS: list = []
+
+
 def suggest_answerers(ticket) -> list:
-    """Members who might know. Empty until reputation exists (P13)."""
-    return []
+    """Members who might know. Only a suggestion: nothing is assigned (HF-10, HF-15)."""
+    found, seen = [], set()
+    for suggester in SUGGESTERS:
+        for member in suggester(ticket):
+            if member.pk not in seen:
+                seen.add(member.pk)
+                found.append(member)
+    return found
 
 
 PLAN_WORDS = _t(

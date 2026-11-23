@@ -89,6 +89,7 @@ INSTALLED_APPS = [
     "apps.outside",
     "apps.logistics",
     "apps.bodies",
+    "apps.reputation",
 ]
 
 MIDDLEWARE = [

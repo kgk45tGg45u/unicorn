@@ -32,6 +32,14 @@
   <p class="mb-1">{% if member.is_mediator %}{% translate "You are in the pool of mediators." %}{% else %}{% translate "You can volunteer to help members who disagree find an agreement." %}{% endif %}</p>
   <button class="btn btn-sm btn-outline-primary">{% if member.is_mediator %}{% translate "Leave the pool of mediators" %}{% else %}{% translate "Join the pool of mediators" %}{% endif %}</button>
 </form>
+<h2 class="h5">{% translate "Helpful answers" %}</h2>
+<p>{% blocktranslate with n=helpful_count %}Helpful answers in the last 12 months: {{ n }}{% endblocktranslate %}</p>
+{% if my_topics %}<ul class="small text-muted">{% for t in my_topics %}<li>{{ t.topic }}: {{ t.score|floatformat:2 }}</li>{% endfor %}</ul>
+<p class="small text-muted">{% translate "These scores are used only to suggest who might know the answer to a question. They never affect work, pay, votes, prices or who is drawn." %}</p>{% endif %}
+<form method="post" action="{% url 'members:suggest_toggle' %}" class="mb-3">{% csrf_token %}
+  <p class="mb-1">{% if member.suggest_me %}{% translate "You may be suggested as someone who might know the answer to a question." %}{% else %}{% translate "You are not suggested for questions." %}{% endif %}</p>
+  <button class="btn btn-sm btn-outline-primary">{% if member.suggest_me %}{% translate "Do not suggest me for questions" %}{% else %}{% translate "Suggest me for questions" %}{% endif %}</button>
+</form>
 <p><a href="{% url 'members:public_profile' member.number %}">{% translate "See my public profile" %}</a></p>
 <p>{% if member.status != "former" %}<a href="{% url 'members:leave' %}">{% translate "Leave Unicorn" %}</a> · {% endif %}<a href="{% url 'members:delete' %}">{% translate "Delete my account" %}</a></p>
 <p><a href="{% url 'mfa_index' %}">{% translate "Passkeys and recovery codes" %}</a> ·

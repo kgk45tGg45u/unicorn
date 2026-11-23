@@ -155,7 +155,7 @@
 
 ---
 
-### - [ ] P13.T08 — Reputation: helpful answers, used only for suggestions
+### - [x] P13.T08 — Reputation: helpful answers, used only for suggestions
 
 **Read:** docs/05 section 10 (the table); docs/01 HF-11 and HF-15.
 **Files:** `apps/reputation/` (new app), `apps/reputation/models.py` (ReputationScore), `apps/reputation/services.py`, `apps/reputation/jobs.py`, `apps/tickets/routing.py`, `apps/members/views.py` (profile), `apps/reputation/tests/test_reputation.py`
