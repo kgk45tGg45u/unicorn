@@ -3,6 +3,8 @@
 **Goal:** units have cover areas measured in kilometres. Orders can be picked up, delivered by Unicorn couriers (whose hours are priced like any service), or sent by capitalist carriers paid by the trade fund. Deliveries are confirmed.
 **Read first:** docs/06 section 8, docs/04 section 6 (service values), docs/03 section 8 (make or buy), docs/01 rule HF-3.
 
+> **Owner decision 2026-11-23 (done in P12, later phases must keep it):** outside customers can order Unicorn couriers and pay them in euros directly; see docs/07 section 6 and docs/11. Tests: `apps/logistics/tests/test_outside_courier.py`.
+
 ---
 
 ### - [x] P12.T01 — Postcode coordinates
