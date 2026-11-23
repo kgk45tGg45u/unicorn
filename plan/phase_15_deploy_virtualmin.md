@@ -282,7 +282,7 @@
 
 ---
 
-### - [ ] P15.T09 — The founders' launch
+### - [x] P15.T09 — The founders' launch
 
 **Read:** docs/00 ("How Unicorn starts: inside capitalism"); docs/02 section 5; P01.T05–T06; P03.T01; P08.T02; P11.T01.
 **Files:** `apps/core/management/commands/launch_check.py`, `docs/launch_checklist.md`, `apps/core/tests/test_launch_check.py`
