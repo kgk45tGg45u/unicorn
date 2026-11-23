@@ -74,3 +74,19 @@ class Job(models.Model):
 
     def __str__(self):
         return f"{self.kind} ({self.status})"
+
+
+class RestoreTest(models.Model):
+    """The result of a monthly restore test on the staging server (docs/08 section 6, P14.T09)."""
+
+    ran_at = models.DateTimeField(default=timezone.now)
+    backup_date = models.DateField()
+    ok = models.BooleanField()
+    notes = models.TextField(blank=True)
+    operator_number = models.CharField(max_length=12, blank=True)
+
+    class Meta:
+        ordering = ["-ran_at", "-id"]
+
+    def __str__(self):
+        return f"restore test of {self.backup_date}: {'ok' if self.ok else 'failed'}"

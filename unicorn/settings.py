@@ -27,6 +27,8 @@ ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 DATABASES = {
     "default": env.db("DATABASE_URL", default="sqlite:///" + str(BASE_DIR / "db.sqlite3"))
 }  # T03 makes it MySQL
+if env("DATABASE_NAME_OVERRIDE", default=""):  # the restore test points the app at the restored copy (P14.T09)
+    DATABASES["default"]["NAME"] = env("DATABASE_NAME_OVERRIDE")
 DATABASES["default"]["OPTIONS"] = {
     "charset": "utf8mb4",
     "isolation_level": "read committed",

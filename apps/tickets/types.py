@@ -239,6 +239,7 @@ TYPES: dict[str, TicketType] = {
             creatable=False,
         ),
         _T("audit_failure", _("The books failed an audit"), "confirmers", needs_brief=True, creatable=False),
+        _T("restore_overdue", _("The backups are not tested"), "confirmers", needs_brief=True, creatable=False),
         _T(
             "post_check_unit",
             _("Review a unit that opened with an amber check"),

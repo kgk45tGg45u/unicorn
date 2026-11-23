@@ -191,7 +191,7 @@
 
 ---
 
-### - [ ] P14.T09 — Backups and the restore test
+### - [x] P14.T09 — Backups and the restore test
 
 **Read:** docs/08 section 6.
 **Files:** `deploy/backup.sh`, `deploy/restore_test.sh`, `deploy/README.md`, `apps/core/models.py` (RestoreTest), `apps/core/management/commands/record_restore_test.py`, `apps/core/tests/test_restore_record.py`

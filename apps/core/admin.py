@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import AuditEvent, Job
+from .models import AuditEvent, Job, RestoreTest
 
 
 class ReadOnlyAdmin(admin.ModelAdmin):
@@ -19,6 +19,11 @@ class ReadOnlyAdmin(admin.ModelAdmin):
 @admin.register(AuditEvent)
 class AuditEventAdmin(ReadOnlyAdmin):
     list_display = ("created_at", "actor_ref", "verb", "object_type", "object_id")
+
+
+@admin.register(RestoreTest)
+class RestoreTestAdmin(ReadOnlyAdmin):
+    list_display = ("ran_at", "backup_date", "ok", "operator_number")
 
 
 @admin.register(Job)

@@ -47,7 +47,10 @@
   </tr>{% empty %}<tr><td colspan="10" class="text-muted">{% translate "No month has been closed yet." %}</td></tr>{% endfor %}</tbody>
 </table></div>
 <p><a href="{% url 'macro:snapshots_csv' %}">{% translate "Download all monthly accounts as CSV" %}</a> · <a href="{% url 'macro:forecast_data_csv' %}">{% translate "Data for forecasts (CSV)" %}</a> · <a href="{% url 'macro:on_track' %}">{% translate "Are we on track?" %}</a></p>
+<h2 class="h5 mt-4">{% translate "Backups" %}</h2>
+<p>{% if restore %}{% blocktranslate with d=restore.backup_date|date:"Y-m-d" r=restore.ran_at|date:"Y-m-d" %}The last backup that was restored successfully as a test was the one of {{ d }} (tested on {{ r }}).{% endblocktranslate %}{% else %}{% translate "No backup has been restored as a test yet." %}{% endif %}</p>
 <h2 class="h5 mt-4">{% translate "Daily fingerprints" %}</h2>
+<p class="small"><a href="{% url 'ledger:fingerprints_json' %}">{% translate "The fingerprints as data (JSON)" %}</a></p>
 <p class="small">{% translate "Copy a fingerprint today, and you can prove later that the books of that day were not changed." %}</p>
 <div class="table-responsive"><table class="table table-sm">
   <thead><tr><th>{% translate "Date" %}</th><th>{% translate "Chain" %}</th><th>{% translate "Number" %}</th><th>{% translate "Fingerprint" %}</th></tr></thead>

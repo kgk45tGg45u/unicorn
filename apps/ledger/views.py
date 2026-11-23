@@ -126,6 +126,7 @@ def open_books(request):
             "closed": [_period_totals(p) for p in Period.objects.filter(status=Period.CLOSED)[:24]],
             "fingerprints": DailyFingerprint.objects.all()[:30],
             "audit": AuditRun.objects.first(),
+            "restore": __import__("apps.core.restore", fromlist=["last_ok"]).last_ok(),
             "snapshots": __import__(
                 "apps.macro.models", fromlist=["MacroSnapshot"]
             ).MacroSnapshot.objects.select_related("period")[:24],
@@ -183,4 +184,16 @@ def retirement(request):
             "balance": services.balance(services.member_account(member)),
             "retirement": services.balance(services.retirement_account(member)),
         },
+    )
+
+
+def fingerprints_json(request):
+    """The published daily fingerprints as data, for anyone to compare with a restored database (HF-7)."""
+    from django.http import JsonResponse
+
+    from .models import DailyFingerprint
+
+    rows = DailyFingerprint.objects.order_by("-date")[:800]
+    return JsonResponse(
+        [{"date": str(r.date), "chain": r.chain, "seq": r.seq, "hash": r.hash} for r in rows], safe=False
     )

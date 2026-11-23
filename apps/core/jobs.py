@@ -99,3 +99,11 @@ def run_due(max_seconds=55) -> int:
 @job("core.ping")
 def ping(payload):
     audit.record("system", "ping", **payload)
+
+
+@job("core.restore_check")
+def restore_check(payload):
+    """Every day: if no restore test has worked for 35 days, the elected auditors get a ticket. Safe to run twice."""
+    from . import restore
+
+    restore.warn_if_overdue()
