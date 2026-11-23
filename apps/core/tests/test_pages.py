@@ -19,6 +19,10 @@ def test_service_worker_served_from_root(client):
 
 @pytest.mark.django_db
 def test_healthz_ok(client):
+    from apps.core import health
+
+    health.note_jobs_run()
+    health.note_daily_run()
     response = client.get("/healthz")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}

@@ -260,7 +260,7 @@
 
 ---
 
-### - [ ] P15.T08 — Watching the service
+### - [x] P15.T08 — Watching the service
 
 **Files:** `apps/core/views.py` (`/healthz`), `apps/members/models.py` (SiteState: `last_jobs_run_at`, `last_daily_at`), `deploy/uptime_check.sh`, `deploy/README.md`, `apps/core/tests/test_healthz.py`
 

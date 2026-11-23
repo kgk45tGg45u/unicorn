@@ -215,9 +215,11 @@ class MemberHash(models.Model):
 
 
 class SiteState(models.Model):
-    """A single row: when Unicorn launched. Until then it is in its founding phase."""
+    """A single row: when Unicorn launched (until then it is in its founding phase), and when the jobs last ran."""
 
     launched_at = models.DateTimeField(null=True, blank=True)
+    last_jobs_run_at = models.DateTimeField(null=True, blank=True)  # /healthz: the job runner is alive
+    last_daily_at = models.DateTimeField(null=True, blank=True)  # /healthz: `daily` ran
 
     def __str__(self):
         return f"launched at {self.launched_at}" if self.launched_at else "not launched yet"

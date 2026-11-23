@@ -9,6 +9,6 @@ class CoreConfig(AppConfig):
     def ready(self):
         from .management.commands import daily
 
-        entry = ("core.restore_check", {})
-        if entry not in daily.DAILY_JOBS:
-            daily.DAILY_JOBS.append(entry)
+        for entry in (("core.restore_check", {}), ("core.disk_check", {})):
+            if entry not in daily.DAILY_JOBS:
+                daily.DAILY_JOBS.append(entry)

@@ -101,6 +101,14 @@ def ping(payload):
     audit.record("system", "ping", **payload)
 
 
+@job("core.disk_check")
+def disk_check(payload):
+    """Every day: warn the operators by email when the disk is more than 80 % full."""
+    from . import health
+
+    health.warn_if_disk_full()
+
+
 @job("core.restore_check")
 def restore_check(payload):
     """Every day: if no restore test has worked for 35 days, the elected auditors get a ticket. Safe to run twice."""

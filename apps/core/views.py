@@ -1,10 +1,11 @@
 import re
+from datetime import timedelta
 from pathlib import Path
 
 from django.conf import settings
-from django.db import connection
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import render
+from django.utils import timezone
 
 
 def home(request):
@@ -49,13 +50,27 @@ def service_worker(request):
     return response
 
 
+def security_txt(request):
+    """Where to report a security problem (RFC 9116). Without a contact address there is nothing to show."""
+    if not settings.SECURITY_CONTACT:
+        raise Http404
+    expires = timezone.now() + timedelta(days=365)
+    lines = [
+        f"Contact: mailto:{settings.SECURITY_CONTACT}",
+        f"Expires: {expires:%Y-%m-%dT%H:%M:%SZ}",
+        "Preferred-Languages: en",
+        f"Canonical: {settings.SITE_URL.rstrip('/')}/.well-known/security.txt",
+    ]
+    return HttpResponse("\n".join(lines) + "\n", content_type="text/plain; charset=utf-8")
+
+
 def healthz(request):
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-            cursor.fetchone()
-    except Exception:
-        return JsonResponse({"status": "error"}, status=503)
+    """Answers ok, or 503 with the NAMES of the failed checks and nothing more (P15.T08)."""
+    from . import health
+
+    failed = health.failed_checks()
+    if failed:
+        return JsonResponse({"status": "fail", "checks": failed}, status=503)
     return JsonResponse({"status": "ok"})
 
 

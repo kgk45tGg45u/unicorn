@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 
+from apps.core import health
 from apps.core.jobs import run_due
 
 
@@ -11,4 +12,5 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         ran = run_due(max_seconds=options["max_seconds"])
+        health.note_jobs_run()  # /healthz looks at this
         self.stdout.write(f"{ran} job(s) run.")

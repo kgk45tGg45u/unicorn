@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
+from apps.core import health
 from apps.core.jobs import enqueue, run_due
 
 # Later phases add their daily jobs here, as (kind, payload) pairs.
@@ -15,4 +16,5 @@ class Command(BaseCommand):
         for kind, payload in DAILY_JOBS:
             enqueue(kind, payload, dedupe_key=f"daily:{kind}:{today}")
         ran = run_due()
+        health.note_daily_run()  # /healthz looks at this
         self.stdout.write(f"{ran} job(s) run.")
