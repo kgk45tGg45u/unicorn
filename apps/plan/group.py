@@ -170,7 +170,10 @@ def expire_unanswered(on=None) -> int:
 
 
 def volunteer_adviser(member, group, statement, on=None):
-    """Until unions exist, any member may offer to advise for 14 days (docs/05 section 8)."""
+    """Any member may offer to advise for 14 days (docs/05 section 8). Unions name advisers too (P13.T05).
+
+    # OWNER-CHECK: keep volunteers once unions exist? (docs/12; docs/11 lists it among the choices waiting for you)
+    """
     from apps.members import services as member_services
 
     on = on or services.today()

@@ -412,6 +412,7 @@ KIND_ACTIONS = {
     "other": None,
 }
 ACTIONS: dict = {}  # action name -> function(decision) -> dict
+EXTRA_PROBLEMS: dict = {}  # decision kind -> function(payload) -> list of problems, checked when a decision opens
 
 
 def register_action(name, fn):
@@ -452,6 +453,8 @@ def open_decision(member, union, title, text="", kind="other", payload=None):
         problems = duties.template_problems(payload)
     elif kind == "training" and not payload.get("tasks"):
         problems = [_("A training needs at least one task.")]
+    elif kind in EXTRA_PROBLEMS:
+        problems = EXTRA_PROBLEMS[kind](payload)
     if problems:
         raise BodyError(problems[0])
     rules = current_rules(union)

@@ -197,3 +197,25 @@ class AdviceComment(models.Model):
 
     def __str__(self):
         return f"advice {self.comment_id}"
+
+
+class ExpertNomination(models.Model):
+    """A union names a member as an expert adviser for the planning group. The member must accept (docs/05 s. 8)."""
+
+    STATUSES = [("pending", _("waiting")), ("accepted", _("accepted")), ("declined", _("declined"))]
+
+    union = models.ForeignKey(Union, on_delete=models.PROTECT, related_name="nominations")
+    decision = models.ForeignKey(UnionDecision, on_delete=models.PROTECT, related_name="+")
+    member = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="expert_nominations")
+    group = models.ForeignKey("plan.PlanningGroup", on_delete=models.PROTECT, related_name="+")
+    statement = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=STATUSES, default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+    answered_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-id"]
+        constraints = [models.UniqueConstraint(fields=["group", "member", "union"], name="one_nomination_each")]
+
+    def __str__(self):
+        return f"{self.union.name} names {self.member.number}"

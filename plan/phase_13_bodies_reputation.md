@@ -101,7 +101,7 @@
 
 ---
 
-### - [ ] P13.T05 — Expert advisers named by unions
+### - [x] P13.T05 — Expert advisers named by unions
 
 **Read:** docs/05 section 8 (1 September); P11.T04.
 **Files:** `apps/plan/services.py`, `apps/bodies/services.py`, `apps/plan/tests/test_experts_from_unions.py`

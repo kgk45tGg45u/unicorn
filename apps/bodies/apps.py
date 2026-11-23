@@ -10,10 +10,11 @@ class BodiesConfig(AppConfig):
         from apps.core.management.commands import daily
         from apps.tickets import routing
 
-        from . import duties, jobs, services  # noqa: F401
+        from . import duties, experts, jobs, services  # noqa: F401
 
         services.register()
         duties.register()
+        experts.register()
         if duties.ask_for_advice not in routing.ROUTE_HOOKS:
             routing.ROUTE_HOOKS.append(duties.ask_for_advice)
         for entry in (("bodies.daily", {}),):
