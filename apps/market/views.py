@@ -12,6 +12,7 @@ from django.views.decorators.http import require_POST
 
 from apps.catalogue.models import Offer
 from apps.core.decorators import sensitive_action
+from apps.members.assist import assist_allowed
 from apps.units import services as unit_services
 
 from . import needs, services
@@ -238,6 +239,7 @@ def _delivery_from(request, offer):
     }
 
 
+@assist_allowed("orders")
 @login_required
 @require_POST
 def order_offer(request, pk):
@@ -256,6 +258,7 @@ def order_offer(request, pk):
     return redirect("market:my_orders")
 
 
+@assist_allowed("bookings")
 @login_required
 @require_POST
 def book_slot(request, pk):
@@ -281,14 +284,14 @@ def my_orders(request):
     member = request.member
     lines = list(
         OrderLine.objects.filter(order__buyer=member)
-        .select_related("offer__item", "offer__unit", "production_order")
+        .select_related("offer__item", "offer__unit", "production_order", "order__acted_by")
         .order_by("-created_at", "-id")[:100]
     )
     for line in lines:
         line.actions = services.line_actions(line)
     bookings = list(
         Booking.objects.filter(customer=member)
-        .select_related("slot__offer__item", "slot__offer__unit")
+        .select_related("slot__offer__item", "slot__offer__unit", "acted_by")
         .order_by("-created_at", "-id")[:100]
     )
     for booking in bookings:

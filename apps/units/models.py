@@ -224,6 +224,10 @@ class Responsibility(models.Model):
 class HoursEntry(models.Model):
     """Hours a member worked for one unit, recorded in whole minutes."""
 
+    acted_by = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )  # the helper, when this was done "on behalf of" the owner (P13.T10)
+
     ACTIVITIES = [
         ("order", _("production order")),
         ("booking", _("service performed")),

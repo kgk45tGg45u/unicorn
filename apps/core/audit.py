@@ -1,9 +1,15 @@
+from . import acting
 from .models import AuditEvent
 
 
 def record(actor_ref, verb, obj=None, **data):
-    """Record an action. Pass member numbers and ids only, never personal data."""
+    """Record an action. Pass member numbers and ids only, never personal data.
+
+    While a helper acts for a member, `acted_by` holds the helper's member number.
+    """
+    helper = acting.current_helper()
     return AuditEvent.objects.create(
+        acted_by=helper.number if helper is not None else "",
         actor_ref=str(actor_ref),
         verb=verb,
         object_type=obj.__class__.__name__ if obj is not None else "",

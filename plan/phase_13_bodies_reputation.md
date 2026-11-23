@@ -204,7 +204,7 @@
 
 ---
 
-### - [ ] P13.T10 — Acting for a member ("on behalf of")
+### - [x] P13.T10 — Acting for a member ("on behalf of")
 
 **Read:** docs/05 section 1 (principle 5); docs/08 section 3; book p. 68.
 **Files:** `apps/members/models.py` (AssistConsent), `apps/members/assist.py` (middleware, decorator), `apps/members/fixtures/contracts.json` (`assist_consent` v1), `apps/core/models.py` (AuditEvent: `acted_by`), `apps/members/templates/members/assist*.html`, `apps/members/tests/test_assist.py`

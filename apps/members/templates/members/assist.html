@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Helping a member" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Helping a member" %}</h1>
+<p>{% translate "Some members cannot or do not want to use a device. With their written consent, a helper can place orders, book services, record hours, open tickets and write comments for them. Everything is marked as done on their behalf. A helper can never vote, sit as a confirmer, approve hours, handle trade fund money, sign, change bank details or delete an account for someone." %}</p>
+
+{% if acting_for %}
+<div class="alert alert-warning">{% blocktranslate with name=acting_for.member.display_name %}You are acting for {{ name }}.{% endblocktranslate %}
+  <form method="post" action="{% url 'members:assist_stop' %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-dark">{% translate "Stop acting" %}</button></form></div>
+{% endif %}
+
+<h2 class="h5">{% translate "People I can act for" %}</h2>
+<ul class="list-group mb-3">
+  {% for c in active %}<li class="list-group-item d-flex flex-wrap gap-2 justify-content-between align-items-center">
+    <span>{{ c.member.display_name }} ({{ c.member.number }}) · {% blocktranslate with until=c.valid_until|date:"Y-m-d" %}until {{ until }}{% endblocktranslate %}</span>
+    <span class="d-flex gap-2">
+      <form method="post" action="{% url 'members:assist_act' c.pk %}">{% csrf_token %}<button class="btn btn-sm btn-primary">{% blocktranslate with number=c.member.number %}Act for {{ number }}{% endblocktranslate %}</button></form>
+      <form method="post" action="{% url 'members:assist_revoke' c.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">{% translate "End" %}</button></form>
+    </span></li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "Nobody yet." %}</li>{% endfor %}
+</ul>
+
+{% if open %}
+<h2 class="h5">{% translate "Waiting for a signature" %}</h2>
+<ul class="list-group mb-3">
+  {% for c in open %}<li class="list-group-item">
+    {{ c.member.display_name }} ({{ c.member.number }})
+    {% if c.paper_copy_id %}<span class="badge text-bg-info">{% translate "paper added, waiting for an identity helper" %}</span>
+    {% else %}
+    <form method="post" action="{% url 'members:assist_paper' c.pk %}" enctype="multipart/form-data" class="d-flex gap-2 mt-2">{% csrf_token %}
+      <input class="form-control form-control-sm" type="file" name="scan" aria-label="{% translate 'Scan of the signed paper' %}">
+      <button class="btn btn-sm btn-outline-primary">{% translate "Add the signed paper" %}</button></form>
+    {% endif %}
+    <form method="post" action="{% url 'members:assist_revoke' c.pk %}" class="mt-1">{% csrf_token %}<button class="btn btn-sm btn-link">{% translate "Withdraw" %}</button></form>
+  </li>{% endfor %}
+</ul>
+{% endif %}
+
+<h2 class="h5">{% translate "Ask to help someone" %}</h2>
+<form method="post" action="{% url 'members:assist_start' %}" class="mb-4">{% csrf_token %}
+  <div class="mb-2"><label class="form-label" for="number">{% translate "Their member number" %}</label><input class="form-control" id="number" name="number" placeholder="M-XXXX-XXXX" required></div>
+  <fieldset class="mb-2"><legend class="form-label fs-6">{% translate "What may you do for them?" %}</legend>
+    {% for key, label in scopes %}<div class="form-check"><input class="form-check-input" type="checkbox" name="scopes" value="{{ key }}" id="scope-{{ key }}" checked><label class="form-check-label" for="scope-{{ key }}">{{ label }}</label></div>{% endfor %}</fieldset>
+  <div class="mb-2"><label class="form-label" for="months">{% translate "For how many months?" %}</label><input class="form-control" id="months" name="months" type="number" min="1" max="36" value="12"></div>
+  <button class="btn btn-primary">{% translate "Save" %}</button>
+</form>
+
+<h2 class="h5">{% translate "Consents about me" %}</h2>
+<ul class="list-group mb-4">
+  {% for c in about_me %}<li class="list-group-item">
+    {% blocktranslate with helper=c.helper.display_name number=c.helper.number %}{{ helper }} ({{ number }}) would help me{% endblocktranslate %}
+    {% if c.signature_id or c.witnessed_by_id %}<span class="badge text-bg-success">{% translate "signed" %}</span>
+    {% else %}
+      <form method="post" action="{% url 'members:assist_sign' c.pk %}" class="mt-2">{% csrf_token %}
+        {% if template %}<details class="mb-2"><summary>{% translate "Read the consent" %}</summary><div class="border rounded p-2">{{ template.body_md|linebreaks }}</div></details>{% endif %}
+        <button class="btn btn-sm btn-primary">{% translate "I agree and sign" %}</button></form>
+    {% endif %}
+    <form method="post" action="{% url 'members:assist_revoke' c.pk %}" class="mt-1">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">{% translate "End this consent" %}</button></form>
+  </li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "Nobody acts for me." %}</li>{% endfor %}
+</ul>
+<p><a href="{% url 'members:done_for_me' %}">{% translate "See what was done for me" %}</a></p>
+
+{% if to_witness %}
+<h2 class="h5">{% translate "Paper consents to confirm" %}</h2>
+<p class="small text-muted">{% translate "Confirm only if you met the person and saw that they signed." %}</p>
+<ul class="list-group mb-3">
+  {% for c in to_witness %}<li class="list-group-item d-flex justify-content-between align-items-center">
+    <span>{{ c.member.display_name }} ({{ c.member.number }}) · {{ c.helper.number }}</span>
+    <form method="post" action="{% url 'members:assist_witness' c.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary">{% translate "I met them: confirm" %}</button></form></li>{% endfor %}
+</ul>
+{% endif %}
+
+{% if paper_summaries %}
+<h2 class="h5">{% translate "Summaries to hand over on paper" %}</h2>
+{% for member, lines in paper_summaries %}<h3 class="h6">{{ member.display_name }} ({{ member.number }})</h3><pre class="small">{{ lines|join:"
+" }}</pre>{% endfor %}
+{% endif %}
+{% endblock %}

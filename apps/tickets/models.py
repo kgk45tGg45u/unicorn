@@ -16,6 +16,10 @@ class TicketCounter(models.Model):
 class Ticket(models.Model):
     """Any request, proposal, complaint, flag or decision, with its history (docs/05 section 2)."""
 
+    acted_by = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )  # the helper, when this was done "on behalf of" the owner (P13.T10)
+
     SCOPES = [
         ("unit", _("one unit")),
         ("union", _("one union")),
@@ -98,6 +102,9 @@ class Ticket(models.Model):
 
 
 class Comment(models.Model):
+    acted_by = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )  # the helper, when this was done "on behalf of" the owner (P13.T10)
     ticket = models.ForeignKey(Ticket, on_delete=models.PROTECT, related_name="comments")
     author = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="ticket_comments")
     parent = models.ForeignKey("self", null=True, blank=True, on_delete=models.PROTECT, related_name="replies")

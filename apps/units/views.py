@@ -5,6 +5,7 @@ from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
 from apps.core.decorators import sensitive_action
+from apps.members.assist import assist_allowed
 
 from . import services
 from .models import JoinRequest, Unit
@@ -191,6 +192,7 @@ def reopen(request, slug):
     return redirect("units:unit", slug=slug)
 
 
+@assist_allowed("hours_entry")
 @login_required
 def my_hours(request):
     from datetime import date as date_cls
@@ -248,6 +250,7 @@ def timer(request):
     return redirect("units:my_hours")
 
 
+@assist_allowed("hours_entry")
 @login_required
 @require_POST
 def submit_draft(request, pk):

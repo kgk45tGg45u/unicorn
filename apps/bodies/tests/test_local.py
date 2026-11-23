@@ -170,3 +170,13 @@ def test_the_pickup_point_migration_refuses_to_run_if_the_placeholder_holds_a_va
     migration.refuse_if_used(stub(False), None)
     with pytest.raises(RuntimeError, match="managed_by_local_council_id"):
         migration.refuse_if_used(stub(True), None)
+
+
+def test_the_council_page_lists_the_helpers_of_the_area():
+    from apps.members import assist_services
+
+    people = residents(12)
+    council = open_council(people)
+    assert local.area_helpers(council) == []
+    assist_services.start(people[0], people[1], ["orders"])
+    assert local.area_helpers(council) == [people[0]]

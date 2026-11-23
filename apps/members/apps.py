@@ -7,4 +7,11 @@ class MembersConfig(AppConfig):
     label = "members"
 
     def ready(self):
-        from . import signals  # noqa: F401
+        from apps.core.management.commands import daily
+
+        from . import assist, jobs, signals  # noqa: F401
+
+        assist.connect_stamps()
+        for entry in (("members.assist_summary", {}),):
+            if entry not in daily.DAILY_JOBS:
+                daily.DAILY_JOBS.append(entry)

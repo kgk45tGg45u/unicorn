@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Done for me" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Done for me" %}</h1>
+<p class="text-muted">{% translate "Everything a helper did for you, on your behalf. You get a summary every month, and you can end a consent at any time." %}</p>
+<ul class="list-group">
+  {% for e in events %}<li class="list-group-item">{{ e.created_at|date:"Y-m-d H:i" }} · {% blocktranslate with helper=e.acted_by %}by {{ helper }}{% endblocktranslate %} · {{ e.verb }}</li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "Nobody has acted for you." %}</li>{% endfor %}
+</ul>
+<p class="mt-3"><a href="{% url 'members:assist' %}">{% translate "My consents" %}</a></p>
+{% endblock %}

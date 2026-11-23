@@ -9,6 +9,7 @@ from django.views.decorators.http import require_POST
 
 from apps.core.decorators import sensitive_action
 from apps.core.models import AuditEvent
+from apps.members.assist import assist_allowed
 
 from . import confirm, flags, mediation, routing, services, types
 from .forms import TicketForm
@@ -66,8 +67,8 @@ def ticket_list(request):
 
 @login_required
 def ticket_detail(request, number):
-    ticket = get_object_or_404(Ticket.objects.select_related("author", "scope_unit"), number=number)
-    comments = list(ticket.comments.select_related("author").prefetch_related("marks"))
+    ticket = get_object_or_404(Ticket.objects.select_related("author", "scope_unit", "acted_by"), number=number)
+    comments = list(ticket.comments.select_related("author", "acted_by").prefetch_related("marks"))
     by_parent = {}
     for c in comments:
         by_parent.setdefault(c.parent_id, []).append(c)
@@ -136,6 +137,7 @@ def new_ticket(request):
     return render(request, "tickets/new.html", {"types": types.creatable_types()})
 
 
+@assist_allowed("tickets")
 @login_required
 def new_ticket_form(request, key):
     info = types.TYPES.get(key)
@@ -166,6 +168,7 @@ def new_ticket_form(request, key):
     return render(request, "tickets/new_form.html", {"form": form, "info": info})
 
 
+@assist_allowed("comments")
 @login_required
 @require_POST
 def comment(request, number):

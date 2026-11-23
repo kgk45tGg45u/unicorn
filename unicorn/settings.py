@@ -104,6 +104,7 @@ MIDDLEWARE = [
     "allauth.account.middleware.AccountMiddleware",
     "apps.members.middleware.CurrentMemberMiddleware",
     "apps.members.middleware.LastActiveMiddleware",
+    "apps.members.assist.ActingForMiddleware",
 ]
 
 ROOT_URLCONF = "unicorn.urls"

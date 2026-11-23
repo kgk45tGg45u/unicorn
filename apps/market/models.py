@@ -7,6 +7,10 @@ from apps.core.models import AppendOnlyModel
 class Order(models.Model):
     """One purchase by a member. Its lines hold the offer, the price and the status."""
 
+    acted_by = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )  # the helper, when this was done "on behalf of" the owner (P13.T10)
+
     KINDS = [("member", _("member")), ("outside", _("outside customer"))]
     DELIVERY_MODES = [("pickup", _("pickup"))]  # P12 adds the courier and the carrier
 
@@ -284,6 +288,10 @@ class ServiceSlot(models.Model):
 
 class Booking(models.Model):
     """A customer's seat in a slot. The price is fixed at booking (HF-3)."""
+
+    acted_by = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )  # the helper, when this was done "on behalf of" the owner (P13.T10)
 
     STATUSES = [
         ("booked", _("booked")),

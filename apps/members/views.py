@@ -12,6 +12,7 @@ from django.utils.translation import gettext_lazy
 from django.views.decorators.http import require_POST
 
 from . import crypto, services
+from .assist import assist_never
 from .forms import AboutYouForm
 from .models import (
     Availability,
@@ -110,6 +111,7 @@ def contract(request):
     )
 
 
+@assist_never
 @login_required
 def private_file(request, pk):
     pf = get_object_or_404(PrivateFile, pk=pk)
@@ -317,6 +319,7 @@ def leave_page(request):
     return render(request, "members/leave.html", {"member": member, "reasons": reasons})
 
 
+@assist_never
 @login_required
 def delete_page(request):
     member = request.member

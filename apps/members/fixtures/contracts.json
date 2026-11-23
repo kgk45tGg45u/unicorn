@@ -37,5 +37,18 @@
       "valid_from": "2026-11-22T00:00:00Z",
       "is_current": true
     }
+  },
+  {
+    "model": "members.contracttemplate",
+    "pk": 4,
+    "fields": {
+      "kind": "assist_consent",
+      "version": 1,
+      "title": "Consent to be helped",
+      "body_md": "## Consent to be helped\n\n**DRAFT — to be written with lawyers (docs/12, section 2)**\n\nI ask the helper named in this consent to act for me in Unicorn, because I cannot or do not want to use a device myself. The helper may do only what is ticked in this consent, and only until the date written in it.\n\nEverything the helper does for me is marked \"on behalf of\" and I can read it under \"My account, Done for me\". Every month I get a summary of it.\n\nThe helper can never vote for me, sit as one of the random confirmers for me, approve hours, hold or move euros for the trade fund, sign a contract for me, change my bank details or delete my account. These I do myself.\n\nI can end this consent at any time, and so can the helper. It ends by itself on the date written in it. A helper may help only a few members at the same time.",
+      "sha256": "4ddc3cad093abe283631623304efc7425fc7ad15f3fcd20a756d0e6659db3548",
+      "valid_from": "2026-11-22T00:00:00Z",
+      "is_current": true
+    }
   }
 ]

@@ -16,6 +16,7 @@
         <li class="nav-item"><a class="nav-link" href="{% url 'tasks:list' %}">{% translate "Tasks" %}</a></li>
         <li class="nav-item"><a class="nav-link" href="#">{% translate "Plan" %}</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'members:my_account' %}">{% translate "My account" %}</a></li>
+        {% if request.real_member %}<li class="nav-item"><a class="nav-link" href="{% url 'members:assist' %}">{% translate "Helping" %}</a></li>{% endif %}
         <li class="nav-item"><a class="nav-link" href="{% url 'ledger:open_books' %}">{% translate "Open books" %}</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'rules:index' %}">{% translate "Rules" %}</a></li>
       </ul>

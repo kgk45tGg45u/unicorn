@@ -341,8 +341,14 @@ def area_pickup_points(council):
 
 
 def area_helpers(council):
-    """Members of the area who help others use the app (P13.T10 fills this in)."""
-    return []
+    """Members of the area who help others use the app: they hold at least one open consent (P13.T10)."""
+    from apps.members import assist_services
+
+    helpers = {}
+    for member in members_in_area(council.country, council.postcode_prefix):
+        if assist_services.open_consents_of(member):
+            helpers[member.pk] = member
+    return list(helpers.values())
 
 
 def area_task_lists(council):

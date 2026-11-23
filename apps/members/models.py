@@ -302,3 +302,46 @@ class Availability(models.Model):
 
     def __str__(self):
         return f"{self.member.number}: {self.hours_per_week} h/week"
+
+
+class AssistConsent(models.Model):
+    """A member's written consent that a helper may act for them ("on behalf of", docs/05 section 1, book p. 68)."""
+
+    SCOPES = [
+        ("orders", _("place orders")),
+        ("bookings", _("book services")),
+        ("hours_entry", _("record hours")),
+        ("tickets", _("open tickets")),
+        ("comments", _("write comments")),
+    ]
+
+    member = models.ForeignKey(Member, on_delete=models.PROTECT, related_name="assist_consents_received")
+    helper = models.ForeignKey(Member, on_delete=models.PROTECT, related_name="assist_consents_given")
+    scopes = models.JSONField(default=list)
+    signature = models.ForeignKey(Signature, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    paper_copy = models.ForeignKey("PrivateFile", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    witnessed_by = models.ForeignKey(Member, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    valid_until = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-id"]
+
+    def __str__(self):
+        return f"{self.helper.number} may act for {self.member.number}"
+
+
+class AssistSummary(models.Model):
+    """The monthly summary of what a helper did for a member. Sent by email, or handed over on paper."""
+
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="+")
+    month = models.DateField()  # the first day of the month it is about
+    sent_at = models.DateTimeField(auto_now_add=True)
+    on_paper = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["member", "month"], name="one_assist_summary_each_month")]
+
+    def __str__(self):
+        return f"summary for {self.member.number} {self.month:%Y-%m}"

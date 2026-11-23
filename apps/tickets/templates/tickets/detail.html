@@ -7,7 +7,7 @@
 <p>
   <span class="badge text-bg-secondary">{{ ticket.get_status_display }}</span>
   {% if ticket.scope_unit %}<span class="badge text-bg-light">{{ ticket.scope_unit.name }}</span>{% endif %}
-  {% if ticket.author %}<span class="text-muted small">{% blocktranslate with name=ticket.author.display_name %}by {{ name }}{% endblocktranslate %}</span>{% endif %}
+  {% if ticket.author %}<span class="text-muted small">{% blocktranslate with name=ticket.author.display_name %}by {{ name }}{% endblocktranslate %}{% if ticket.acted_by %} · {% blocktranslate with helper=ticket.acted_by.display_name number=ticket.acted_by.number %}placed by {{ helper }} ({{ number }}) on their behalf{% endblocktranslate %}{% endif %}</span>{% endif %}
 </p>
 {% if ticket.status_note %}<div class="alert alert-info">{{ ticket.status_note }}</div>{% endif %}
 {% if ticket.status == "rejected" and ticket.petition_until %}
@@ -76,7 +76,7 @@
 {% for row in comments %}
 <div class="card mb-2" style="margin-left: {{ row.depth }}rem" id="c{{ row.comment.pk }}">
   <div class="card-body py-2">
-    <div class="small text-muted">{{ row.comment.author.display_name }} · {{ row.comment.created_at|date:"Y-m-d H:i" }}{% if row.comment.edited_at %} · {% translate "edited" %}{% endif %}</div>
+    <div class="small text-muted">{{ row.comment.author.display_name }}{% if row.comment.acted_by %} ({% blocktranslate with helper=row.comment.acted_by.display_name number=row.comment.acted_by.number %}written by {{ helper }} ({{ number }}) on their behalf{% endblocktranslate %}){% endif %} · {{ row.comment.created_at|date:"Y-m-d H:i" }}{% if row.comment.edited_at %} · {% translate "edited" %}{% endif %}</div>
     {% if row.hidden and not row.mine %}
     <div class="text-muted"><em>{% translate "Hidden while members review a report" %}</em></div>
     {% else %}

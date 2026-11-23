@@ -14,8 +14,10 @@
       </div>
       <div>{{ line.total_uniq|floatformat:2 }} UNIQ · <span class="badge text-bg-secondary">{{ line.get_status_display }}</span></div>
     </div>
+    {% if line.order.acted_by %}<div class="small text-muted">{% blocktranslate with helper=line.order.acted_by.display_name number=line.order.acted_by.number %}Placed by {{ helper }} ({{ number }}) on your behalf{% endblocktranslate %}</div>{% endif %}
     {% if line.due_date and line.status != "delivered" and line.status != "cancelled" and line.status != "refused" %}<div class="small text-muted">{% blocktranslate with d=line.due_date|date:"j M Y" %}Expected {{ d }}{% endblocktranslate %}</div>{% endif %}
     {% if line.disputed_at %}<div class="small text-warning">{% translate "You reported a problem with this order." %}</div>{% endif %}
+    {% if b.acted_by %}<div class="small text-muted">{% blocktranslate with helper=b.acted_by.display_name number=b.acted_by.number %}Booked by {{ helper }} ({{ number }}) on your behalf{% endblocktranslate %}</div>{% endif %}
     <div class="d-flex flex-wrap gap-2 mt-2">
       {% if "cancel" in line.actions %}<form method="post" action="{% url 'market:my_order_action' 'line' line.pk 'cancel' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary" type="submit">{% translate "Cancel" %}</button></form>{% endif %}
       {% if "confirm" in line.actions %}<form method="post" action="{% url 'market:my_order_action' 'line' line.pk 'confirm' %}">{% csrf_token %}<button class="btn btn-sm btn-primary" type="submit">{% translate "I received it" %}</button></form>{% endif %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Not possible for someone else" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Not possible for someone else" %}</h1>
+<p>{{ message }}</p>
+<form method="post" action="{% url 'members:assist_stop' %}">{% csrf_token %}
+  <button class="btn btn-outline-primary">{% translate "Stop acting for this person" %}</button>
+  <a class="btn btn-link" href="/">{% translate "Back to the start" %}</a>
+</form>
+{% endblock %}

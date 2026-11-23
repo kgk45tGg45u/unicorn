@@ -40,6 +40,7 @@ class AuditEvent(AppendOnlyModel):
 
     created_at = models.DateTimeField(auto_now_add=True)
     actor_ref = models.CharField(max_length=32)  # a member number or "system"
+    acted_by = models.CharField(max_length=32, blank=True)  # the helper's number when acting "on behalf of" (P13.T10)
     verb = models.CharField(max_length=64)
     object_type = models.CharField(max_length=64, blank=True)
     object_id = models.CharField(max_length=64, blank=True)
