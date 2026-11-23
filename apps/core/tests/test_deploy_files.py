@@ -1,6 +1,7 @@
 """The files for the server (phase 15) are checked as far as a Mac can: they parse, and they say what they must."""
 
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,14 @@ SCRIPTS = sorted(DEPLOY.glob("*.sh"))
 
 def test_there_are_scripts_to_check():
     names = {p.name for p in SCRIPTS}
-    assert {"backup.sh", "check_server.sh", "first_setup.sh", "manage.sh", "release.sh", "uptime_check.sh"} <= names
+    assert {
+        "check_programs.sh",
+        "check_server.sh",
+        "first_setup.sh",
+        "manage.sh",
+        "release.sh",
+        "uptime_check.sh",
+    } <= names
 
 
 @pytest.mark.parametrize("script", SCRIPTS, ids=lambda p: p.name)
@@ -32,7 +40,7 @@ def test_the_crontab_runs_the_jobs_daily_and_the_close_and_never_two_at_once():
     assert "* * * * *" in text and "run_jobs --max-seconds 55" in text
     assert "5 0 * * *" in text and " daily" in text
     assert "15 0 1 * *" in text and "close_period" in text
-    assert "30 2 * * *" in text and "backup.sh" in text
+    assert "backup" not in text  # backups are the owner's own (Borg)
 
 
 def test_the_service_runs_as_the_site_user_with_gunicorn_and_the_env_file():
@@ -63,10 +71,12 @@ def test_apache_keeps_the_certificate_renewals_and_static_files_and_says_it_is_h
 
 def test_the_release_script_checks_backs_up_migrates_restarts_and_rolls_back():
     text = (DEPLOY / "release.sh").read_text()
-    order = [text.index(x) for x in ("backup.sh", "check --deploy", "migrate --noinput")] + [
-        text.rindex("systemctl restart")
-    ]
+    order = [
+        text.index(x) for x in ("before_release.sh", "git checkout --detach", "check --deploy", "migrate --noinput")
+    ] + [text.rindex("systemctl restart")]
     assert order == sorted(order)
+    assert text.index("before_release.sh") < text.index("switched=1")  # nothing changes without a backup
+    assert "BACKUP_DONE" in text
     assert "trap rollback ERR" in text and "git checkout --detach" in text and "rolled back" in text
 
 
@@ -104,3 +114,28 @@ def test_the_env_example_names_every_production_variable():
         "TEST_DATABASE_NAME",
     ):
         assert f"\n{name}=" in "\n" + text, name
+
+
+def test_requirements_server_is_requirements_with_pymysql_instead_of_mysqlclient():
+    root = Path(settings.BASE_DIR)
+
+    def pins(name):
+        return [x for x in (root / name).read_text().splitlines() if x and not x.startswith("#")]
+
+    base, server = pins("requirements.txt"), pins("requirements-server.txt")
+    assert [x for x in base if not x.startswith("mysqlclient")] == [x for x in server if not x.startswith("PyMySQL")]
+    assert any(x.startswith("mysqlclient==") for x in base) and any(x.startswith("PyMySQL==") for x in server)
+    assert not any(x.startswith("mysqlclient") for x in server)
+
+
+def test_pymysql_stands_in_for_mysqlclient_when_that_is_missing():
+    """A fresh Python without mysqlclient still gets a driver that Django accepts."""
+    code = (
+        "import sys; sys.modules['MySQLdb'] = None\n"
+        "import unicorn, MySQLdb\n"
+        "from django.db.backends.mysql import base\n"
+        "print(MySQLdb.__name__, MySQLdb.version_info >= (2, 2, 1))\n"
+    )
+    done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, cwd=settings.BASE_DIR)
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.split() == ["pymysql", "True"]

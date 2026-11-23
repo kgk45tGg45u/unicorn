@@ -1,0 +1,13 @@
+# For a server where mysqlclient cannot be built (no database development files): PyMySQL instead.
+# Same versions as requirements.txt otherwise (a test keeps the two lists equal).
+Django==5.2.19
+PyMySQL==1.1.1
+django-environ==0.14.0
+django-allauth[mfa]==65.22.1
+cryptography==50.0.2
+django-htmx==1.29.0
+django-csp==4.0
+PyYAML==6.0.4
+numpy==2.5.5
+scipy==1.18.1
+gunicorn==27.0.1
