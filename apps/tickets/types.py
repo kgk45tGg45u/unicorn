@@ -167,6 +167,22 @@ TYPES: dict[str, TicketType] = {
             creatable=False,
         ),
         _T("task_list", _("Make a list of tasks"), "confirmers", action="create_tasks", needs_brief=True),
+        _T(
+            "union_join",
+            _("Join a union"),
+            "council",
+            action="union_join",
+            unit_scope=True,
+            creatable=False,
+        ),
+        _T(
+            "union_leave",
+            _("Leave a union"),
+            "council",
+            action="union_leave",
+            unit_scope=True,
+            creatable=False,
+        ),
         _T("poll", _("Ask all members"), "referendum"),
         _T("referendum_request", _("Ask for a vote of all members"), "none"),
         _T(

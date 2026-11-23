@@ -21,7 +21,13 @@ AUTO_RULES["open_unit"] = _auto_open_unit
 CUSTOM_ROUTES: dict = {}
 
 # ticket type -> the kind of council decision that carries it
-COUNCIL_KINDS = {"close_unit": "other", "join_forces": "other", "council_decision": "other"}
+COUNCIL_KINDS = {
+    "close_unit": "other",
+    "join_forces": "other",
+    "council_decision": "other",
+    "union_join": "other",
+    "union_leave": "other",
+}
 
 
 def route(ticket):

@@ -49,7 +49,9 @@ class Ticket(models.Model):
     scope_unit = models.ForeignKey(
         "units.Unit", null=True, blank=True, on_delete=models.PROTECT, related_name="tickets"
     )
-    scope_union_id = models.PositiveIntegerField(null=True, blank=True)  # the foreign key comes with unions (P13)
+    scope_union = models.ForeignKey(
+        "bodies.Union", null=True, blank=True, on_delete=models.PROTECT, related_name="tickets"
+    )
     scope_area = models.CharField(max_length=12, blank=True)
 
     brief_md = models.TextField(blank=True)

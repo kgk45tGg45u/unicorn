@@ -88,6 +88,7 @@ INSTALLED_APPS = [
     "apps.macro",
     "apps.outside",
     "apps.logistics",
+    "apps.bodies",
 ]
 
 MIDDLEWARE = [

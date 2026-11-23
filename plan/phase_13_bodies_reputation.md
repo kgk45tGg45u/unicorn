@@ -21,7 +21,7 @@
 
 ---
 
-### - [ ] P13.T02 — Unions: forming, joining, leaving
+### - [x] P13.T02 — Unions: forming, joining, leaving
 
 **Read:** docs/05 section 7 ("Unions").
 **Files:** `apps/bodies/` (new app), `apps/bodies/models.py` (Union, UnionMembership, UnionRules), `apps/bodies/services.py`, `apps/tickets/types.py` (add `union_join`, `union_leave`), `apps/bodies/tests/test_unions.py`

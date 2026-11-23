@@ -203,7 +203,9 @@ class ExpertAdviser(models.Model):
 
     group = models.ForeignKey(PlanningGroup, on_delete=models.CASCADE, related_name="advisers")
     member = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="+")
-    nominated_by_union_id = models.PositiveIntegerField(null=True, blank=True)  # the FK comes with the unions (P13)
+    nominated_by_union = models.ForeignKey(
+        "bodies.Union", null=True, blank=True, on_delete=models.PROTECT, related_name="expert_nominations"
+    )
     statement = models.TextField(blank=True)
     approved = models.BooleanField(default=False)
 
