@@ -14,6 +14,7 @@
           {% blocktranslate with d=c.expected|date:"j M Y" %}Ready around {{ d }}{% endblocktranslate %}
         {% endif %}
       </p>
+      {% if c.product_like or c.deliverable is not None %}<p class="small mb-1"><span class="badge {% if c.deliverable %}text-bg-success{% else %}text-bg-secondary{% endif %}">{% if c.deliverable %}{% translate "Deliverable to you" %}{% else %}{% translate "Pickup only" %}{% endif %}</span></p>{% endif %}
       <p class="small text-muted mb-0">{% if c.count %}{% blocktranslate with a=c.average|floatformat:1 n=c.count %}{{ a }} ★ from {{ n }} reviews{% endblocktranslate %}{% else %}{% translate "No reviews yet" %}{% endif %}</p>
       {% include "partials/flag_button.html" with target_type="offer" target_id=c.offer.pk %}
     </div>

@@ -154,7 +154,7 @@ def _scarce_points(request, item):
     return points
 
 
-def _demand_point(request, item, member_area):
+def _demand_point(request, item, unit):
     from datetime import timedelta
 
     from apps.market.models import SearchMiss, WaitingListEntry
@@ -163,8 +163,16 @@ def _demand_point(request, item, member_area):
         return None
     start = timezone.localdate().replace(day=1) - timedelta(days=62)
     name = (item.name if item else request.get("name", "")).lower()
+    from apps.logistics import geo
+
+    misses = SearchMiss.objects.filter(text__icontains=name, month__gte=start) if name else SearchMiss.objects.none()
+    if unit is not None and unit.lat is not None:  # demand within the unit's cover area, in kilometres
+        near = [m for m in misses if geo.area_near(unit, m.area, unit.country or "DE")]
+        searched = bool(near)
+    else:
+        searched = misses.exists()
     seen = bool(name) and (
-        SearchMiss.objects.filter(text__icontains=name, month__gte=start).exists()
+        searched
         or (item is not None and WaitingListEntry.objects.filter(item=item, fulfilled_at__isnull=True).exists())
     )
     if seen:
@@ -192,7 +200,7 @@ def check(request: dict) -> CheckResult:
         points.append(CheckPoint("green", _("It is not on the plan's closure list.")))
     points.append(_euro_point(variant, request, trade))
     points.extend(_scarce_points(request, item))
-    demand = _demand_point(request, item, request.get("area", ""))
+    demand = _demand_point(request, item, unit)
     if demand is not None:
         points.append(demand)
     focus = variant.focus_items.filter(item=item) if item is not None else variant.focus_items.none()

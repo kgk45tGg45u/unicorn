@@ -145,13 +145,17 @@ def unit_reviews(request, slug):
 # --- The market ---
 
 
-def _card(offer):
+def _card(offer, member=None):
+    from apps.logistics import geo
+
     average, count = services.review_summary(offer)
+    postcode = getattr(member, "postcode", "") if member is not None else ""
     return {
         "offer": offer,
         "average": average,
         "count": count,
         "expected": services.expected_date(offer),
+        "deliverable": geo.covers(offer.unit, member.country, postcode) if postcode else None,
     }
 
 
@@ -162,7 +166,11 @@ def market_index(request):
     trade = request.GET.get("trade", "")
     town = request.GET.get("town", "")
     offers = services.search_offers(request.member, q, kind, trade, town)
-    cards = [_card(o) for o in offers[:60]]
+    cards = [_card(o, request.member) for o in offers[:300]]
+    deliverable_only = request.GET.get("deliverable") == "1"
+    if deliverable_only:
+        cards = [c for c in cards if c["deliverable"]]
+    cards = cards[:60]
     if q and not offers:
         needs.record_search_miss(request.member, q)  # counted by area; the searcher is never stored
     trades = sorted(
@@ -181,6 +189,7 @@ def market_index(request):
             "kind": kind,
             "trade": trade,
             "town": town,
+            "deliverable_only": deliverable_only,
             "trades": trades,
             "more": len(offers) > 60,
             "paused_for_euros": Offer.objects.filter(paused_for_euros=True).select_related("item", "unit")[:30],
@@ -188,12 +197,54 @@ def market_index(request):
     )
 
 
+def _shipment_action(request, unit, member, action):
+    """The unit's steps for orders that travel: confirm the mode, send, hand to a point, courier delivered, settle."""
+    from apps.logistics import services as logistics
+    from apps.logistics.models import Shipment
+
+    shipment = get_object_or_404(Shipment, pk=_int(request))
+    p = request.POST
+    try:
+        if action == "ship_confirm":
+            logistics.confirm_mode(shipment, member, p.get("mode") or None)
+        elif action == "ship_send":
+            logistics.mark_sent(shipment, member, p.get("tracking", ""))
+        elif action == "ship_point":
+            logistics.hand_to_point(shipment, member)
+        elif action == "ship_delivered":
+            logistics.courier_delivered(shipment, member)
+        elif action == "ship_resolve":
+            logistics.resolve(shipment, member, p.get("how", ""), p.get("reason", ""))
+        else:
+            raise Http404
+    except logistics.LogisticsError as e:
+        raise services.MarketError(str(e)) from None
+
+
+def _delivery_from(request, offer):
+    """What the order form says about delivery: pickup, a pickup point, or delivery to a postcode."""
+    from apps.logistics.models import PickupPoint
+
+    choice = request.POST.get("delivery", "pickup")
+    if choice == "pickup":
+        return None
+    if choice.startswith("point:"):
+        point = PickupPoint.objects.filter(pk=choice[6:], active=True).first()
+        return {"mode": "pickup", "point": point}
+    return {
+        "mode": "deliver",
+        "postcode": request.POST.get("postcode", ""),
+        "country": request.POST.get("country", "DE"),
+    }
+
+
 @login_required
 @require_POST
 def order_offer(request, pk):
     offer = get_object_or_404(Offer, pk=pk)
     try:
-        line = services.place_order(request.member, offer, request.POST.get("quantity", ""))
+        delivery = _delivery_from(request, offer)
+        line = services.place_order(request.member, offer, request.POST.get("quantity", ""), delivery=delivery)
         every = request.POST.get("repeat", "")
         if every in ("week", "month"):
             first = services._next_standing_date(services.today(), every)
@@ -335,9 +386,24 @@ def unit_work(request, slug):
     to_confirm = InputRequest.objects.filter(provided_by=member, source="own_free", status="open").select_related(
         "item", "production_order__offer__unit"
     )
-    ready = OrderLine.objects.filter(
-        offer__unit=unit, status__in=[OrderLine.READY, OrderLine.FROM_STOCK]
-    ).select_related("offer__item", "order__buyer")
+    ready = list(
+        OrderLine.objects.filter(offer__unit=unit, status__in=[OrderLine.READY, OrderLine.FROM_STOCK])
+        .exclude(order__kind="outside")
+        .select_related("offer__item", "order__buyer", "shipment")
+    )
+    for line in ready:
+        line.ship = getattr(line, "shipment", None)
+    from apps.logistics.models import Shipment
+
+    courier_jobs = Shipment.objects.filter(courier_line__offer__unit=unit, status="sent").select_related(
+        "line__offer__item"
+    )
+    shipments = (
+        Shipment.objects.filter(line__offer__unit=unit)
+        .exclude(mode__in=["pickup"])
+        .select_related("line__offer__item", "carrier", "pickup_point", "line__order__buyer")
+        .exclude(status="delivered")[:30]
+    )
     now = timezone.now()
     slots = list(
         ServiceSlot.objects.filter(offer__unit=unit, status__in=["open", "full"])
@@ -358,6 +424,8 @@ def unit_work(request, slug):
             "to_deliver": to_deliver,
             "to_confirm": to_confirm,
             "ready": ready,
+            "shipments": shipments,
+            "courier_jobs": courier_jobs,
             "slots": slots,
             "product_offers": [o for o in offers if not o.is_service],
             "service_offers": [o for o in offers if o.is_service],
@@ -409,6 +477,8 @@ def unit_work_action(request, slug, action):
                 services.record_production_hours(member, po, day, minutes)
         elif action == "hand_over":
             services.hand_over(get_object_or_404(OrderLine, pk=_int(request), offer__unit=unit), member)
+        elif action.startswith("ship_"):
+            _shipment_action(request, unit, member, action)
         elif action in ("confirm_input", "deliver_input", "receive_input"):
             req = get_object_or_404(InputRequest, pk=_int(request))
             if action == "confirm_input":

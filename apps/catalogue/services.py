@@ -660,7 +660,12 @@ JOIN_FORCES_QUIET_MONTHS = 6
 
 
 def _near(a, b) -> bool:
-    """Until P12 adds coordinates: the same town, or the same first two postcode digits."""
+    """Within `governance.units.join_forces_km` kilometres; without coordinates: the same town or postcode area."""
+    from apps.logistics import geo
+
+    close = geo.within_km(a, b, get_param("governance.units.join_forces_km"))
+    if close is not None:
+        return close
     if a.town and b.town and a.town.strip().lower() == b.town.strip().lower():
         return True
     pa, pb = a.postcode.replace(" ", ""), b.postcode.replace(" ", "")

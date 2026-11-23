@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Pickup points" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Pickup points" %}</h1>
+<ul class="list-group">{% for p in points %}<li class="list-group-item"><strong>{{ p.name }}</strong> · {{ p.address_public }}, {{ p.postcode }}<br><span class="small text-muted">{{ p.opening_notes }}</span></li>{% empty %}<li class="list-group-item text-muted">{% translate "There are no pickup points yet." %}</li>{% endfor %}</ul>
+{% endblock %}

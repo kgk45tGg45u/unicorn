@@ -32,11 +32,29 @@ def checkout(request, pk):
             order = services.place_outside_order(
                 offer, p.get("quantity", ""), p.get("name", ""), p.get("email", ""), p.get("address", ""),
                 p.get("country", ""), bool(p.get("read_info")), bool(p.get("consent")),
+                delivery=_delivery(p),
             )  # fmt: skip
             return redirect("outside:order", token=order.public_token)
         except services.OutsideError as e:
             messages.error(request, str(e))
     return render(request, "outside/checkout.html", {"offer": offer, "profile": profile})
+
+
+def _delivery(p):
+    if p.get("delivery") != "deliver":
+        return None
+    return {"mode": "deliver", "postcode": p.get("postcode", ""), "country": p.get("country", "DE") or "DE"}
+
+
+def received(request, token):
+    order = _order_by_token(token)
+    if request.method == "POST":
+        try:
+            services.customer_received(order)
+            messages.success(request, _("Thank you. We are glad it arrived."))
+        except services.OutsideError as e:
+            messages.error(request, str(e))
+    return redirect("outside:order", token=token)
 
 
 def _order_by_token(token):
@@ -59,6 +77,7 @@ def order_page(request, token):
             "iban": services.seller_iban(profile) if profile else "",
             "can_withdraw": services.withdrawal_open(order),
             "invoice": getattr(order, "invoice", None),
+            "shipment": order.shipments.first(),
         },
     )
 

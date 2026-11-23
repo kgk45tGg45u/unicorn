@@ -38,6 +38,14 @@ def offer_order_box(context, offer):
         box["slots"] = services.open_slots(offer)
     else:
         box["expected"] = services.expected_date(offer)
+        from apps.logistics import geo
+        from apps.logistics import services as logistics
+
+        box["points"] = logistics.points_for(offer.unit)
+        postcode = getattr(member, "postcode", "") if member else ""
+        box["member_postcode"] = postcode
+        box["member_country"] = (getattr(member, "country", "") or "DE") if member else "DE"
+        box["can_deliver"] = bool(postcode) and geo.covers(offer.unit, box["member_country"], postcode)
     return box
 
 

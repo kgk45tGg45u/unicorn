@@ -18,6 +18,7 @@
       {% for t in trades %}<option value="{{ t }}"{% if trade == t %} selected{% endif %}>{{ t }}</option>{% endfor %}
     </select></div>
   <div class="col-6 col-md-2"><label class="visually-hidden" for="town">{% translate "Town" %}</label><input class="form-control" id="town" name="town" value="{{ town }}" placeholder="{% translate 'Town' %}"></div>
+  <div class="col-6 col-md-2 align-self-center"><div class="form-check"><input class="form-check-input" type="checkbox" id="dl" name="deliverable" value="1"{% if deliverable_only %} checked{% endif %}><label class="form-check-label" for="dl">{% translate "Deliverable to me" %}</label></div></div>
   <div class="col-6 col-md-2"><button class="btn btn-primary w-100" type="submit">{% translate "Search" %}</button></div>
 </form>
 <p class="small text-muted">{% translate "Offers in your area come first, then the rest in alphabetical order. The list is never ordered by price or by stars." %}</p>

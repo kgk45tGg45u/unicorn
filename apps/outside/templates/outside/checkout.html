@@ -6,7 +6,8 @@
 <p>{{ offer.outside_price }} {{ offer.outside_currency }} · {% translate "Sold by" %} {{ profile.trader_name }}</p>
 <form method="post" class="mb-4" style="max-width:34rem">{% csrf_token %}
   <div class="mb-3"><label class="form-label" for="q">{% translate "How many" %}</label><input class="form-control" id="q" name="quantity" value="1" inputmode="decimal"></div>
-  <p class="small text-muted">{% translate "Delivery: pickup." %}</p>
+  <div class="mb-3"><label class="form-label" for="dl">{% translate "How do you get it?" %}</label><select class="form-select" id="dl" name="delivery"><option value="pickup">{% translate "Pick up" %}</option><option value="deliver">{% translate "Deliver to me (parcel carrier)" %}</option></select></div>
+  <div class="mb-3"><label class="form-label" for="pc">{% translate "Postcode for delivery" %}</label><input class="form-control" id="pc" name="postcode" style="max-width:10rem"></div>
   <div class="mb-3"><label class="form-label" for="n">{% translate "Your name" %}</label><input class="form-control" id="n" name="name" autocomplete="name"></div>
   <div class="mb-3"><label class="form-label" for="e">{% translate "Your email address" %}</label><input class="form-control" id="e" name="email" type="email" autocomplete="email"></div>
   <div class="mb-3"><label class="form-label" for="a">{% translate "Your address" %}</label><textarea class="form-control" id="a" name="address" rows="2" autocomplete="street-address"></textarea></div>

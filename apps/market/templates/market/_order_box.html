@@ -36,7 +36,17 @@
               <option value="month">{% translate "Every month" %}</option>
             </select>
           </div>
-          <div class="col-12 col-md-4"><span class="text-muted small">{% translate "Pick it up at the unit." %}</span></div>
+          <div class="col-12 col-md-6">
+            <label class="form-label" for="delivery">{% translate "How do you get it?" %}</label>
+            <select class="form-select" id="delivery" name="delivery">
+              <option value="pickup">{% translate "Pick it up at the unit" %}</option>
+              {% for p in points %}<option value="point:{{ p.pk }}">{% blocktranslate with n=p.name %}Pick up at {{ n }}{% endblocktranslate %}</option>{% endfor %}
+              <option value="deliver">{% translate "Deliver to me" %}</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-3"><label class="form-label" for="postcode">{% translate "Postcode for delivery" %}</label><input class="form-control" id="postcode" name="postcode" value="{{ member_postcode }}"></div>
+          <div class="col-6 col-md-2"><label class="form-label" for="country">{% translate "Country" %}</label><input class="form-control" id="country" name="country" maxlength="2" value="{{ member_country }}"></div>
+          <div class="col-12 small text-muted">{% translate "A courier costs UNIQ, as every service does. A parcel carrier costs you no UNIQ: the trade fund pays it. The unit confirms how it is sent." %}</div>
           <div class="col-12"><button class="btn btn-primary" type="submit">{% translate "Order" %}</button></div>
         </form>
       {% endif %}

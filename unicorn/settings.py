@@ -87,6 +87,7 @@ INSTALLED_APPS = [
     "apps.tradefund",
     "apps.macro",
     "apps.outside",
+    "apps.logistics",
 ]
 
 MIDDLEWARE = [

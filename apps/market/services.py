@@ -76,7 +76,7 @@ def _ordered_this_month(member, item):
     return total or Decimal("0")
 
 
-def place_order(member, offer, quantity, note="") -> OrderLine:
+def place_order(member, offer, quantity, note="", delivery=None) -> OrderLine:
     """Order a product: the UNIQ are held at today's price, then the line goes to the shelf or into production."""
     from apps.macro import lights
 
@@ -134,7 +134,19 @@ def place_order(member, offer, quantity, note="") -> OrderLine:
         unit_services.touch(offer.unit)
         _fulfil(line)
         line.refresh_from_db()
+        if delivery:  # pickup, or a courier or carrier (docs/06 section 8); costs the buyer no UNIQ for a carrier
+            from apps.logistics import services as logistics
+
+            try:
+                logistics.arrange(line, member, delivery)
+            except logistics.LogisticsError as e:
+                raise MarketError(str(e)) from None
+            line.refresh_from_db()
         return line
+
+
+# Functions called with (line) after any line is delivered and paid. Logistics settles courier lines with it.
+DELIVERED_HOOKS: list = []
 
 
 def _fulfil(line):
@@ -875,11 +887,22 @@ def hand_over(line, worker):
         _need_worker(worker, line.offer.unit)
         if line.status not in (OrderLine.READY, OrderLine.FROM_STOCK):
             raise MarketError(_("This order is not ready to be handed over."))
+        shipment = getattr(line, "shipment", None)
+        if shipment is not None and shipment.mode != "pickup":
+            raise MarketError(_("This order is sent or goes to a pickup point. Please use its shipping steps."))
+        return mark_arrived(line, worker.number)
+
+
+def mark_arrived(line, actor_ref, auto_confirm=True):
+    """The product is with the buyer (picked up, or delivered): the buyer is asked to confirm. Caller holds the lock."""
+    with transaction.atomic():
         line.status = OrderLine.HANDED_OVER
         line.handed_over_at = timezone.now()
         line.save(update_fields=["status", "handed_over_at"])
-        audit.record(worker.number, "order.handed_over", line)
+        audit.record(actor_ref, "order.handed_over", line)
         hours = get_param("market.delivery_confirm_hours")
+        if not auto_confirm or line.order.buyer_id is None:
+            return line
         enqueue(
             "market.auto_confirm_line",
             {"line": line.pk},
@@ -917,6 +940,8 @@ def _deliver(line, actor_ref):
     line.save(update_fields=["status", "delivered_at"])
     audit.record(actor_ref, "order.delivered", line, total=str(line.total_uniq))
     unit_services.touch(line.offer.unit)
+    for hook in DELIVERED_HOOKS:
+        hook(line)
     return line
 
 

@@ -43,10 +43,25 @@
 {% if not to_confirm and not to_deliver and not needs %}<p class="text-muted">{% translate "No inputs to handle." %}</p>{% endif %}
 
 <h2 class="h5 mt-4">{% translate "Ready to hand over" %}</h2>
-{% for line in ready %}
+{% for line in ready %}{% if not line.ship or line.ship.mode == "pickup" %}
   <div class="mb-2">{% blocktranslate with q=line.quantity|qty i=line.offer.item.name b=line.order.buyer.display_name %}{{ q }} × {{ i }} for {{ b }}{% endblocktranslate %}
     <form class="d-inline" method="post" action="{% url 'market:work_action' unit.slug 'hand_over' %}">{% csrf_token %}<input type="hidden" name="id" value="{{ line.pk }}"><button class="btn btn-sm btn-primary" type="submit">{% translate "Handed over" %}</button></form></div>
-{% empty %}<p class="text-muted">{% translate "Nothing is waiting to be handed over." %}</p>{% endfor %}
+{% endif %}{% empty %}<p class="text-muted">{% translate "Nothing is waiting to be handed over." %}</p>{% endfor %}
+
+<h2 class="h5 mt-4">{% translate "Shipping" %}</h2>
+{% for s in shipments %}
+  <div class="card mb-2"><div class="card-body py-2">
+    {{ s.line.quantity|qty }} × {{ s.line.offer.item.name }} · <span class="badge text-bg-secondary">{{ s.get_mode_display }}</span> <span class="badge text-bg-light">{{ s.get_status_display }}</span>
+    {% if s.mode == "capitalist_carrier" %}<span class="small text-muted">{{ s.eur_cost }} € {% translate "paid by the trade fund" %}</span>{% elif s.mode == "unicorn_courier" %}<span class="small text-muted">{{ s.uniq_cost }} UNIQ</span>{% endif %}
+    {% if s.problem %}<div class="text-danger small">{{ s.problem }}</div>{% endif %}
+    <div class="d-flex flex-wrap gap-2 mt-1">
+    {% if s.status == "planned" and not s.confirmed_by_responsible %}<form method="post" action="{% url 'market:work_action' unit.slug 'ship_confirm' %}">{% csrf_token %}<input type="hidden" name="id" value="{{ s.pk }}"><button class="btn btn-sm btn-primary">{% translate "Confirm how it is sent" %}</button></form>{% endif %}
+    {% if s.status == "planned" and s.confirmed_by_responsible and s.mode == "pickup_point" %}<form method="post" action="{% url 'market:work_action' unit.slug 'ship_point' %}">{% csrf_token %}<input type="hidden" name="id" value="{{ s.pk }}"><button class="btn btn-sm btn-primary">{% translate "Brought to the pickup point" %}</button></form>{% endif %}
+    {% if s.status == "planned" and s.confirmed_by_responsible and s.mode == "unicorn_courier" or s.status == "planned" and s.confirmed_by_responsible and s.mode == "capitalist_carrier" %}<form method="post" class="d-flex gap-1" action="{% url 'market:work_action' unit.slug 'ship_send' %}">{% csrf_token %}<input type="hidden" name="id" value="{{ s.pk }}">{% if s.mode == "capitalist_carrier" %}<input class="form-control form-control-sm" name="tracking" placeholder="{% translate 'Tracking number' %}">{% endif %}<button class="btn btn-sm btn-primary">{% translate "Sent" %}</button></form>{% endif %}
+    {% if s.status == "failed" %}<form method="post" class="d-flex gap-1" action="{% url 'market:work_action' unit.slug 'ship_resolve' %}">{% csrf_token %}<input type="hidden" name="id" value="{{ s.pk }}"><select class="form-select form-select-sm" name="how"><option value="replace">{% translate "Replace it" %}</option><option value="refund">{% translate "Refund the buyer" %}</option></select><input class="form-control form-control-sm" name="reason" placeholder="{% translate 'Reason' %}"><button class="btn btn-sm btn-outline-primary">{% translate "Settle" %}</button></form>{% endif %}
+    </div></div></div>
+{% empty %}<p class="text-muted">{% translate "Nothing is waiting to be shipped." %}</p>{% endfor %}
+{% for s in courier_jobs %}<div class="mb-2">{% blocktranslate with i=s.line.offer.item.name %}Deliver {{ i }}{% endblocktranslate %} <form class="d-inline" method="post" action="{% url 'market:work_action' unit.slug 'ship_delivered' %}">{% csrf_token %}<input type="hidden" name="id" value="{{ s.pk }}"><button class="btn btn-sm btn-success">{% translate "Delivered" %}</button></form></div>{% endfor %}
 
 <h2 class="h5 mt-4">{% translate "Sessions and bookings" %}</h2>
 {% for slot in slots %}

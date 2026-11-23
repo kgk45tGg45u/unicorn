@@ -5,7 +5,7 @@
 
 ---
 
-### - [ ] P12.T01 — Postcode coordinates
+### - [x] P12.T01 — Postcode coordinates
 
 **Files:** `apps/logistics/` (new app), `apps/logistics/models.py` (PostcodePoint), `apps/logistics/management/commands/load_postcodes.py`, `apps/logistics/tests/fixtures/DE_sample.txt`, `apps/logistics/tests/test_postcodes.py`, `THIRD_PARTY.md` (the attribution)
 
@@ -20,7 +20,7 @@
 
 ---
 
-### - [ ] P12.T02 — Cover areas
+### - [x] P12.T02 — Cover areas
 
 **Read:** docs/06 section 8 ("Cover area of a unit").
 **Files:** `apps/logistics/geo.py`, `apps/market/views.py`, `apps/logistics/tests/test_cover.py`
@@ -35,7 +35,7 @@
 
 ---
 
-### - [ ] P12.T03 — Pickup points
+### - [x] P12.T03 — Pickup points
 
 **Files:** `apps/logistics/models.py` (PickupPoint), `apps/logistics/views.py`, `apps/market/services.py`, `apps/logistics/tests/test_pickup.py`
 
@@ -48,7 +48,7 @@
 
 ---
 
-### - [ ] P12.T04 — Unicorn couriers
+### - [x] P12.T04 — Unicorn couriers
 
 **Read:** docs/06 section 8 (the table, row `unicorn_courier`).
 **Files:** `apps/logistics/models.py` (CourierOffer), `apps/logistics/quotes.py`, `apps/market/services.py`, `apps/logistics/tests/test_courier.py`
@@ -70,7 +70,7 @@
 
 ---
 
-### - [ ] P12.T05 — Capitalist carriers
+### - [x] P12.T05 — Capitalist carriers
 
 **Read:** docs/06 section 8 (row `capitalist_carrier`); docs/07 section 3.
 **Files:** `apps/logistics/models.py` (Carrier, Shipment), `apps/logistics/quotes.py`, `apps/logistics/services.py`, `apps/logistics/tests/test_carrier.py`
@@ -94,7 +94,7 @@
 
 ---
 
-### - [ ] P12.T06 — Delivery choice and confirmation
+### - [x] P12.T06 — Delivery choice and confirmation
 
 **Files:** `apps/market/views.py`, `apps/market/templates/market/checkout.html`, `apps/logistics/services.py`, `apps/logistics/tests/test_delivery_flow.py`
 
@@ -110,7 +110,7 @@
 
 ---
 
-### - [ ] P12.T07 — Sending abroad
+### - [x] P12.T07 — Sending abroad
 
 **Read:** docs/07 section 11.
 **Files:** `apps/logistics/services.py`, `apps/logistics/templates/logistics/abroad_notice.html`, `apps/logistics/tests/test_abroad.py`

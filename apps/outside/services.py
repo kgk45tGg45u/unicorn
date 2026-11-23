@@ -152,7 +152,7 @@ def seller_iban(profile) -> str:
     return member_services.get_private(profile.member).get("iban", "") if profile.show_iban else ""
 
 
-def place_outside_order(offer, quantity, name, email, address, country, read_info, consent):
+def place_outside_order(offer, quantity, name, email, address, country, read_info, consent, delivery=None):
     """An outside customer orders without an account. The order waits until the seller confirms the payment."""
     from apps.catalogue import services as catalogue
     from apps.market.models import Order, OrderLine
@@ -201,6 +201,13 @@ def place_outside_order(offer, quantity, name, email, address, country, read_inf
             value_at_order=cur_hours(offer.value_total * quantity),
             due_date=due,
         )
+        if delivery and delivery.get("mode") == "deliver":  # a carrier: couriers are paid in UNIQ, outsiders have none
+            from apps.logistics import services as logistics
+
+            try:
+                logistics.arrange(line, None, delivery)
+            except logistics.LogisticsError as e:
+                raise OutsideError(str(e)) from None
         audit.record("outside", "outside.order_placed", order, offer=offer.pk, total=str(total_of(line)))
         unit_services.touch(offer.unit)
         _confirmation_mail(order, line, profile, email.strip())
@@ -401,6 +408,20 @@ def deliver(line, seller):
         audit.record(seller.number, "outside.delivered", line, hours=str(line.value_at_order))
         unit_services.touch(line.offer.unit)
         return line
+
+
+def customer_received(order):
+    """The customer confirms through the link in the email that the parcel arrived (P12.T06)."""
+    from apps.logistics.models import Shipment
+
+    shipment = Shipment.objects.filter(order=order).first()
+    if shipment is None or shipment.status != "sent":
+        raise OutsideError(_("There is no parcel on its way for this order."))
+    line = order.lines.get()
+    deliver(line, line.seller)
+    shipment.status, shipment.delivered_at = "delivered", timezone.now()
+    shipment.save(update_fields=["status", "delivered_at"])
+    return shipment
 
 
 def _first_of(year, month):
