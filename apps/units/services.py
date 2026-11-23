@@ -5,6 +5,8 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 
 from apps.core import audit
+from apps.core.rotation import next_in_rotation
+from apps.core.tally import count
 from apps.members import services as member_services
 from apps.rules.services import get_param
 
@@ -242,8 +244,6 @@ def vote(decision, member, choice):
 
 def tally(decision):
     """Count the votes of the current council and close the decision. Safe to call twice."""
-    from fractions import Fraction
-
     from . import council_rules
     from .models import CouncilDecision
 
@@ -253,19 +253,20 @@ def tally(decision):
             return decision
         council_ids = set(council_members(decision.unit).values_list("member_id", flat=True))
         votes = [v.vote for v in decision.votes.all() if v.member_id in council_ids]
-        yes, no, abstain = votes.count("yes"), votes.count("no"), votes.count("abstain")
         rules = council_rules.current(decision.unit)
         rule = rules.decision_rule if rules else get_param("governance.council.decision_rule")
         quorum = rules.quorum if rules else get_param("governance.council.quorum")
-        result = {"yes": yes, "no": no, "abstain": abstain, "council_size": len(council_ids), "rule": rule}
-        if len(votes) < quorum * len(council_ids) or not votes:
-            approved, result["reason"] = False, "quorum"
-        elif rule == "majority":
-            approved = yes > no
-        elif rule == "two_thirds":
-            approved = yes + no > 0 and Fraction(yes, yes + no) >= Fraction(2, 3)
-        else:
-            approved = no == 0 and yes >= 1
+        counted = count(votes, rule, quorum, len(council_ids))
+        result = {
+            "yes": counted.yes,
+            "no": counted.no,
+            "abstain": counted.abstain,
+            "council_size": len(council_ids),
+            "rule": rule,
+        }
+        if not counted.quorum_met:
+            result["reason"] = "quorum"
+        approved = counted.approved
         return _finish(decision, approved, result)
 
 
@@ -331,11 +332,8 @@ def days_responsible(unit, member, now=None) -> int:
 
 def _next_responsible(unit, exclude):
     """The active council member with the fewest days as responsible; ties go to the earliest joined."""
-    candidates = [m for m in council_members(unit) if m.member_id not in exclude]
-    if not candidates:
-        return None
-    candidates.sort(key=lambda m: (days_responsible(unit, m.member), m.joined_at, m.pk))
-    return candidates[0].member
+    candidates = [(m.member, m.joined_at) for m in council_members(unit)]
+    return next_in_rotation(candidates, lambda member: days_responsible(unit, member), exclude)
 
 
 def _notify(member, subject, body):

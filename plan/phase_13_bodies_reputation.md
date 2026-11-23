@@ -5,7 +5,7 @@
 
 ---
 
-### - [ ] P13.T01 — Shared counting and rotation helpers
+### - [x] P13.T01 — Shared counting and rotation helpers
 
 **Files:** `apps/core/tally.py`, `apps/core/rotation.py`, `apps/units/services.py` (use them), `apps/core/tests/test_tally.py`, `apps/core/tests/test_rotation.py`
 
