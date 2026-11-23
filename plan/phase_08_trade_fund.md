@@ -144,7 +144,7 @@
 
 ---
 
-### - [ ] P08.T07 — Buying from capitalism
+### - [x] P08.T07 — Buying from capitalism
 
 **Read:** docs/07 section 3; docs/03 section 8 (make or buy).
 **Files:** `apps/tradefund/models.py` (PurchaseRequest, GroupTool), `apps/tradefund/purchases.py`, `apps/tradefund/views.py`, `apps/tradefund/templates/tradefund/purchase*.html`, `apps/tradefund/jobs.py`, `apps/tradefund/tests/test_purchases.py`

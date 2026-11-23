@@ -7,7 +7,7 @@ from apps.core import audit
 
 from . import types
 
-# type -> function(ticket) -> bool: True when the automatic rule is satisfied. P08 adds "purchase".
+# type -> function(ticket) -> bool: True when the automatic rule is satisfied. The trade fund adds "purchase".
 AUTO_RULES: dict = {}
 
 
@@ -16,6 +16,9 @@ def _auto_open_unit(ticket) -> bool:
 
 
 AUTO_RULES["open_unit"] = _auto_open_unit
+
+# type -> function(ticket) -> bool: True when the app routed the ticket itself (P08 adds "purchase" for big amounts).
+CUSTOM_ROUTES: dict = {}
 
 # ticket type -> the kind of council decision that carries it
 COUNCIL_KINDS = {"close_unit": "other", "join_forces": "other", "council_decision": "other"}
@@ -32,6 +35,9 @@ def route(ticket):
         method = info.method
         if ticket.type == "parameter_change":
             return _route_parameter(ticket)
+        custom = CUSTOM_ROUTES.get(ticket.type)
+        if custom is not None and custom(ticket):
+            return ticket
         if method == "council" and ticket.scope == "unit" and ticket.scope_unit_id:
             _start_council(ticket)
         elif method == "confirmers":

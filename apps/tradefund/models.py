@@ -197,3 +197,104 @@ class TrustEvent(AppendOnlyModel):
 
     def __str__(self):
         return f"{self.holder.member.number} {self.kind} {self.delta}"
+
+
+class PurchaseRequest(models.Model):
+    """A request to buy something from capitalism with fund euros (docs/07 section 3)."""
+
+    SOURCES = [
+        ("recipe_input", _("an input of a recipe")),
+        ("tool", _("a tool")),
+        ("adhoc", _("something else")),
+        ("bill", _("a member's bill")),
+        ("operations", _("an operating cost")),
+    ]
+    METHODS = [
+        ("reimburse", _("the requester buys and is reimbursed")),
+        ("holder_pays_seller", _("a holder pays the seller")),
+        ("pooled_to_buyer", _("holders send parts to a buyer")),
+    ]
+    STATUSES = [
+        ("checking", _("being checked")),
+        ("approved", _("approved")),
+        ("waiting_for_euros", _("waiting for euros")),
+        ("paying", _("being paid")),
+        ("bought", _("bought")),
+        ("delivered", _("delivered")),
+        ("closed", _("closed")),
+        ("rejected", _("rejected")),
+    ]
+
+    requester = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="purchase_requests")
+    unit = models.ForeignKey("units.Unit", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    item = models.ForeignKey("catalogue.Item", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    description = models.CharField(max_length=200)
+    why = models.CharField(max_length=300, blank=True)
+    quantity = models.DecimalField(max_digits=14, decimal_places=4, default=1)
+    est_price = models.DecimalField(max_digits=14, decimal_places=2)  # for the whole quantity
+    currency = models.CharField(max_length=3, default="EUR")
+    seller = models.CharField(max_length=200, blank=True)  # a name or a link
+    payee_external = models.ForeignKey(ExternalPayee, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    deliver_to_unit = models.ForeignKey("units.Unit", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    deliver_to_member = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    source = models.CharField(max_length=14, choices=SOURCES, default="adhoc")
+    purchase_need = models.ForeignKey(
+        "market.PurchaseNeed", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    offer_tool = models.ForeignKey(
+        "catalogue.OfferTool", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    ticket = models.ForeignKey("tickets.Ticket", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    pay_method = models.CharField(max_length=20, choices=METHODS, blank=True)
+    buyer = models.ForeignKey(Holder, null=True, blank=True, on_delete=models.PROTECT, related_name="purchases_to_make")
+    buyer_deadline = models.DateTimeField(null=True, blank=True)  # volunteers may come forward until then
+    funded = models.BooleanField(default=False)  # the money reached the buyer
+    status = models.CharField(max_length=20, choices=STATUSES, default="checking")
+    status_note = models.CharField(max_length=300, blank=True)
+    receipt = models.ForeignKey(
+        "members.PrivateFile", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    actual_price = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    change_due = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-id"]
+
+    def __str__(self):
+        return f"purchase {self.pk}: {self.description} ({self.status})"
+
+
+class BuyerVolunteer(models.Model):
+    """A holder who offers to buy for a pooled purchase. The highest trust wins when the time is up."""
+
+    purchase = models.ForeignKey(PurchaseRequest, on_delete=models.CASCADE, related_name="volunteers")
+    holder = models.ForeignKey(Holder, on_delete=models.PROTECT, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["purchase", "holder"], name="one_volunteering_each")]
+
+    def __str__(self):
+        return f"{self.holder} volunteers for {self.purchase_id}"
+
+
+class GroupTool(models.Model):
+    """A tool bought with fund euros. It belongs to the group and is lent to a unit (docs/07 section 3, step 5)."""
+
+    STATUSES = [("in_use", _("in use")), ("returned", _("returned")), ("broken", _("broken"))]
+
+    item = models.ForeignKey("catalogue.Item", on_delete=models.PROTECT, related_name="+")
+    purchase_request = models.ForeignKey(PurchaseRequest, on_delete=models.PROTECT, related_name="tools")
+    lent_to_unit = models.ForeignKey("units.Unit", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    euro_price = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=3, default="EUR")
+    lifetime_uses = models.DecimalField(max_digits=14, decimal_places=4, default=0)
+    acquired_at = models.DateTimeField()
+    status = models.CharField(max_length=10, choices=STATUSES, default="in_use")
+
+    def __str__(self):
+        return f"group tool {self.item.name}"

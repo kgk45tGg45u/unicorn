@@ -326,7 +326,14 @@ def _purchase_need_for(po, row, due):
         .filter(unit=po.offer.unit, item=row.item, month=month, status="open", currency=row.currency)
         .first()
     )
-    return need or PurchaseNeed.objects.create(unit=po.offer.unit, item=row.item, month=month, currency=row.currency)
+    if need is None:
+        need = PurchaseNeed.objects.create(unit=po.offer.unit, item=row.item, month=month, currency=row.currency)
+        if month <= catalogue.first_of_month(timezone.localdate()):
+            # due sooner than the outside-input days: the trade fund turns it into a request at once (P08.T07)
+            from apps.core.jobs import enqueue
+
+            enqueue("tradefund.purchase_lists", {}, dedupe_key=f"purchase-lists-need-{need.pk}")
+    return need
 
 
 def _refresh_need(need):

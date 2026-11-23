@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ pr.description }} · Unicorn{% endblock %}
+{% block content %}
+<h1>{{ pr.description }}</h1>
+<dl class="row">
+  <dt class="col-sm-3">{% translate "Estimated price" %}</dt><dd class="col-sm-9">{{ pr.est_price }} {{ pr.currency }}</dd>
+  <dt class="col-sm-3">{% translate "Status" %}</dt><dd class="col-sm-9">{{ pr.get_status_display }}{% if pr.status_note %} · {{ pr.status_note }}{% endif %}</dd>
+  {% if pr.ticket %}<dt class="col-sm-3">{% translate "Ticket" %}</dt><dd class="col-sm-9"><a href="{% url 'tickets:detail' pr.ticket.number %}">{{ pr.ticket.number }}</a></dd>{% endif %}
+  {% if pr.pay_method %}<dt class="col-sm-3">{% translate "How it is paid" %}</dt><dd class="col-sm-9">{{ pr.get_pay_method_display }}</dd>{% endif %}
+  {% if pr.actual_price %}<dt class="col-sm-3">{% translate "Price paid" %}</dt><dd class="col-sm-9">{{ pr.actual_price }} {{ pr.currency }}</dd>{% endif %}
+</dl>
+{% if can_volunteer %}<form method="post" class="mb-3">{% csrf_token %}<input type="hidden" name="do" value="volunteer"><button class="btn btn-outline-primary" type="submit">{% translate "I can buy it" %}</button></form>{% endif %}
+{% if can_report_bought %}<form method="post" enctype="multipart/form-data" class="mb-3">{% csrf_token %}<input type="hidden" name="do" value="bought">
+  <div class="mb-2"><label class="form-label" for="r">{% translate "Receipt or invoice (PDF, JPEG or PNG)" %}</label><input class="form-control" type="file" id="r" name="receipt"></div>
+  <div class="mb-2"><label class="form-label" for="a">{% translate "Price paid" %}</label><input class="form-control" id="a" name="actual_price" inputmode="decimal" style="max-width:12rem"></div>
+  <button class="btn btn-primary" type="submit">{% translate "I bought it" %}</button></form>{% endif %}
+{% if can_deliver %}<form method="post">{% csrf_token %}<input type="hidden" name="do" value="delivered"><button class="btn btn-success" type="submit">{% translate "It arrived" %}</button></form>{% endif %}
+{% endblock %}

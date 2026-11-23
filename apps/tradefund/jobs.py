@@ -1,6 +1,6 @@
 from apps.core.jobs import job
 
-from . import fx, payments, trust
+from . import fx, payments, purchases, trust
 
 
 @job("tradefund.fx")
@@ -28,3 +28,15 @@ def trust_monthly(payload):
 def caps(payload):
     """Daily. A holder above their cap is asked to pass the excess on; one open request at a time."""
     trust.move_excess()
+
+
+@job("tradefund.purchase_lists")
+def purchase_lists(payload):
+    """Daily. Safe to run twice: a need that became a request is not turned into another."""
+    purchases.purchase_lists()
+
+
+@job("tradefund.purchases")
+def purchases_waiting(payload):
+    """Daily. Retries purchases waiting for euros and picks buyers whose time is up."""
+    purchases.run_waiting()

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Buying from outside" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Buying from outside" %}</h1>
+<p class="text-muted">{% translate "What Unicorn cannot make yet is bought with the group's euros. People decide, holders pay, and you confirm that it arrived." %}</p>
+<a class="btn btn-primary mb-4" href="{% url 'tradefund:purchase_new' %}">{% translate "Ask the fund to buy something" %}</a>
+{% if to_buy %}<h2 class="h5">{% translate "You were chosen to buy" %}</h2>
+<ul class="list-group mb-4">{% for p in to_buy %}<li class="list-group-item"><a href="{% url 'tradefund:purchase_detail' p.pk %}">{{ p.description }}</a></li>{% endfor %}</ul>{% endif %}
+{% if is_holder and open_for_buyers %}<h2 class="h5">{% translate "Looking for a buyer" %}</h2>
+<ul class="list-group mb-4">{% for p in open_for_buyers %}<li class="list-group-item"><a href="{% url 'tradefund:purchase_detail' p.pk %}">{{ p.description }}</a> · {{ p.est_price }} {{ p.currency }}</li>{% endfor %}</ul>{% endif %}
+<h2 class="h5">{% translate "My requests" %}</h2>
+<ul class="list-group">
+  {% for p in mine %}<li class="list-group-item"><a href="{% url 'tradefund:purchase_detail' p.pk %}">{{ p.description }}</a> · {{ p.est_price }} {{ p.currency }} · {{ p.get_status_display }}</li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "You have not asked for anything yet." %}</li>{% endfor %}
+</ul>
+{% endblock %}

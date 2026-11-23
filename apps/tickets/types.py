@@ -39,6 +39,7 @@ TYPES: dict[str, TicketType] = {
             _("Buy something from outside"),
             "auto",
             action="create_payment_requests",
+            reject_action="purchase_rejected",
             needs_brief=True,
             creatable=False,
         ),

@@ -7,8 +7,8 @@ from django.views.decorators.http import require_POST
 
 from apps.core.decorators import sensitive_action
 
-from . import payments, services, trust
-from .models import Holder, PaymentRequest, TrustEvent
+from . import payments, purchases, services, trust
+from .models import Holder, PaymentRequest, PurchaseRequest, TrustEvent
 from .services import FundError
 
 
@@ -127,3 +127,96 @@ def trust_contest(request, pk):
     except (trust.TrustError, FundError) as e:
         messages.error(request, str(e))
     return redirect("tradefund:trust")
+
+
+# --- Purchases from outside (P08.T07) ---
+
+
+@login_required
+def purchase_list(request):
+    mine = PurchaseRequest.objects.filter(requester=request.member)
+    to_buy = PurchaseRequest.objects.filter(buyer__member=request.member, status="approved")
+    open_for_buyers = PurchaseRequest.objects.filter(
+        status="approved", pay_method="pooled_to_buyer", buyer__isnull=True
+    )
+    return render(
+        request,
+        "tradefund/purchase_list.html",
+        {
+            "mine": mine[:30],
+            "to_buy": to_buy,
+            "open_for_buyers": open_for_buyers,
+            "is_holder": services.is_holder(request.member),
+        },
+    )
+
+
+@login_required
+def purchase_new(request):
+    member = request.member
+    if request.method == "POST":
+        p = request.POST
+        try:
+            pr = purchases.create_purchase(
+                member,
+                p.get("description", ""),
+                p.get("est_price", "0").replace(",", "."),
+                currency=(p.get("currency") or "EUR").upper()[:3],
+                seller=p.get("seller", ""),
+                seller_iban=p.get("seller_iban", ""),
+                why=p.get("why", ""),
+            )
+            messages.success(request, _("Thank you. Your request is with the people who decide."))
+            return redirect("tradefund:purchase_detail", pk=pr.pk)
+        except (FundError, ArithmeticError, ValueError) as e:
+            messages.error(request, str(e) if isinstance(e, FundError) else _("Please check the price."))
+    return render(request, "tradefund/purchase_new.html", {})
+
+
+@login_required
+def purchase_detail(request, pk):
+    pr = get_object_or_404(PurchaseRequest.objects.select_related("ticket", "buyer__member"), pk=pk)
+    member = request.member
+    is_buyer = pr.buyer_id is not None and pr.buyer.member_id == member.pk
+    if request.method == "POST":
+        do = request.POST.get("do")
+        try:
+            if do == "volunteer":
+                purchases.volunteer(pr, member)
+                messages.success(request, _("Thank you. You offered to buy it."))
+            elif do == "bought":
+                upload = request.FILES.get("receipt")
+                from apps.members import services as member_services
+
+                try:
+                    pf = member_services.store_private_file(member, upload, "receipt") if upload else None
+                except member_services.FileRejected as e:
+                    raise FundError(str(e)) from None
+                purchases.record_purchase(pr, member, pf, request.POST.get("actual_price", "0").replace(",", "."))
+                messages.success(request, _("Thank you. The purchase is recorded."))
+            elif do == "delivered":
+                purchases.mark_delivered(pr, member)
+                messages.success(request, _("Thank you. It arrived."))
+        except (FundError, ArithmeticError) as e:
+            messages.error(request, str(e) if isinstance(e, FundError) else _("Please check the price."))
+        return redirect("tradefund:purchase_detail", pk=pk)
+    return render(
+        request,
+        "tradefund/purchase_detail.html",
+        {
+            "pr": pr,
+            "is_buyer": is_buyer,
+            "can_volunteer": services.is_holder(member)
+            and pr.status == "approved"
+            and pr.pay_method == "pooled_to_buyer"
+            and pr.buyer_id is None,
+            "can_report_bought": (is_buyer and pr.status == "approved" and pr.funded)
+            or (
+                pr.pay_method == "holder_pays_seller"
+                and pr.status == "bought"
+                and pr.requester_id == member.pk
+                and not pr.receipt_id
+            ),
+            "can_deliver": pr.status == "bought" and purchases.can_confirm_delivery(pr, member),
+        },
+    )
