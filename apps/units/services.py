@@ -468,7 +468,13 @@ def open_unit(member, data):
     if kind in ("service", "social") and not data.get("insurance_confirmed"):  # HF-17
         raise UnitError(_("A service needs insurance. Please confirm that the unit is insured."))
     result = plan_check.check(
-        {"type": "open_unit", "kind": kind, "name": data.get("name", ""), "member": member.number}
+        {
+            "type": "open_unit",
+            "kind": kind,
+            "name": data.get("name", ""),
+            "member": member.number,
+            "trade_code": data.get("trade_code", ""),
+        }
     )
     now = timezone.now()
     fields = {

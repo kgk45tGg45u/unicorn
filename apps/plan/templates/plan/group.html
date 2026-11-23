@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "The planning group" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{{ group }}</h1>
+{% if seat and seat.accepted is None %}
+<div class="alert alert-info"><p class="mb-2">{% translate "You were drawn for this group. Please accept or decline." %}</p>
+<form method="post" class="d-flex gap-2">{% csrf_token %}<button name="do" value="accept" class="btn btn-primary">{% translate "I accept" %}</button><button name="do" value="decline" class="btn btn-outline-secondary">{% translate "I decline" %}</button></form></div>
+{% endif %}
+<h2 class="h5">{% translate "Members" %}</h2>
+<ul>{% for s in seats %}<li>{{ s.member.number }} {% if s.accepted %}✓{% endif %}</li>{% endfor %}</ul>
+<p class="small text-muted">{% translate "The draw can be repeated by anyone: see the draw on the ticket." %}</p>
+<h2 class="h5">{% translate "Expert advisers" %}</h2>
+<ul>{% for a in advisers %}<li>{{ a.member.number }}{% if a.approved %} ✓{% endif %} — {{ a.statement }}
+  {% if is_seat and not a.approved %}<form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="adviser" value="{{ a.pk }}"><button name="do" value="approve_adviser" class="btn btn-sm btn-outline-primary">{% translate "Propose to approve" %}</button></form>{% endif %}</li>{% empty %}<li class="text-muted">{% translate "None yet." %}</li>{% endfor %}</ul>
+{% if not is_seat %}<form method="post" class="mb-3" style="max-width:32rem">{% csrf_token %}<input type="hidden" name="do" value="volunteer"><label class="form-label" for="st">{% translate "Offer to advise the group" %}</label><textarea class="form-control mb-2" id="st" name="statement" rows="2"></textarea><button class="btn btn-outline-primary">{% translate "Offer" %}</button></form>{% endif %}
+<h2 class="h5">{% translate "Decisions" %}</h2>
+<ul>{% for d in decisions %}<li>{{ d.subject }} — {{ d.status }}
+  {% if is_seat and d.status == "open" %}<form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="do" value="vote"><input type="hidden" name="decision" value="{{ d.pk }}"><button name="answer" value="yes" class="btn btn-sm btn-success">{% translate "Yes" %}</button> <button name="answer" value="no" class="btn btn-sm btn-outline-danger">{% translate "No" %}</button></form>{% endif %}</li>{% empty %}<li class="text-muted">{% translate "No decisions yet." %}</li>{% endfor %}</ul>
+<h2 class="h5">{% translate "The whole plans" %}</h2>
+<ul>{% for v in variants %}<li><a href="{% url 'plan:variant' v.pk %}">{{ v.name }}</a>{% if v.submitted %} ({% translate "submitted" %}){% endif %}</li>{% endfor %}</ul>
+{% if is_seat %}<form method="post" class="d-flex gap-2 mb-3">{% csrf_token %}<input type="hidden" name="do" value="new_variant"><input class="form-control" name="name" placeholder="{% translate 'Name of a new plan' %}" style="max-width:16rem"><button class="btn btn-outline-primary">{% translate "Start a plan from the default" %}</button></form>
+<h2 class="h5">{% translate "Proposals" %}</h2>
+<ul>{% for p in proposals %}<li>{{ p.ticket.title }} — {{ p.get_status_display }}
+  <form method="post" class="d-inline-flex gap-1">{% csrf_token %}<input type="hidden" name="proposal" value="{{ p.pk }}">
+  <select class="form-select form-select-sm" name="variant">{% for v in variants %}<option value="{{ v.pk }}">{{ v.name }}</option>{% endfor %}</select><button name="do" value="include" class="btn btn-sm btn-outline-primary">{% translate "Include" %}</button>
+  <input class="form-control form-control-sm" name="reason" placeholder="{% translate 'Reason, if left out' %}"><button name="do" value="leave_out" class="btn btn-sm btn-outline-secondary">{% translate "Leave out" %}</button></form></li>{% endfor %}</ul>
+<h2 class="h5">{% translate "Record planning hours" %}</h2>
+<form method="post" class="d-flex gap-2">{% csrf_token %}<input type="hidden" name="do" value="hours"><input class="form-control" name="minutes" placeholder="{% translate 'Minutes' %}" style="max-width:8rem"><input class="form-control" name="note" placeholder="{% translate 'Note' %}"><button class="btn btn-outline-primary">{% translate "Record" %}</button></form>{% endif %}
+{% endblock %}

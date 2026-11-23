@@ -67,9 +67,16 @@ def current_period(now=None):
         rate = previous.next_tax_rate
     else:
         rate = get_param("economy.flat_tax.start_rate")
+    from apps.plan.apply import planned_hours_for  # the running plan sets the month's planned hours
+
     try:
         with transaction.atomic():
-            return Period.objects.create(year=local.year, month=local.month, tax_rate=rate)
+            return Period.objects.create(
+                year=local.year,
+                month=local.month,
+                tax_rate=rate,
+                planned_hours=planned_hours_for(local.year, local.month) or 0,
+            )
     except IntegrityError:
         return Period.objects.get(year=local.year, month=local.month)
 

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ variant.name }} · Unicorn{% endblock %}
+{% block content %}
+<h1>{{ variant.name }}</h1>
+<p class="text-muted">{{ variant.period }}{% if variant.submitted %} · {% translate "submitted" %}{% endif %}</p>
+{% if variant.summary_md %}<p>{{ variant.summary_md|linebreaksbr }}</p>{% endif %}
+{% if check %}<div class="alert {% if check.issues %}alert-warning{% else %}alert-success{% endif %}">
+  <p class="mb-1">{% blocktranslate with t=check.implied_tax %}Flat tax implied by this plan: {{ t }}{% endblocktranslate %}</p>
+  {% if check.issues %}<ul class="mb-0">{% for i in check.issues %}<li>{{ i }}</li>{% endfor %}</ul>{% else %}{% translate "The engine found no problems." %}{% endif %}</div>{% endif %}
+<p>{% if variant.forecast %}{% translate "A forecast is attached." %}{% else %}{% translate "No forecast yet." %}{% endif %}</p>
+<h2 class="h5">{% translate "Defaults it sets" %}</h2>
+<ul>{% for d in differences %}<li>{{ d }}</li>{% empty %}<li class="text-muted">{% translate "No change from today's defaults." %}</li>{% endfor %}</ul>
+<h2 class="h5">{% translate "Budget" %}</h2>
+<table class="table table-sm"><thead><tr><th>{% translate "Line" %}</th><th class="text-end">{% translate "Hours" %}</th><th class="text-end">{% translate "Euros" %}</th></tr></thead><tbody>{% for l in variant.budget_lines.all %}<tr><td>{{ l.get_category_display }} {{ l.trade_code }}</td><td class="text-end">{{ l.hours }}</td><td class="text-end">{{ l.eur }}</td></tr>{% endfor %}</tbody></table>
+<h2 class="h5">{% translate "Investments" %}</h2><ul>{% for i in variant.investments.all %}<li>{{ i.title }} — {{ i.eur }} € / {{ i.hours }} h</li>{% empty %}<li class="text-muted">{% translate "None." %}</li>{% endfor %}</ul>
+<h2 class="h5">{% translate "Focus" %}</h2><ul>{% for f in variant.focus_items.all %}<li>{{ f.text }}</li>{% empty %}<li class="text-muted">{% translate "None." %}</li>{% endfor %}</ul>
+<h2 class="h5">{% translate "Closures" %}</h2><ul>{% for c in variant.closures.all %}<li>{{ c }}</li>{% empty %}<li class="text-muted">{% translate "None." %}</li>{% endfor %}</ul>
+{% if others %}<p>{% translate "Compare with:" %} {% for o in others %}<a href="{% url 'plan:compare' variant.pk o.pk %}">{{ o.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+{% if editor %}
+<h2 class="h5">{% translate "Edit this plan" %}</h2>
+<form method="post" class="row g-2 mb-2">{% csrf_token %}<input type="hidden" name="do" value="param"><div class="col"><input class="form-control" name="key" placeholder="{% translate 'Default (plan tier)' %}"></div><div class="col"><input class="form-control" name="value" placeholder="{% translate 'Value' %}"></div><div class="col-auto"><button class="btn btn-outline-primary">{% translate "Set" %}</button></div></form>
+<form method="post" class="row g-2 mb-2">{% csrf_token %}<input type="hidden" name="do" value="budget"><div class="col"><select class="form-select" name="category">{% for k, l in categories %}<option value="{{ k }}">{{ l }}</option>{% endfor %}</select></div><div class="col"><input class="form-control" name="trade_code" placeholder="{% translate 'Trade' %}"></div><div class="col"><input class="form-control" name="hours" placeholder="{% translate 'Hours' %}"></div><div class="col"><input class="form-control" name="eur" placeholder="{% translate 'Euros' %}"></div><div class="col-auto"><button class="btn btn-outline-primary">{% translate "Set line" %}</button></div></form>
+<form method="post" class="row g-2 mb-2">{% csrf_token %}<input type="hidden" name="do" value="invest"><div class="col"><input class="form-control" name="title" placeholder="{% translate 'Investment' %}"></div><div class="col"><input class="form-control" name="eur" placeholder="{% translate 'Euros' %}"></div><div class="col"><input class="form-control" name="hours" placeholder="{% translate 'Hours' %}"></div><div class="col-auto"><button class="btn btn-outline-primary">{% translate "Add" %}</button></div></form>
+<form method="post" class="row g-2 mb-2">{% csrf_token %}<input type="hidden" name="do" value="focus"><div class="col"><input class="form-control" name="text" placeholder="{% translate 'Focus' %}"></div><div class="col"><input class="form-control" name="trade_code" placeholder="{% translate 'Trade' %}"></div><div class="col-auto"><button class="btn btn-outline-primary">{% translate "Add" %}</button></div></form>
+<form method="post" class="d-flex gap-2 mb-2">{% csrf_token %}<button name="do" value="check" class="btn btn-outline-secondary">{% translate "Check with the engine" %}</button><button name="do" value="submit" class="btn btn-success">{% translate "Submit this plan" %}</button></form>
+<form method="post" class="d-flex gap-2 mb-3">{% csrf_token %}<input type="hidden" name="do" value="copy"><input class="form-control" name="name" placeholder="{% translate 'Name of the copy' %}" style="max-width:16rem"><button class="btn btn-outline-secondary">{% translate "Copy this plan" %}</button></form>
+{% endif %}
+<h2 class="h5">{% translate "Comments" %}</h2>
+{% for c in variant.comments.all %}<div class="card mb-2"><div class="card-body py-2"><div class="small text-muted">{{ c.member.display_name }} · {{ c.created_at|date:"Y-m-d H:i" }}</div>{{ c.body|linebreaks }}</div></div>{% empty %}<p class="text-muted">{% translate "No comments yet." %}</p>{% endfor %}
+{% if can_comment %}<form method="post" class="mt-2">{% csrf_token %}<input type="hidden" name="do" value="comment"><textarea class="form-control mb-2" name="body" rows="3" aria-label="{% translate 'Your comment' %}"></textarea><button class="btn btn-primary">{% translate "Comment" %}</button></form>{% endif %}
+{% endblock %}

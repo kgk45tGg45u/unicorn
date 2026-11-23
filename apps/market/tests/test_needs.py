@@ -232,8 +232,15 @@ def test_needs_that_match_my_skills_and_i_can_make_this(world, client):
     assert "Needs that match your skills" not in text  # the baker has no such skill
 
 
-def test_the_plan_focus_section_waits_for_the_first_plan(client):
-    assert "The first yearly plan will fill this" in board(client)
+def test_the_plan_focus_section_is_empty_until_a_plan_has_a_focus(client):
+    assert "The yearly plan has no focus yet." in board(client)
+
+
+def test_the_plan_focus_section_lists_the_running_plans_focus(client):
+    from apps.plan.tests.conftest import running_plan
+
+    running_plan(focus=["R-1"])
+    assert "Focus" in board(client)
 
 
 # --- a new offer fills a need ---

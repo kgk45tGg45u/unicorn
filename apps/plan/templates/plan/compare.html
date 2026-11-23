@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Compare plans" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{{ a.name }} {% translate "and" %} {{ b.name }}</h1>
+<p>{% blocktranslate with x=diff.implied_tax.0 y=diff.implied_tax.1 %}Implied flat tax: {{ x }} against {{ y }}{% endblocktranslate %}</p>
+<table class="table table-sm"><thead><tr><th>{% translate "Default" %}</th><th>{{ a.name }}</th><th>{{ b.name }}</th></tr></thead><tbody>{% for k, x, y in diff.parameters %}<tr><td>{{ k }}</td><td>{{ x }}</td><td>{{ y }}</td></tr>{% empty %}<tr><td colspan="3" class="text-muted">{% translate "The same defaults." %}</td></tr>{% endfor %}</tbody></table>
+{% endblock %}

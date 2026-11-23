@@ -288,7 +288,15 @@ def needs_board(member=None):
     if member is not None:
         codes = {c for c in member.skills.values_list("trade_code", flat=True) if c}
     matching = [c for c in wanted + outside if c["item"].trade_code and c["item"].trade_code in codes]
-    return {"wanted": wanted, "outside": outside, "missing": _missing_near(member), "matching": matching}
+    from apps.plan import apply as plan_apply
+
+    return {
+        "wanted": wanted,
+        "outside": outside,
+        "missing": _missing_near(member),
+        "matching": matching,
+        "focus": plan_apply.focus_items(),
+    }
 
 
 def my_units(member):

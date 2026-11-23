@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "File a plan proposal" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "File a plan proposal" %}</h1>
+{% if not window_open %}<div class="alert alert-info">{% translate "Proposals are not being collected at the moment. For something urgent, ask for a vote of all members from the ticket page." %}</div>{% endif %}
+<form method="post" style="max-width:36rem">{% csrf_token %}
+  <div class="mb-2"><label class="form-label" for="k">{% translate "What kind of proposal is it?" %}</label><select class="form-select" id="k" name="kind">{% for k, label in kinds %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select></div>
+  <div class="mb-2"><label class="form-label" for="t">{% translate "Title" %}</label><input class="form-control" id="t" name="title"></div>
+  <div class="mb-2"><label class="form-label" for="b">{% translate "Why?" %}</label><textarea class="form-control" id="b" name="brief" rows="3"></textarea></div>
+  <div class="row g-2 mb-2"><div class="col"><label class="form-label" for="tc">{% translate "Trade code" %}</label><input class="form-control" id="tc" name="trade_code"></div>
+  <div class="col"><label class="form-label" for="e">{% translate "Euros" %}</label><input class="form-control" id="e" name="eur" inputmode="decimal"></div>
+  <div class="col"><label class="form-label" for="h">{% translate "Hours" %}</label><input class="form-control" id="h" name="hours" inputmode="decimal"></div></div>
+  <div class="row g-2 mb-3"><div class="col"><label class="form-label" for="pk">{% translate "Default to change" %}</label><input class="form-control" id="pk" name="key"></div>
+  <div class="col"><label class="form-label" for="pv">{% translate "New value" %}</label><input class="form-control" id="pv" name="value"></div></div>
+  <button class="btn btn-primary">{% translate "File the proposal" %}</button>
+</form>
+{% endblock %}

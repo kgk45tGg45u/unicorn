@@ -23,7 +23,8 @@
 </div>
 
 <h2 class="h4 mt-4">{% translate "Plan focus" %}</h2>
-<p class="text-muted">{% translate "The first yearly plan will fill this" %}</p>
+{% if focus %}<ul>{% for f in focus %}<li>{{ f.text }}{% if f.item %} — {{ f.item.name }}{% endif %}</li>{% endfor %}</ul>
+{% else %}<p class="text-muted">{% translate "The yearly plan has no focus yet." %}</p>{% endif %}
 
 <h2 class="h4 mt-4">{% translate "Missing near you" %}</h2>
 {% if missing %}

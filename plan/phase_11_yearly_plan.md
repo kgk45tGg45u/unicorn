@@ -10,7 +10,7 @@
 
 ---
 
-### - [ ] P11.T01 — Plan periods and the default plan
+### - [x] P11.T01 — Plan periods and the default plan
 
 **Read:** docs/05 section 8 ("The first plan"); `config/defaults.yaml` (`plan.*`, `economy.*`).
 **Files:** `apps/plan/models.py` (PlanPeriod, PlanVariant, BudgetLine, InvestmentItem, FocusItem, ClosureItem), `apps/plan/defaults.py`, `apps/plan/tests/test_periods.py`
@@ -38,7 +38,7 @@
 
 ---
 
-### - [ ] P11.T02 — The full plan check
+### - [x] P11.T02 — The full plan check
 
 **Read:** docs/06 section 2 (the table of points).
 **Files:** `apps/plan/check.py`, `apps/plan/tests/test_check.py`
@@ -64,7 +64,7 @@
 
 ---
 
-### - [ ] P11.T03 — Plan proposals
+### - [x] P11.T03 — Plan proposals
 
 **Read:** docs/05 section 8 (the calendar, "Proposals").
 **Files:** `apps/plan/models.py` (PlanProposal), `apps/tickets/types.py`, `apps/plan/views.py`, `apps/plan/templates/plan/proposals.html`, `apps/plan/tests/test_proposals.py`
@@ -83,7 +83,7 @@
 
 ---
 
-### - [ ] P11.T04 — The planning group
+### - [x] P11.T04 — The planning group
 
 **Read:** docs/05 section 8 (the row for 1 September).
 **Files:** `apps/plan/models.py` (PlanningGroup, GroupSeat, ExpertAdviser), `apps/plan/services.py`, `apps/plan/jobs.py`, `apps/plan/tests/test_group.py`
@@ -109,7 +109,7 @@
 
 ---
 
-### - [ ] P11.T05 — Drafting 2–3 whole plans, checked by the engine
+### - [x] P11.T05 — Drafting 2–3 whole plans, checked by the engine
 
 **Read:** docs/05 section 8 ("A whole plan contains"); docs/03 section 4.
 **Files:** `apps/plan/engine.py`, `apps/plan/views.py`, `apps/plan/templates/plan/variant_editor.html`, `apps/plan/tests/test_variants.py`
@@ -141,7 +141,7 @@
 
 ---
 
-### - [ ] P11.T06 — Comments and the ranked vote
+### - [x] P11.T06 — Comments and the ranked vote
 
 **Read:** docs/05 section 8 (16 October to 15 November).
 **Files:** `apps/plan/services.py`, `apps/plan/templates/plan/vote.html`, `apps/plan/tests/test_plan_vote.py`
@@ -162,7 +162,7 @@
 
 ---
 
-### - [ ] P11.T07 — Applying the adopted plan
+### - [x] P11.T07 — Applying the adopted plan
 
 **Read:** docs/05 section 8 ("A whole plan contains", "During the year", "Closing what the plan closes").
 **Files:** `apps/plan/apply.py`, `apps/plan/jobs.py`, `apps/plan/tests/test_apply.py`
@@ -187,7 +187,7 @@
 
 ---
 
-### - [ ] P11.T08 — Three-year plans (switch only)
+### - [x] P11.T08 — Three-year plans (switch only)
 
 **Read:** docs/05 section 8 ("Later: three-year plans").
 **Files:** `apps/plan/services.py`, `apps/plan/tests/test_three_year.py`

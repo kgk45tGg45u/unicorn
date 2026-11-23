@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "The yearly plan" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "The yearly plan" %}</h1>
+{% if running %}
+<div class="card mb-4"><div class="card-body">
+  <h2 class="h5">{% blocktranslate with a=running.starts_on|date:"Y-m-d" b=running.ends_on|date:"Y-m-d" %}The plan that runs now: {{ a }} to {{ b }}{% endblocktranslate %}</h2>
+  {% if variant %}<p>{{ variant.name }}{% if implied_tax %} · {% blocktranslate with t=implied_tax %}flat tax implied by its shares: {{ t }}{% endblocktranslate %}{% endif %}</p>
+  <p><a href="{% url 'plan:variant' variant.pk %}">{% translate "Read the plan" %}</a></p>
+  <h3 class="h6">{% translate "Focus" %}</h3><ul>{% for f in variant.focus_items.all %}<li>{{ f.text }}</li>{% empty %}<li class="text-muted">{% translate "None." %}</li>{% endfor %}</ul>
+  <h3 class="h6">{% translate "Closing" %}</h3><ul>{% for c in variant.closures.all %}<li>{{ c }}</li>{% empty %}<li class="text-muted">{% translate "Nothing." %}</li>{% endfor %}</ul>{% endif %}
+</div></div>
+{% else %}<p class="text-muted">{% translate "No plan is running yet." %}</p>{% endif %}
+{% if upcoming %}<p class="lead">{% blocktranslate with a=upcoming.starts_on|date:"Y-m-d" s=upcoming.get_status_display %}The next plan starts on {{ a }}. Now: {{ s }}.{% endblocktranslate %}</p>
+{% if upcoming.referendum %}<p><a href="{% url 'votes:referendum' upcoming.referendum.pk %}">{% translate "See the vote of all members" %}</a></p>{% endif %}{% endif %}
+<h2 class="h4">{% translate "Proposals for the next plan" %}</h2>
+{% if window_open %}<p><a class="btn btn-primary" href="{% url 'plan:propose' %}">{% translate "File a proposal" %}</a></p>
+{% else %}<p class="text-muted">{% blocktranslate with a=opens|date:"j F" b=closes|date:"j F" %}Proposals are collected from {{ a }} to {{ b }}.{% endblocktranslate %}</p>{% endif %}
+{% for kind, rows in proposals.items %}
+<h3 class="h6 text-uppercase text-muted">{{ kind }}</h3>
+<ul class="list-group mb-3">{% for p in rows %}<li class="list-group-item">
+  <a href="{% url 'tickets:detail' p.ticket.number %}">{{ p.ticket.title }}</a> <span class="badge text-bg-secondary">{{ p.get_status_display }}</span>
+  {% if p.quick_check.color %}<span class="badge text-bg-{% if p.quick_check.color == 'red' %}danger{% elif p.quick_check.color == 'amber' %}warning{% else %}success{% endif %}">{{ p.quick_check.color }}</span>{% endif %}
+  {% if p.left_out_reason %}<div class="small text-muted">{{ p.left_out_reason }}</div>{% endif %}
+</li>{% endfor %}</ul>
+{% empty %}<p class="text-muted">{% translate "No proposals yet." %}</p>{% endfor %}
+{% if groups %}<h2 class="h4">{% translate "The planning group" %}</h2><ul>{% for g in groups %}<li><a href="{% url 'plan:group' g.pk %}">{{ g }}</a></li>{% endfor %}</ul>{% endif %}
+{% if variants %}<h2 class="h4">{% translate "The whole plans" %}</h2><ul>{% for v in variants %}<li><a href="{% url 'plan:variant' v.pk %}">{{ v.name }}</a></li>{% endfor %}</ul>{% endif %}
+{% endblock %}

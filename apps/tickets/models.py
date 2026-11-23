@@ -158,6 +158,7 @@ class Confirmation(models.Model):
         ("panel", "panel"),
         ("mediation", "mediation"),
         ("replacement", "replacement"),
+        ("group", "group"),
     ]
     STATUSES = [("open", "open"), ("approved", "approved"), ("rejected", "rejected"), ("timed_out", "timed out")]
 
