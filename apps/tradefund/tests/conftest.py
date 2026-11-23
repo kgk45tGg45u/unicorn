@@ -24,3 +24,18 @@ def make_holder(email="h@x.org", name="Holder", currency="EUR", amount=None, **k
     if amount:
         books.post_fund(holder, "setaside", amount, "test funding", "gift")
     return holder
+
+
+def make_ticket(author=None, title="Buy a thing"):
+    """A plain ticket to hang payments on."""
+    from apps.tickets.models import Ticket
+    from apps.tickets.services import _next_number
+
+    return Ticket.objects.create(
+        number=_next_number(),
+        type="question",
+        title=title,
+        author=author,
+        decision_method="none",
+        status="done",
+    )

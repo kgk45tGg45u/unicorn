@@ -58,12 +58,13 @@ def eligible(ticket, round="confirmers") -> list[Member]:
         members = members.exclude(
             pk__in=UnitMembership.objects.filter(unit_id__in=unit_ids, left_at__isnull=True).values("member_id")
         )
-    if ticket.type == "audit_failure":
+    if ticket.type in ("audit_failure", "trust_review"):
         from apps.votes.elections import current_members
 
-        auditors = list(current_members("auditor").values_list("pk", flat=True))
-        if auditors:  # until auditors are elected, random confirmers look at it
-            members = members.filter(pk__in=auditors)
+        role = "auditor" if ticket.type == "audit_failure" else "trust_review"
+        elected = list(current_members(role).values_list("pk", flat=True))
+        if elected:  # until they are elected, random confirmers look at it
+            members = members.filter(pk__in=elected)
     members = members.exclude(number__in=(ticket.action_payload or {}).get("members", []))
     members = members.exclude(seats__confirmation__ticket=ticket)
     contested = (ticket.action_payload or {}).get("contest_of")

@@ -55,5 +55,9 @@ def become_holder(member, currency, iban, bic="", bank_name="", separate_account
             holder.iban_shown_to_donors = bool(iban_shown_to_donors)
             holder.left_at = None
             holder.save()
+        from . import trust
+
+        if not holder.trust_events.exists():
+            trust.start(holder)
         audit.record(member.number, "holder.joined", holder, currency=currency)
         return holder

@@ -166,6 +166,15 @@ TYPES: dict[str, TicketType] = {
             needs_brief=True,
             creatable=False,
         ),
+        _T(
+            "trust_review",
+            _("Review an event in a trust rating"),
+            "confirmers",
+            action="annul_trust_event",
+            confirmers=3,
+            needs_brief=True,
+            creatable=False,
+        ),
         _T("audit_failure", _("The books failed an audit"), "confirmers", needs_brief=True, creatable=False),
         _T(
             "post_check_unit",

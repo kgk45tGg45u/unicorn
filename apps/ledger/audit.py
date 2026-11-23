@@ -24,6 +24,7 @@ APPEND_ONLY_TABLES = [
     "votes_voterrecord",
     "ledger_dailyfingerprint",
     "tradefund_fundentry",
+    "tradefund_trustevent",
 ]
 
 

@@ -166,3 +166,13 @@ def audit_findings() -> list[str]:
         if holdings.get(holder_id, ZERO) - reserves.get(holder_id, ZERO) < 0:
             findings.append(_("Holder %(n)s holds less than zero.") % {"n": holder_id})
     return findings
+
+
+def holds_more_than_base_cap(member) -> bool:
+    """Whether the member holds more than the base cap for the fund (trust review candidates must not)."""
+    from apps.rules.services import get_param
+
+    holder = Holder.objects.filter(member=member).first()
+    if holder is None:
+        return False
+    return fx.to_eur(holding(holder), holder.currency) > get_param("tradefund.base_cap_eur")

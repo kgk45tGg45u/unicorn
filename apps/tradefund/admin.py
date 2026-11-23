@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from apps.core.admin import ReadOnlyAdmin
 
-from .models import FundEntry, FxRate, Holder
+from .models import ExternalPayee, FundEntry, FxRate, Holder, PaymentRequest, TrustEvent
 
 
 @admin.register(FxRate)
@@ -18,3 +18,18 @@ class HolderAdmin(ReadOnlyAdmin):
 @admin.register(FundEntry)
 class FundEntryAdmin(ReadOnlyAdmin):
     list_display = ("seq", "holder", "kind", "amount", "currency", "created_at")
+
+
+@admin.register(PaymentRequest)
+class PaymentRequestAdmin(ReadOnlyAdmin):
+    list_display = ("id", "payer", "amount", "currency", "status", "due_date")
+
+
+@admin.register(ExternalPayee)
+class ExternalPayeeAdmin(ReadOnlyAdmin):
+    list_display = ("id", "country", "created_at")  # the name and the account number are not shown here
+
+
+@admin.register(TrustEvent)
+class TrustEventAdmin(ReadOnlyAdmin):
+    list_display = ("holder", "kind", "delta", "created_at")

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Payments" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Payments of the trade fund" %}</h1>
+<p class="text-muted">{% translate "Unicorn never moves money. You pay with your own bank, and you and the receiver each confirm here." %}</p>
+<h2 class="h5">{% translate "Please pay" %}</h2>
+<ul class="list-group mb-4">
+  {% for p in to_pay %}<li class="list-group-item"><a href="{% url 'tradefund:pay_detail' p.pk %}">{{ p.amount }} {{ p.currency }}</a> · {% translate "by" %} {{ p.due_date }} · {{ p.get_status_display }}</li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "Nothing to pay." %}</li>{% endfor %}
+</ul>
+<h2 class="h5">{% translate "Please confirm that it arrived" %}</h2>
+<ul class="list-group mb-4">
+  {% for p in to_confirm %}<li class="list-group-item"><a href="{% url 'tradefund:pay_detail' p.pk %}">{{ p.amount }} {{ p.currency }}</a> · {{ p.get_status_display }}</li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "Nothing to confirm." %}</li>{% endfor %}
+</ul>
+<h2 class="h5">{% translate "Earlier payments" %}</h2>
+<ul class="list-group">
+  {% for p in done %}<li class="list-group-item"><a href="{% url 'tradefund:pay_detail' p.pk %}">{{ p.amount }} {{ p.currency }}</a> · {{ p.get_status_display }}</li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "No earlier payments." %}</li>{% endfor %}
+</ul>
+{% endblock %}

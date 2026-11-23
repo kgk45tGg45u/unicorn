@@ -228,6 +228,8 @@ def needed(root, n):
     """How many yes votes approve, for n seats."""
     if root.round == "panel":
         return get_param("governance.panel.majority") if n >= get_param("governance.panel.size") else n // 2 + 1
+    if root.ticket.type == "trust_review":  # the elected trust review group decides by majority (docs/07 section 5)
+        return n // 2 + 1
     rule = get_param("governance.confirmers.rule")
     if rule == "all_but_one":
         return max(n - 1, 1)
@@ -261,7 +263,7 @@ def evaluate(root):
         if n == 0 or no > n - need:
             root.status = "rejected"
             root.save(update_fields=["status"])
-            if root.round == "confirmers":
+            if root.round == "confirmers" and ticket.type != "trust_review":  # the group's majority is final
                 start_panel(ticket)
             else:
                 _reject(ticket, _("The panel did not approve it."))

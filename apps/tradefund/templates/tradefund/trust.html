@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "My trust rating" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "My trust rating" %}</h1>
+<p>{% translate "This rating only limits how many euros you may hold for the group. It never touches your work, pay, votes or prices." %}</p>
+<p><strong>{% translate "Score" %}:</strong> {{ score }} · <strong>{% translate "Your cap" %}:</strong> € {{ cap }}</p>
+<table class="table">
+  <thead><tr><th>{% translate "Date" %}</th><th>{% translate "What happened" %}</th><th>{% translate "Change" %}</th><th></th></tr></thead>
+  <tbody>
+  {% for row in events %}<tr>
+    <td>{{ row.event.created_at|date:"Y-m-d" }}</td>
+    <td>{{ row.event.get_kind_display }}{% if row.event.note %}<div class="small text-muted">{{ row.event.note }}</div>{% endif %}{% if row.annulled %} <span class="badge text-bg-secondary">{% translate "annulled" %}</span>{% endif %}</td>
+    <td>{{ row.event.delta }}</td>
+    <td>{% if row.can_contest %}<form method="post" action="{% url 'tradefund:trust_contest' row.event.pk %}" class="d-flex gap-2">{% csrf_token %}
+      <input class="form-control form-control-sm" name="why" placeholder="{% translate 'Why is this wrong?' %}" aria-label="{% translate 'Why is this wrong?' %}">
+      <button class="btn btn-sm btn-outline-secondary" type="submit">{% translate "Contest an event" %}</button></form>{% endif %}</td>
+  </tr>{% endfor %}
+  </tbody>
+</table>
+{% endblock %}

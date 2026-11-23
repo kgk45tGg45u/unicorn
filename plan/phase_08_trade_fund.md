@@ -65,7 +65,7 @@
 
 ---
 
-### - [ ] P08.T04 — Payment requests
+### - [x] P08.T04 — Payment requests
 
 **Read:** docs/07 section 4.
 **Files:** `apps/tradefund/models.py` (PaymentRequest, ExternalPayee), `apps/tradefund/payments.py`, `apps/tradefund/views.py`, `apps/tradefund/templates/tradefund/pay*.html`, `apps/tradefund/jobs.py`, `apps/tradefund/tests/test_payments.py`
@@ -98,7 +98,7 @@
 
 ---
 
-### - [ ] P08.T05 — Choosing few payers, in turn
+### - [x] P08.T05 — Choosing few payers, in turn
 
 **Read:** docs/07 section 3 ("Payers are few and take turns").
 **Files:** `apps/tradefund/payers.py`, `apps/tradefund/tests/test_payers.py`
@@ -115,7 +115,7 @@
 
 ---
 
-### - [ ] P08.T06 — Trust, caps, the loss reserve
+### - [x] P08.T06 — Trust, caps, the loss reserve
 
 **Read:** docs/07 section 5; HF-11.
 **Files:** `apps/tradefund/trust.py`, `apps/tradefund/models.py` (TrustEvent), `apps/tradefund/jobs.py`, `apps/tradefund/views.py`, `apps/tradefund/tests/test_trust.py`

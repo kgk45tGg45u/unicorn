@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Payment" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Payment" %} {{ pr.pk }}</h1>
+<dl class="row">
+  <dt class="col-sm-3">{% translate "Amount" %}</dt><dd class="col-sm-9">{{ info.amount }} {{ info.currency }}</dd>
+  <dt class="col-sm-3">{% translate "To" %}</dt><dd class="col-sm-9">{{ info.to }}</dd>
+  {% if is_payer %}<dt class="col-sm-3">{% translate "Account number (IBAN)" %}</dt><dd class="col-sm-9">{% if info.iban %}<code>{{ info.iban }}</code>{% else %}{% translate "The receiver has not given an account number yet." %}{% endif %}</dd>{% endif %}
+  <dt class="col-sm-3">{% translate "Reference" %}</dt><dd class="col-sm-9"><code>{{ info.reference }}</code></dd>
+  <dt class="col-sm-3">{% translate "Pay by" %}</dt><dd class="col-sm-9">{{ info.due_date }}</dd>
+  <dt class="col-sm-3">{% translate "Status" %}</dt><dd class="col-sm-9">{{ pr.get_status_display }}</dd>
+</dl>
+{% if pr.status == "mismatch" %}
+  <div class="alert alert-warning">{% translate "The two sides gave different amounts. Members will look at it." %} {% if pr.flag_ticket %}<a href="{% url 'tickets:detail' pr.flag_ticket %}">{{ pr.flag_ticket }}</a>{% endif %}</div>
+{% endif %}
+{% if can_send %}
+<form method="post" class="mb-3">{% csrf_token %}<input type="hidden" name="do" value="sent">
+  <label class="form-label" for="a1">{% translate "I sent this amount" %}</label>
+  <div class="input-group" style="max-width:20rem"><input class="form-control" id="a1" name="amount" value="{{ pr.amount }}"><span class="input-group-text">{{ pr.currency }}</span></div>
+  <button class="btn btn-primary mt-2" type="submit">{% translate "I sent it" %}</button>
+</form>
+{% endif %}
+{% if can_receive %}
+<form method="post" class="mb-3">{% csrf_token %}<input type="hidden" name="do" value="received">
+  <label class="form-label" for="a2">{% translate "The amount that arrived" %}</label>
+  <div class="input-group" style="max-width:20rem"><input class="form-control" id="a2" name="amount" value="{{ pr.amount }}"><span class="input-group-text">{{ pr.currency }}</span></div>
+  <button class="btn btn-primary mt-2" type="submit">{% translate "It arrived" %}</button>
+</form>
+{% endif %}
+<a href="{% url 'tradefund:pay_list' %}">{% translate "All payments" %}</a>
+{% endblock %}

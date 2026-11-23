@@ -43,13 +43,16 @@ def open_election(role, now=None) -> Election:
 
 
 def stand(election, member, statement=""):
-    """Put oneself forward. Candidates for the trust review group must not hold more than the base cap (from P08)."""
+    """Put oneself forward. Candidates for the trust review group must not hold more than the base cap."""
     if not member_services.is_verified(member):  # HF-13
         raise VoteError(_("Only verified members can stand."))
     if election.status != "open" or timezone.now() >= election.closes_at:
         raise VoteError(_("This election is closed."))
-    # OWNER-CHECK: trust-review candidates must hold no more than the base cap; the fund's records come in phase 8,
-    # so until then the claim is recorded but not checked.
+    if election.role == "trust_review":  # the group must not hold more than the base cap itself (docs/07 section 5)
+        from apps.tradefund import books
+
+        if books.holds_more_than_base_cap(member):
+            raise VoteError(_("Members who hold more than the base cap for the fund cannot stand for this group."))
     try:
         with transaction.atomic():
             c = Candidate.objects.create(election=election, member=member, statement=(statement or "").strip())

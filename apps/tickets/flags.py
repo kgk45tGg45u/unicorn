@@ -247,10 +247,20 @@ def statement_of_reasons(ticket) -> str:
     return "\n".join(lines)
 
 
+# Functions called with (ticket, upheld) when a dispute ticket is decided. The trade fund settles payment mismatches.
+DISPUTE_HOOKS: list = []
+
+
+def _dispute_decided(ticket, upheld):
+    for hook in DISPUTE_HOOKS:
+        hook(ticket, upheld)
+    return {"dispute": "recorded"}
+
+
 def _remove(ticket):
     p = ticket.action_payload
     if p.get("dispute"):  # a dispute about an order is only recorded here; nothing is hidden
-        return {"dispute": "recorded"}
+        return _dispute_decided(ticket, True)
     hide(p["target_type"], p["target_id"], ticket)
     statement = statement_of_reasons(ticket)
     for m in owners(p["target_type"], p["target_id"]):
@@ -266,7 +276,7 @@ def _remove(ticket):
 def _keep(ticket):
     p = ticket.action_payload
     if p.get("dispute"):
-        return {"dispute": "recorded"}
+        return _dispute_decided(ticket, False)
     Hidden.objects.filter(target_type=p["target_type"], target_id=p["target_id"], until__isnull=True).update(
         until=timezone.now()
     )
