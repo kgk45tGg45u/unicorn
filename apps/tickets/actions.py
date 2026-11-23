@@ -23,13 +23,18 @@ class Action:
     execute: Callable  # execute(ticket) -> dict (stored in ticket.action_result)
     validate: Callable = field(default=lambda payload: [])  # validate(payload) -> list of plain-words problems
     finishes: bool = True  # False: the ticket stays `in_action` until something else (a mandate, tasks) is done
+    note: str = ""  # shown on a ticket that waits in `in_action`
 
 
 ACTIONS: dict[str, Action] = {}
 
 
-def register(name, execute, validate=None, finishes=True):
-    ACTIONS[name] = Action(execute=execute, validate=validate or (lambda payload: []), finishes=finishes)
+# Functions called with (ticket) when a ticket is approved, before its action runs. The tasks app adds one.
+APPROVED_HOOKS: list = []
+
+
+def register(name, execute, validate=None, finishes=True, note=""):
+    ACTIONS[name] = Action(execute=execute, validate=validate or (lambda payload: []), finishes=finishes, note=note)
 
 
 def problems(action_name, payload) -> list[str]:
@@ -52,6 +57,8 @@ def approve(ticket, how=""):
             return ticket
         ticket_services.set_status(ticket, "approved", "")
         audit.record("system", "ticket.approved", ticket, how=how)
+        for hook in APPROVED_HOOKS:
+            hook(ticket)
         action = ACTIONS.get(ticket.action) if ticket.action else None
         if not ticket.action:
             return ticket
@@ -75,7 +82,7 @@ def approve(ticket, how=""):
             return ticket
         ticket.action_result = result or {}
         ticket.save(update_fields=["action_result"])
-        ticket_services.set_status(ticket, "done" if action.finishes else "in_action", "")
+        ticket_services.set_status(ticket, "done" if action.finishes else "in_action", str(action.note))
         audit.record("system", "ticket.action_done", ticket, action=ticket.action)
         return ticket
 
@@ -204,6 +211,42 @@ def _pause_unit(ticket):
     return {"unit": unit.slug, "status": "paused"}
 
 
+def _change_parameter(ticket):
+    """HF-16: a default changes only through a decided ticket, at the tier that decided it."""
+    from apps.rules.services import set_param
+
+    p = ticket.action_payload
+    tier = "referendum" if ticket.decision_method == "referendum" else "confirm"
+    set_param(p["key"], p["new_value"], decided_by=ticket.number, decided_tier=tier, reason=p["reason"])
+    return {"key": p["key"], "new_value": p["new_value"], "tier": tier}
+
+
+def _change_parameter_problems(payload):
+    from django.core.exceptions import ValidationError
+
+    from apps.rules.models import Parameter
+    from apps.rules.services import validate_value
+
+    p = Parameter.objects.filter(key=payload.get("key", "")).first()
+    if p is None:
+        return [_("This default does not exist.")]
+    if not (payload.get("reason") or "").strip():
+        return [_("Please say why the default should change.")]
+    try:
+        validate_value(
+            key=p.key, type=p.type, value=payload.get("new_value"), min_value=p.min_value, max_value=p.max_value,
+            choices=p.choices,
+        )  # fmt: skip
+    except ValidationError as e:
+        return [" ".join(e.messages)]
+    return []
+
+
+def _await_release(ticket):
+    """A change of the hard frame needs a new release of the code. The app never changes its own code."""
+    return {"waiting": "release"}
+
+
 def _none(ticket):
     return {}
 
@@ -217,4 +260,6 @@ register("hours_confirm", _hours_confirm)
 register("hours_correct", _hours_correct, _need("entry_id", "minutes"))
 register("suspend_member", _suspend_member, _need("newer"))
 register("pause_unit", _pause_unit, _need("unit_id"))
+register("change_parameter", _change_parameter, _change_parameter_problems)
+register("await_release", _await_release, finishes=False, note=_("Waiting for a new release of the code."))
 register("none", _none)

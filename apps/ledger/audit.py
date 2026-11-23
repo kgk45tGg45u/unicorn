@@ -20,6 +20,8 @@ APPEND_ONLY_TABLES = [
     "members_signature",
     "members_vouch",
     "members_inpersoncheck",
+    "votes_ballot",
+    "votes_voterrecord",
 ]
 
 

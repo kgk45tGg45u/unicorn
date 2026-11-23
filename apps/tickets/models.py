@@ -82,6 +82,13 @@ class Ticket(models.Model):
         return types.TYPES.get(self.type)
 
     @property
+    def decision_question(self) -> str:
+        """The question the deciders answer with yes or no."""
+        if (self.action_payload or {}).get("then") == "referendum":
+            return str(_("Is this proposal complete and understandable? You are not asked whether you agree with it."))
+        return str(_("Should this go ahead?"))
+
+    @property
     def type_label(self):
         info = self.type_info
         return info.label if info else self.type
@@ -193,6 +200,7 @@ class Seat(models.Model):
     replaced = models.BooleanField(default=False)
     anonymous = models.BooleanField(default=False)  # the member chose not to be named after the decision
     answered = models.BooleanField(default=False)  # false when the "no" is only the system counting silence
+    ranking = models.JSONField(null=True, blank=True)  # a ranked list of applicant ids, for choosing a delegate
     paid_entry = models.ForeignKey(
         "units.HoursEntry", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
     )

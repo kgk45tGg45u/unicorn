@@ -24,6 +24,10 @@
   {% if not vouches and not checks %}<li class="text-muted">{% translate "None yet." %}</li>{% endif %}
 </ul>
 <p><a href="{% url 'ledger:my_uniq' %}">{% translate "My UNIQ account" %}</a> · <a href="{% url 'members:portfolio' %}">{% translate "My work portfolio" %}</a></p>
+<form method="post" action="{% url 'members:notify_toggle' %}" class="mb-3">{% csrf_token %}
+  <p class="mb-1">{% if member.email_all_notifications %}{% translate "You get every notification by email too." %}{% else %}{% translate "You get an email only when something needs you, like a seat to answer." %}{% endif %}</p>
+  <button class="btn btn-sm btn-outline-primary">{% if member.email_all_notifications %}{% translate "Stop emailing me everything" %}{% else %}{% translate "Email me everything" %}{% endif %}</button>
+</form>
 <form method="post" action="{% url 'members:mediator_toggle' %}" class="mb-3">{% csrf_token %}
   <p class="mb-1">{% if member.is_mediator %}{% translate "You are in the pool of mediators." %}{% else %}{% translate "You can volunteer to help members who disagree find an agreement." %}{% endif %}</p>
   <button class="btn btn-sm btn-outline-primary">{% if member.is_mediator %}{% translate "Leave the pool of mediators" %}{% else %}{% translate "Join the pool of mediators" %}{% endif %}</button>

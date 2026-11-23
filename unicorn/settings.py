@@ -82,6 +82,8 @@ INSTALLED_APPS = [
     "apps.catalogue",
     "apps.market",
     "apps.tickets",
+    "apps.votes",
+    "apps.tasks",
 ]
 
 MIDDLEWARE = [

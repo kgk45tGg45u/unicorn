@@ -151,7 +151,21 @@ def can_view_file(viewer, pf) -> bool:
         return False
     if viewer.pk == pf.owner_id:
         return True
-    return _is_seated_for_licence(viewer, pf)
+    return _is_seated_for_licence(viewer, pf) or _is_public_forecast(pf)
+
+
+def _is_public_forecast(pf) -> bool:
+    """A forecast attached to a vote of all members is public attachment: every member may read it."""
+    if pf.kind != "other":
+        return False
+    from apps.tickets.models import Ticket
+    from apps.votes.models import Referendum
+
+    if Referendum.objects.filter(forecast=pf).exists():
+        return True
+    return any(
+        (t.action_payload or {}).get("forecast_id") == pf.pk for t in Ticket.objects.filter(type="hard_frame_change")
+    )
 
 
 def _is_seated_for_licence(viewer, pf) -> bool:

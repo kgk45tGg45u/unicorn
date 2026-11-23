@@ -336,3 +336,13 @@ def mediator_toggle(request):
     member.is_mediator = not member.is_mediator
     member.save(update_fields=["is_mediator"])
     return redirect("members:my_account")
+
+
+@login_required
+@require_POST
+def notify_toggle(request):
+    """Choose to get every notification by email too (P06.T02)."""
+    member = request.member
+    member.email_all_notifications = not member.email_all_notifications
+    member.save(update_fields=["email_all_notifications"])
+    return redirect("members:my_account")

@@ -31,6 +31,7 @@
   {% empty %}<tr><td colspan="5" class="text-muted">{% translate "No month has been closed yet." %}</td></tr>{% endfor %}</tbody>
 </table></div>
 <p><a href="{% url 'ledger:open_books_csv' %}">{% translate "Download the period totals as CSV" %}</a></p>
+<p><a href="{% url 'votes:list' %}">{% translate "Votes of all members and their results" %}</a></p>
 <h2 class="h5 mt-4">{% translate "Daily fingerprints" %}</h2>
 <p class="small">{% translate "Copy a fingerprint today, and you can prove later that the books of that day were not changed." %}</p>
 <div class="table-responsive"><table class="table table-sm">

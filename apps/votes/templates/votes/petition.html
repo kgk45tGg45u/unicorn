@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Petition" %} · Unicorn{% endblock %}
+{% block content %}
+<p class="text-muted mb-1">{{ p.ticket.number }} · <a href="{% url 'tickets:detail' p.ticket.number %}">{% translate "See the ticket" %}</a></p>
+<h1>{{ p.question }}</h1>
+<p class="fs-4">{% blocktranslate with n=count t=p.threshold %}{{ n }} of {{ t }} signatures{% endblocktranslate %}</p>
+<div class="progress mb-3" role="progressbar" aria-label="{% translate 'Signatures' %}"><div class="progress-bar" style="width: {% widthratio count p.threshold 100 %}%"></div></div>
+{% if p.status == "open" %}<p>{% blocktranslate with d=days_left %}{{ d }} days left to sign.{% endblocktranslate %}</p>
+{% elif p.status == "succeeded" %}<div class="alert alert-success">{% translate "Enough members signed. A vote of all members is scheduled." %}</div>
+{% else %}<div class="alert alert-secondary">{% translate "This petition did not get enough signatures." %}</div>{% endif %}
+{% if p.status == "open" %}
+  {% if signed %}<p>{% translate "You signed this petition." %}</p>
+  {% else %}<form method="post" action="{% url 'votes:sign' p.pk %}">{% csrf_token %}<button class="btn btn-primary">{% translate "Sign" %}</button></form>{% endif %}
+{% endif %}
+<p class="small text-muted mt-3">{% translate "Names of signers are never shown." %}</p>
+{% endblock %}

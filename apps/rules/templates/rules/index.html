@@ -28,7 +28,7 @@
           <td>{% if item.param.choices %}{{ item.param.choices|join:", " }}{% elif item.param.min_value or item.param.max_value %}{{ item.param.min_value|default:"–" }} … {{ item.param.max_value|default:"–" }}{% endif %}</td>
           <td>{{ item.tier_words }}</td>
           <td>{{ item.param.source }}</td>
-          <td><a href="{% url 'rules:history' item.param.key %}">{% translate "History" %}</a></td>
+          <td><a href="{% url 'rules:history' item.param.key %}">{% translate "History" %}</a>{% if request.member %} · <a href="{% url 'rules:propose' item.param.key %}">{% translate "Propose a change" %}</a>{% endif %}</td>
         </tr>
       {% endfor %}
       </tbody>

@@ -104,6 +104,14 @@ def ticket_detail(request, number):
             "now": timezone.now(),
             "hidden": flags.is_hidden("ticket", ticket.pk) and ticket.author_id != request.member.pk,
             "can_contest": flags.can_contest(ticket, request.member),
+            "petition": ticket.petitions.filter(status="open").first(),
+            "can_petition": (
+                ticket.status == "rejected" and ticket.petition_until and ticket.petition_until > timezone.now()
+            )
+            or (ticket.type == "referendum_request" and ticket.status == "open"),
+            "referendum": ticket.referendums.order_by("-id").first(),
+            "has_tasks": ticket.type in ("task_list", "delegate") or ticket.mandates.exists(),
+            "is_staff": request.user.is_staff,
             "can_comment": services._can_take_part(request.member),
             "suggested": routing.suggest_answerers(ticket),
             "rounds": confirm.seat_rows(ticket),
@@ -129,6 +137,7 @@ def new_ticket_form(request, key):
         d = form.cleaned_data
         unit = d.get("unit")
         payload = {"unit_id": unit.pk} if unit else {}
+        payload.update(form.extra_payload())
         try:
             ticket = services.create_ticket(
                 key,
@@ -232,12 +241,19 @@ def seat_page(request, pk):
     state = confirm.seat_state(seat)
     order = list(range(len(ticket.check_choices)))
     random.Random(seat.pk * 7 + seat.check_attempts).shuffle(order)
+    applicants = []
+    if ticket.type == "delegate_choice" and len(ticket.action_payload.get("applicants", [])) > 1:
+        from apps.members.models import Member
+
+        applicants = list(Member.objects.filter(pk__in=ticket.action_payload["applicants"]).order_by("display_name"))
     return render(
         request,
         "tickets/seat.html",
         {
             "seat": seat,
             "ticket": ticket,
+            "applicants": applicants,
+            "document": _licence_document(ticket),
             "state": state,
             "choices": [(i, ticket.check_choices[i]) for i in order],
             "min_reason": confirm.MIN_REASON,
@@ -250,12 +266,16 @@ def seat_page(request, pk):
 @require_POST
 def seat_vote(request, pk):
     seat = _my_seat(request, pk)
+    vote, reason = request.POST.get("vote"), request.POST.get("reason", "")
+    if vote == "none":  # "none of them" counts as a no (docs/05 section 5)
+        vote, reason = "no", _("None of the applicants is the right person.")
     try:
         confirm.cast(
             seat,
-            request.POST.get("vote"),
-            request.POST.get("reason", ""),
+            vote,
+            reason,
             anonymous=bool(request.POST.get("anonymous")),
+            ranking=[x for x in request.POST.getlist("rank") if x],
         )
         messages.success(request, _("Thank you. Your answer was recorded."))
     except confirm.SeatError as e:
@@ -398,3 +418,54 @@ def mediation_action(request, number, action):
     except (mediation.MediationError, ValueError) as e:
         messages.error(request, str(e))
     return redirect("tickets:mediation", number=number)
+
+
+def _licence_document(ticket):
+    """The licence document a seat on a licence ticket may open (P06.T07)."""
+    if ticket.type == "verify_licence":
+        return ticket.action_payload.get("document_id")
+    return None
+
+
+# --- Changing the hard frame (P07.T06) ---
+
+
+@login_required
+def hard_frame_new(request):
+    from apps.members import services as member_services
+
+    from .forms import HardFrameForm
+
+    form = HardFrameForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        try:
+            forecast = member_services.store_private_file(request.member, d["forecast"], "other")
+            ticket = services.create_hard_frame_change(
+                request.member,
+                d["rule"],
+                d["new_text"],
+                d["why"],
+                d["code_change"],
+                d["authors"],
+                forecast,
+                check=form.check(),
+                brief=d.get("brief", ""),
+            )
+        except (services.TicketError, member_services.FileRejected) as e:
+            messages.error(request, str(e))
+        else:
+            return redirect("tickets:detail", number=ticket.number)
+    return render(request, "tickets/hard_frame.html", {"form": form})
+
+
+@login_required
+@require_POST
+def release_view(request, number):
+    ticket = get_object_or_404(Ticket, number=number)
+    try:
+        services.record_release(ticket, request.member, request.POST.get("tag", ""), request.POST.get("commit", ""))
+        messages.success(request, _("The release was recorded."))
+    except services.TicketError as e:
+        messages.error(request, str(e))
+    return redirect("tickets:detail", number=number)

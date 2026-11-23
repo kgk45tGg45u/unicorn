@@ -5,7 +5,7 @@
 
 ---
 
-### - [ ] P07.T01 — Petitions
+### - [x] P07.T01 — Petitions
 
 **Read:** docs/05 section 3 (step 7).
 **Files:** `apps/votes/` (new app), `apps/votes/models.py` (Petition, PetitionSignature), `apps/votes/services.py`, `apps/votes/views.py`, `apps/votes/tests/test_petitions.py`
@@ -22,7 +22,7 @@
 
 ---
 
-### - [ ] P07.T02 — Referendums and secret ballots
+### - [x] P07.T02 — Referendums and secret ballots
 
 **Read:** docs/05 section 4.
 **Files:** `apps/votes/models.py` (Referendum, Ballot, VoterRecord), `apps/votes/services.py`, `apps/votes/views.py`, `apps/votes/templates/votes/*.html`, `apps/votes/migrations/000X_triggers.py`, `apps/votes/tests/test_referendum.py`
@@ -62,7 +62,7 @@
 
 ---
 
-### - [ ] P07.T03 — Instant runoff
+### - [x] P07.T03 — Instant runoff
 
 **Files:** `apps/votes/irv.py`, `apps/votes/tests/test_irv.py`
 
@@ -78,7 +78,7 @@
 
 ---
 
-### - [ ] P07.T04 — Outcomes and actions of referendums
+### - [x] P07.T04 — Outcomes and actions of referendums
 
 **Files:** `apps/votes/services.py`, `apps/tickets/actions.py`, `apps/votes/tests/test_outcomes.py`
 
@@ -94,7 +94,7 @@
 
 ---
 
-### - [ ] P07.T05 — Changing a default through its tier
+### - [x] P07.T05 — Changing a default through its tier
 
 **Read:** docs/01 section 3; HF-16.
 **Files:** `apps/tickets/types.py`, `apps/rules/views.py`, `apps/tickets/actions.py`, `apps/rules/tests/test_change_by_ticket.py`
@@ -122,7 +122,7 @@
 
 ---
 
-### - [ ] P07.T06 — The hard-frame change procedure
+### - [x] P07.T06 — The hard-frame change procedure
 
 **Read:** docs/01 section 4.
 **Files:** `apps/tickets/types.py`, `apps/tickets/actions.py`, `apps/votes/services.py`, `apps/tickets/templates/tickets/hard_frame.html`, `apps/tickets/tests/test_hard_frame_change.py`
@@ -149,7 +149,7 @@
 
 ---
 
-### - [ ] P07.T07 — A delegate for one decision
+### - [x] P07.T07 — A delegate for one decision
 
 **Read:** docs/05 section 5 item 2.
 **Files:** `apps/tasks/` (new app), `apps/tasks/models.py` (Mandate, MandateApplication), `apps/tasks/services.py`, `apps/tasks/views.py`, `apps/tasks/templates/tasks/*.html`, `apps/tasks/tests/test_mandates.py`
@@ -181,7 +181,7 @@
 
 ---
 
-### - [ ] P07.T08 — Collective tasks
+### - [x] P07.T08 — Collective tasks
 
 **Read:** docs/05 section 5 item 3.
 **Files:** `apps/tasks/models.py` (Task), `apps/tasks/services.py`, `apps/tasks/views.py`, `apps/tasks/tests/test_tasks.py`
@@ -200,7 +200,7 @@
 
 ---
 
-### - [ ] P07.T09 — Elected roles: auditors and the trust review group
+### - [x] P07.T09 — Elected roles: auditors and the trust review group
 
 **Read:** docs/08 section 5 ("Nightly audit": elected auditors); docs/07 section 5 (the trust review group).
 **Files:** `apps/votes/models.py` (Election, Candidate, Term), `apps/votes/services.py`, `apps/votes/tests/test_elections.py`

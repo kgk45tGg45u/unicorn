@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Your receipt" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Thank you for voting" %}</h1>
+<div class="alert alert-warning">
+  <p class="mb-1">{% translate "Keep this code to check your vote was counted. It is shown only once." %}</p>
+  <p class="fs-3 mb-0"><code>{{ receipt }}</code></p>
+</div>
+<p><a href="{% url 'votes:check' %}">{% translate "Check a ballot" %}</a> · <a href="{% url 'votes:list' %}">{% translate "Back to the votes" %}</a></p>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ r.question }} · Unicorn{% endblock %}
+{% block content %}
+<p class="text-muted mb-1">{{ r.ticket.number }} · <a href="{% url 'tickets:detail' r.ticket.number %}">{% translate "See the ticket" %}</a></p>
+<h1>{{ r.question }}</h1>
+<p class="text-muted">{{ r.get_status_display }} · {% blocktranslate with a=r.opens_at|date:"Y-m-d" b=r.closes_at|date:"Y-m-d H:i" %}from {{ a }} until {{ b }}{% endblocktranslate %} · {% blocktranslate with q=r.quorum_share %}at least {{ q }} of members must vote{% endblocktranslate %} · {{ r.get_majority_display }}</p>
+<div class="row g-3">
+  <div class="col-md-6"><h2 class="h6">{% translate "For" %}</h2><div>{{ r.brief_for_md|linebreaks }}</div></div>
+  <div class="col-md-6"><h2 class="h6">{% translate "Against" %}</h2><div>{{ r.brief_against_md|linebreaks|default:"-" }}</div></div>
+</div>
+{% if r.forecast %}<p><a href="{% url 'members:private_file' r.forecast_id %}">{% translate "Read the forecast" %}</a></p>{% endif %}
+{% if r.status == "closed" %}
+<h2 class="h5">{% translate "Result" %}</h2>
+<p>{% blocktranslate with v=r.result.voters e=r.result.eligible t=r.result.turnout %}{{ v }} of {{ e }} members voted (turnout {{ t }}).{% endblocktranslate %}
+  {% if r.result.quorum_met %}{% translate "Enough members voted." %}{% else %}{% translate "Too few members voted." %}{% endif %}</p>
+{% if r.method == "yes_no" %}<p>{% blocktranslate with y=r.result.yes n=r.result.no a=r.result.abstain %}Yes: {{ y }}, no: {{ n }}, abstained: {{ a }}.{% endblocktranslate %}</p>
+{% else %}<p>{% blocktranslate with w=r.result.winner %}Winner: {{ w }}{% endblocktranslate %}</p>
+<ol>{% for round in r.result.rounds %}<li>{% for option, n in round.counts.items %}{{ option }}: {{ n }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if round.eliminated %} · {% blocktranslate with o=round.eliminated %}{{ o }} goes out{% endblocktranslate %}{% endif %}</li>{% endfor %}</ol>{% endif %}
+{% endif %}
+{% if voted %}<div class="alert alert-success">{% translate "You voted. Your ballot is secret." %}</div>{% endif %}
+{% if can_vote %}
+<form method="post" action="{% url 'votes:cast' r.pk %}">{% csrf_token %}
+  {% if r.method == "yes_no" %}
+  <button class="btn btn-primary" name="choice" value="yes">{% translate "Yes" %}</button>
+  <button class="btn btn-outline-primary" name="choice" value="no">{% translate "No" %}</button>
+  <button class="btn btn-outline-secondary" name="choice" value="abstain">{% translate "Abstain" %}</button>
+  {% else %}
+  <p>{% translate "Rank the options you want, best first. You do not have to rank them all." %}</p>
+  {% for o in r.options %}<div class="mb-2"><label class="form-label" for="rank{{ forloop.counter }}">{% blocktranslate with n=forloop.counter %}Choice {{ n }}{% endblocktranslate %}</label>
+    <select class="form-select" id="rank{{ forloop.counter }}" name="rank"><option value="">-</option>{% for x in r.options %}<option value="{{ x }}">{{ x }}</option>{% endfor %}</select></div>{% endfor %}
+  <button class="btn btn-primary">{% translate "Vote" %}</button>
+  {% endif %}
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Check my ballot" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Check my ballot" %}</h1>
+<form method="get" class="row g-2 mb-3">
+  <div class="col-sm-6"><input class="form-control" name="code" value="{{ code }}" aria-label="{% translate 'Your receipt code' %}" placeholder="{% translate 'Receipt code' %}"></div>
+  <div class="col-auto"><button class="btn btn-primary">{% translate "Check" %}</button></div>
+</form>
+{% if code %}
+  {% if ballot %}
+  <div class="alert alert-success">
+    <p class="mb-1">{% blocktranslate with q=ballot.referendum.question|default:ballot.election %}Counted in: {{ q }}{% endblocktranslate %}</p>
+    <p class="mb-0">{% translate "Your ballot says:" %} <strong>{{ choice|default:"-" }}</strong></p>
+  </div>
+  {% else %}<div class="alert alert-danger">{% translate "No ballot has this code. Please check that you copied it exactly." %}</div>{% endif %}
+{% endif %}
+{% endblock %}

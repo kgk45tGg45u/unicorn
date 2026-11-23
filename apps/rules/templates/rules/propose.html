@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Propose a change" %} · Unicorn{% endblock %}
+{% block content %}
+<h1 class="h3">{% translate "Propose a change" %}</h1>
+<p><code>{{ param.key }}</code></p>
+<p>{{ param.help }}</p>
+<dl class="row">
+  <dt class="col-sm-3">{% translate "Now" %}</dt><dd class="col-sm-9">{{ param.value }}</dd>
+  <dt class="col-sm-3">{% translate "Allowed" %}</dt>
+  <dd class="col-sm-9">{% if param.choices %}{{ param.choices|join:", " }}{% elif param.min_value or param.max_value %}{{ param.min_value|default:"–" }} … {{ param.max_value|default:"–" }}{% else %}{% translate "any" %}{% endif %}</dd>
+  <dt class="col-sm-3">{% translate "Decided by" %}</dt><dd class="col-sm-9">{{ tier_words }}</dd>
+  <dt class="col-sm-3">{% translate "How" %}</dt><dd class="col-sm-9">{{ route }}</dd>
+</dl>
+{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+<form method="post">{% csrf_token %}
+  <div class="mb-3"><label class="form-label" for="new_value">{% translate "New value" %}</label>
+    <input class="form-control" id="new_value" name="new_value" required></div>
+  <div class="mb-3"><label class="form-label" for="reason">{% translate "Why should it change?" %}</label>
+    <textarea class="form-control" id="reason" name="reason" rows="3" required></textarea></div>
+  <button class="btn btn-primary">{% translate "Send" %}</button>
+  <a class="btn btn-link" href="{% url 'rules:index' %}">{% translate "Back to the rules" %}</a>
+</form>
+{% endblock %}

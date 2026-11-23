@@ -1,6 +1,7 @@
 """The secretariat: sends each ticket to the right deciders (docs/05 section 2). It proposes; people decide (HF-15)."""
 
 from django.db import transaction
+from django.utils.translation import gettext_lazy as _t
 
 from apps.core import audit
 
@@ -29,12 +30,18 @@ def route(ticket):
         ticket.decision_method = info.method
         ticket.save(update_fields=["decision_method"])
         method = info.method
+        if ticket.type == "parameter_change":
+            return _route_parameter(ticket)
         if method == "council" and ticket.scope == "unit" and ticket.scope_unit_id:
             _start_council(ticket)
         elif method == "confirmers":
             confirm.start_confirmers(ticket)
         elif method == "panel":
             confirm.start_panel(ticket)
+        elif method == "referendum":
+            from apps.votes import services as vote_services
+
+            vote_services.schedule_referendum(ticket, ticket.title)
         elif method == "mediation":
             from . import mediation
 
@@ -76,3 +83,35 @@ def _start_council(ticket):
 def suggest_answerers(ticket) -> list:
     """Members who might know. Empty until reputation exists (P13)."""
     return []
+
+
+PLAN_WORDS = _t(
+    "This is decided in the yearly plan (docs/05 section 8), or by a referendum. "
+    "You can turn it into a request for a vote of all members, or into a proposal for the yearly plan."
+)
+HARD_WORDS = _t("This needs a hard-frame change. See the procedure for changing the hard frame.")
+
+
+def _route_parameter(ticket):
+    """HF-16: a default changes only at its tier. Confirm tier: confirmers. Referendum tier: a completeness check
+    by confirmers, then a vote of all. Plan tier: the yearly plan or a referendum. Hard tier: the hard-frame change."""
+    from apps.rules.models import Parameter
+
+    from . import confirm
+    from . import services as ticket_services
+
+    tier = Parameter.objects.get(key=ticket.action_payload["key"]).tier
+    if tier == "hard":
+        ticket.decision_method = "none"
+        ticket.save(update_fields=["decision_method"])
+        ticket_services.set_status(ticket, "rejected", str(HARD_WORDS))
+    elif tier == "plan":
+        ticket.decision_method = "plan"
+        ticket.save(update_fields=["decision_method"])
+        ticket_services.set_status(ticket, "rejected", str(PLAN_WORDS))
+    else:
+        if tier == "referendum":
+            ticket.action_payload = {**ticket.action_payload, "then": "referendum"}
+            ticket.save(update_fields=["action_payload"])
+        confirm.start_confirmers(ticket)
+    return ticket

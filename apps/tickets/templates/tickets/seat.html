@@ -7,6 +7,7 @@
 <p class="text-muted">{% blocktranslate with when=seat.deadline|date:"Y-m-d H:i" %}Please answer by {{ when }}.{% endblocktranslate %}</p>
 <h2 class="h5">{% translate "Brief" %}</h2>
 <div>{{ ticket.brief_md|linebreaks }}</div>
+{% if document %}<p><a href="{% url 'members:private_file' document %}">{% translate "Open the document" %}</a></p>{% endif %}
 {% if state == "check" %}
 <h2 class="h5">{% translate "One question first" %}</h2>
 <form method="post">{% csrf_token %}
@@ -18,6 +19,16 @@
   <button class="btn btn-primary mt-2">{% translate "Check my answer" %}</button>
 </form>
 {% elif state == "vote" %}
+<p class="fw-semibold">{{ ticket.decision_question }}</p>
+{% if applicants %}
+<form method="post" action="{% url 'tickets:seat_vote' seat.pk %}">{% csrf_token %}
+  <p>{% translate "Rank the people you would trust to carry this out, best first. You do not have to rank them all." %}</p>
+  {% for a in applicants %}<div class="mb-2"><label class="form-label" for="rank{{ forloop.counter }}">{% blocktranslate with n=forloop.counter %}Choice {{ n }}{% endblocktranslate %}</label>
+    <select class="form-select" id="rank{{ forloop.counter }}" name="rank"><option value="">-</option>{% for x in applicants %}<option value="{{ x.pk }}">{{ x.display_name }} ({{ x.number }})</option>{% endfor %}</select></div>{% endfor %}
+  <button class="btn btn-primary" name="vote" value="yes">{% translate "Send my ranking" %}</button>
+  <button class="btn btn-outline-danger" name="vote" value="none">{% translate "None of them" %}</button>
+</form>
+{% else %}
 <form method="post" action="{% url 'tickets:seat_vote' seat.pk %}">{% csrf_token %}
   <div class="mb-3"><label class="form-label" for="reason">{% blocktranslate with n=min_reason %}If you say no, please say why (at least {{ n }} characters){% endblocktranslate %}</label>
     <textarea class="form-control" id="reason" name="reason" rows="3"></textarea></div>
@@ -26,6 +37,7 @@
   <button class="btn btn-primary" name="vote" value="yes">{% translate "Yes" %}</button>
   <button class="btn btn-outline-danger" name="vote" value="no">{% translate "No" %}</button>
 </form>
+{% endif %}
 {% elif state == "done" %}
 <div class="alert alert-success">{% translate "Your answer was recorded. Thank you." %}</div>
 {% elif state == "late" %}

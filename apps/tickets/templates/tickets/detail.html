@@ -20,6 +20,21 @@
 {% if ticket.body_md %}<div>{{ ticket.body_md|linebreaks }}</div>{% endif %}
 {% include "partials/flag_button.html" with target_type="ticket" target_id=ticket.pk %}
 {% endif %}
+{% if referendum %}<p><a href="{% url 'votes:referendum' referendum.pk %}">{% translate "See the vote of all members" %}</a></p>{% endif %}
+{% if petition %}<p><a href="{% url 'votes:petition' petition.pk %}">{% translate "See the petition" %}</a></p>
+{% elif can_petition %}
+<form method="post" action="{% url 'votes:open_petition' ticket.number %}" class="my-2">{% csrf_token %}
+  <p class="mb-1">{% translate "Any member can start a petition. With enough signatures, all members vote on it." %}</p>
+  <button class="btn btn-outline-primary btn-sm">{% translate "Start a petition" %}</button></form>
+{% endif %}
+{% if has_tasks %}<p><a href="{% url 'tasks:ticket' ticket.number %}">{% translate "Delegates and tasks" %}</a></p>{% endif %}
+{% if is_staff and ticket.status == "in_action" and ticket.type == "hard_frame_change" %}
+<form method="post" action="{% url 'tickets:release' ticket.number %}" class="row g-2 my-2">{% csrf_token %}
+  <div class="col-auto"><input class="form-control" name="tag" placeholder="{% translate 'Release tag' %}" aria-label="{% translate 'Release tag' %}"></div>
+  <div class="col-auto"><input class="form-control" name="commit" placeholder="{% translate 'Commit' %}" aria-label="{% translate 'Commit' %}"></div>
+  <div class="col-auto"><button class="btn btn-outline-secondary">{% translate "Record the release" %}</button></div>
+</form>
+{% endif %}
 {% if can_contest %}
 <form method="post" action="{% url 'tickets:contest' ticket.number %}" class="my-2">{% csrf_token %}
   <p class="mb-1">{% translate "You can ask a panel of 12 members to look at this again." %}</p>

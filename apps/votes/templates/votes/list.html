@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Votes" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Votes of all members" %}</h1>
+<h2 class="h5">{% translate "Open and coming votes" %}</h2>
+<ul class="list-group mb-4">
+  {% for r in open_ones %}
+  <li class="list-group-item"><a href="{% url 'votes:referendum' r.pk %}">{{ r.question }}</a>
+    <span class="text-muted small d-block">{{ r.ticket.number }} · {% if r.status == "open" %}{% blocktranslate with when=r.closes_at|date:"Y-m-d" %}open until {{ when }}{% endblocktranslate %}{% else %}{% blocktranslate with when=r.opens_at|date:"Y-m-d" %}opens on {{ when }}{% endblocktranslate %}{% endif %}{% if r.pk in voted %} · {% translate "you voted" %}{% endif %}</span></li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "No vote is open now." %}</li>{% endfor %}
+</ul>
+<h2 class="h5">{% translate "Petitions collecting signatures" %}</h2>
+<ul class="list-group mb-4">
+  {% for p in petitions %}<li class="list-group-item"><a href="{% url 'votes:petition' p.pk %}">{{ p.question }}</a> <span class="text-muted small">{{ p.ticket.number }}</span></li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "No petition is open now." %}</li>{% endfor %}
+</ul>
+<h2 class="h5">{% translate "Results" %}</h2>
+<ul class="list-group mb-3">
+  {% for r in closed %}
+  <li class="list-group-item"><a href="{% url 'votes:referendum' r.pk %}">{{ r.question }}</a>
+    <span class="d-block small text-muted">{{ r.ticket.number }} · {% blocktranslate with v=r.result.voters e=r.result.eligible %}{{ v }} of {{ e }} members voted{% endblocktranslate %}{% if r.result.approved %} · {% translate "approved" %}{% else %} · {% translate "not approved" %}{% endif %}</span></li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "No vote has closed yet." %}</li>{% endfor %}
+</ul>
+<p><a href="{% url 'votes:check' %}">{% translate "Check that my ballot was counted" %}</a></p>
+{% endblock %}

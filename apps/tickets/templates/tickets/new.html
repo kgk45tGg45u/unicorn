@@ -7,5 +7,6 @@
 <div class="list-group">
   {% for t in types %}<a class="list-group-item list-group-item-action" href="{% url 'tickets:new_form' t.key %}">{{ t.label }}</a>{% endfor %}
   <a class="list-group-item list-group-item-action" href="{% url 'tickets:mediation_new' %}">{% translate "Ask for mediation" %}</a>
+  <a class="list-group-item list-group-item-action" href="{% url 'tickets:hard_frame_new' %}">{% translate "Change the hard frame" %}</a>
 </div>
 {% endblock %}

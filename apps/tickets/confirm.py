@@ -113,8 +113,10 @@ def answer_check(seat, choice) -> bool:
         return False
 
 
-def cast(seat, vote, reason="", anonymous=False):
-    """Vote yes or no after passing the check. Pays the review time. Then the round is evaluated."""
+def cast(seat, vote, reason="", anonymous=False, ranking=None):
+    """Vote yes or no after passing the check. Pays the review time. Then the round is evaluated.
+
+    When a delegate is chosen from several applicants, a yes comes with a ranking, best first."""
     if vote not in ("yes", "no"):
         raise SeatError(_("Please answer yes or no."))
     reason = (reason or "").strip()
@@ -129,13 +131,28 @@ def cast(seat, vote, reason="", anonymous=False):
             raise SeatError(_("Please answer the check question first."))
         if state != "vote":
             raise SeatError(_("This seat can no longer vote."))
-        seat.vote, seat.reason, seat.voted_at = vote, reason, timezone.now()
+        ranking = _checked_ranking(seat.confirmation.ticket, vote, ranking)
+        seat.vote, seat.reason, seat.voted_at, seat.ranking = vote, reason, timezone.now(), ranking
         seat.answered, seat.anonymous = True, bool(anonymous)
-        seat.save(update_fields=["vote", "reason", "voted_at", "answered", "anonymous"])
+        seat.save(update_fields=["vote", "reason", "voted_at", "answered", "anonymous", "ranking"])
         audit.record(seat.member.number, "seat.voted", seat, vote=vote)
         _pay(seat)
         evaluate(seat.confirmation.root)
         return seat
+
+
+def _checked_ranking(ticket, vote, ranking):
+    """For a choice between several applicants, a yes must rank at least one of them, each at most once."""
+    applicants = (ticket.action_payload or {}).get("applicants") if ticket.type == "delegate_choice" else None
+    if not applicants or len(applicants) < 2 or vote != "yes":
+        return None
+    try:
+        ranking = [int(i) for i in (ranking or [])]
+    except (TypeError, ValueError):
+        ranking = []
+    if not ranking or len(set(ranking)) != len(ranking) or not set(ranking) <= set(applicants):
+        raise SeatError(_("Please rank at least one of the applicants, best first, each only once."))
+    return ranking
 
 
 def _pay(seat):
@@ -234,6 +251,9 @@ def evaluate(root):
         if n and yes >= need:
             root.status = "approved"
             root.save(update_fields=["status"])
+            if (ticket.action_payload or {}).get("then") == "referendum" and ticket.status != "referendum":
+                _start_referendum(ticket)  # the confirmers only checked that the proposal is complete
+                return "approved"
             from . import actions
 
             actions.approve(ticket, how=root.round)
@@ -247,6 +267,18 @@ def evaluate(root):
                 _reject(ticket, _("The panel did not approve it."))
             return "rejected"
         return "open"
+
+
+def _start_referendum(ticket):
+    """After a completeness check the vote of all members follows (docs/01 section 4, docs/01 section 3)."""
+    from apps.members.models import PrivateFile
+    from apps.votes import services as vote_services
+
+    p = ticket.action_payload
+    args = dict(p.get("referendum") or {})
+    forecast = PrivateFile.objects.filter(pk=p["forecast_id"]).first() if p.get("forecast_id") else None
+    question = p.get("question") or ticket.title
+    vote_services.schedule_referendum(ticket, question, forecast=forecast, **args)
 
 
 def _reject(ticket, note):

@@ -213,3 +213,139 @@ def my_open_seats(member):
             deadline__gt=timezone.now(),
         ).select_related("confirmation__ticket")
     )
+
+
+# --- Changing a default through its tier (P07.T05) ---
+
+
+def create_parameter_change(author, key, value, reason, brief="", check=None):
+    """Propose a new value for a default. The value is checked against its bounds before the ticket opens."""
+    from django.core.exceptions import ValidationError
+
+    from apps.rules.models import Parameter
+    from apps.rules.services import validate_value
+
+    p = Parameter.objects.filter(key=key).first()
+    if p is None:
+        raise TicketError(_("This default does not exist."))
+    try:
+        new = validate_value(
+            key=p.key, type=p.type, value=value, min_value=p.min_value, max_value=p.max_value, choices=p.choices
+        )
+    except ValidationError as e:
+        raise TicketError(" ".join(e.messages)) from e
+    if not (reason or "").strip():
+        raise TicketError(_("Please say why the default should change."))
+    from .briefs import _check
+
+    if not brief:
+        brief = _("The default %(key)s is %(old)s. It is proposed to change it to %(new)s. Reason: %(reason)s") % {
+            "key": key,
+            "old": p.value,
+            "new": new,
+            "reason": reason.strip(),
+        }
+    if not check:
+        check = _check(
+            _("Which default is to be changed?"),
+            key,
+            ["economy.flat_tax.fixed_rate", "membership.vouches_needed"],
+            _("the first sentence"),
+        )
+    return create_ticket(
+        "parameter_change",
+        author,
+        _("Change %(key)s to %(new)s") % {"key": key, "new": new},
+        brief=brief,
+        check=check,
+        action_payload={"key": key, "new_value": new, "reason": reason.strip(), "units": []},
+    )
+
+
+def turn_parameter_ticket(ticket, member, kind):
+    """A plan-tier change that was sent away can become a request for a vote of all, or a plan proposal."""
+    if ticket.type != "parameter_change" or ticket.status != "rejected":
+        raise TicketError(_("This ticket cannot be turned into something else."))
+    if kind == "referendum_request":
+        return create_ticket(
+            "referendum_request",
+            member,
+            ticket.title,
+            ticket.body_md,
+            brief=ticket.brief_md,
+            action="change_parameter",
+            action_payload=ticket.action_payload,
+        )
+    if kind == "plan_proposal":
+        return create_ticket(
+            "plan_proposal", member, ticket.title, ticket.brief_md, action_payload=ticket.action_payload
+        )
+    raise TicketError(_("Please choose what to turn it into."))
+
+
+# --- Changing the hard frame (P07.T06) ---
+
+
+def create_hard_frame_change(author, rule, new_text, why, code_change, authors, forecast, check=None, brief=""):
+    """The expert proposal. Four confirmers check that it is complete, then all members vote (docs/01 section 4)."""
+    problems = []
+    if not (rule or "").strip():
+        problems.append(_("Please name the rule or the bound that should change."))
+    for label, text in (
+        (_("the new text or value"), new_text),
+        (_("why it is needed"), why),
+        (_("what changes in the code"), code_change),
+    ):
+        if not (text or "").strip():
+            problems.append(_("Please write %(what)s.") % {"what": label})
+    if not authors or not all((a.get("name") or "").strip() and (a.get("expertise") or "").strip() for a in authors):
+        problems.append(_("Please name the authors and one sentence about the expertise of each."))
+    if forecast is None:
+        problems.append(_("A forecast is required. Attach it as a file."))
+    if problems:
+        raise TicketError(" ".join(str(p) for p in problems))
+    lines = [
+        _("Rule or bound: %(rule)s") % {"rule": rule},
+        _("New text or value: %(text)s") % {"text": new_text},
+        _("Why it is needed: %(why)s") % {"why": why},
+        _("What changes in the code: %(code)s") % {"code": code_change},
+        _("Authors:"),
+        *[f"- {a['name']}: {a['expertise']}" for a in authors],
+        brief or "",
+    ]
+    return create_ticket(
+        "hard_frame_change",
+        author,
+        _("Change the hard frame: %(rule)s") % {"rule": rule},
+        brief="\n".join(str(x) for x in lines if x),
+        check=check,
+        action_payload={
+            "rule": rule,
+            "new_text": new_text,
+            "why": why,
+            "code_change": code_change,
+            "authors": authors,
+            "forecast_id": forecast.pk,
+            "then": "referendum",
+            "question": str(_("Should the hard frame change as proposed in the ticket?")),
+            "referendum": {  # the hard parameters, never the ordinary referendum defaults
+                "days": get_param("governance.hard_frame_change.days"),
+                "quorum": str(get_param("governance.hard_frame_change.quorum")),
+                "majority": get_param("governance.hard_frame_change.majority"),
+            },
+            "units": [],
+        },
+    )
+
+
+def record_release(ticket, operator, tag, commit):
+    """An operator records the release that carries an approved hard-frame change. The app never changes its code."""
+    if not (operator.user.is_staff and (tag or "").strip() and (commit or "").strip()):
+        raise TicketError(_("Only an operator can record a release, with its tag and commit."))
+    if ticket.type != "hard_frame_change" or ticket.status != "in_action":
+        raise TicketError(_("This ticket is not waiting for a release."))
+    with transaction.atomic():
+        ticket.action_result = {**ticket.action_result, "release": {"tag": tag.strip(), "commit": commit.strip()}}
+        ticket.save(update_fields=["action_result"])
+        audit.record(operator.number, "ticket.release_recorded", ticket, tag=tag.strip(), commit=commit.strip())
+        return set_status(ticket, "done", _("Released as %(tag)s.") % {"tag": tag.strip()})

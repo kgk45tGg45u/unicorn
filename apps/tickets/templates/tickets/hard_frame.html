@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Change the hard frame" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Change the hard frame" %}</h1>
+<p>{% translate "The hard frame is the set of rules the code itself enforces. Changing one takes an expert proposal with a forecast, a check by four random members that the proposal is complete, a vote of all members for 21 days (two thirds yes, at least 25% turnout), and a new release of the code. Until the release, the old rule stays." %}</p>
+<form method="post" enctype="multipart/form-data">{% csrf_token %}
+  {% for field in form %}
+  <div class="mb-3"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+    {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
+  {% endfor %}
+  <button class="btn btn-primary">{% translate "Send" %}</button>
+</form>
+{% endblock %}

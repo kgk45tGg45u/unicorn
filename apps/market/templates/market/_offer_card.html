@@ -15,6 +15,7 @@
         {% endif %}
       </p>
       <p class="small text-muted mb-0">{% if c.count %}{% blocktranslate with a=c.average|floatformat:1 n=c.count %}{{ a }} ★ from {{ n }} reviews{% endblocktranslate %}{% else %}{% translate "No reviews yet" %}{% endif %}</p>
+      {% include "partials/flag_button.html" with target_type="offer" target_id=c.offer.pk %}
     </div>
   </div>
 </div>

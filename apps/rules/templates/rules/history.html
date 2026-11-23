@@ -10,7 +10,7 @@
   <thead><tr><th>{% translate "When" %}</th><th>{% translate "From" %}</th><th>{% translate "To" %}</th><th>{% translate "Decided by" %}</th><th>{% translate "Reason" %}</th></tr></thead>
   <tbody>
   {% for c in changes %}
-    <tr><td>{{ c.decided_at }}</td><td>{{ c.old_value|default_if_none:"–" }}</td><td>{{ c.new_value }}</td><td>{{ c.decided_by }} ({{ c.decided_tier }})</td><td>{{ c.reason }}</td></tr>
+    <tr><td>{{ c.decided_at }}</td><td>{{ c.old_value|default_if_none:"–" }}</td><td>{{ c.new_value }}</td><td>{% if c.decided_by|slice:":2" == "T-" %}<a href="/tickets/{{ c.decided_by }}/">{{ c.decided_by }}</a>{% else %}{{ c.decided_by }}{% endif %} ({{ c.decided_tier }})</td><td>{{ c.reason }}</td></tr>
   {% endfor %}
   </tbody>
 </table>

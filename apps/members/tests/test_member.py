@@ -61,3 +61,20 @@ def test_public_profile_hides_private_details(client):
     a = make()
     html = client.get(reverse("members:public_profile", args=[a.number])).content.decode()
     assert "Ada" in html and "a@example.org" not in html
+
+
+def test_a_member_can_choose_to_get_every_notification_by_email(client):
+    from django.core import mail
+    from django.urls import reverse
+
+    from apps.core.notify import notify
+
+    m = make("notify@x.org", status=Member.MEMBER)
+    client.force_login(m.user)
+    assert "Email me everything" in client.get(reverse("members:my_account")).content.decode()
+    client.post(reverse("members:notify_toggle"))
+    m.refresh_from_db()
+    assert m.email_all_notifications
+    mail.outbox.clear()
+    notify(m, "Hello", "/tickets/")
+    assert len(mail.outbox) == 1
