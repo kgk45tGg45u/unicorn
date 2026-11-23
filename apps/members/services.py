@@ -68,7 +68,17 @@ def sign(member, template, method, context=None):
 
 # --- Encrypted personal data and private files (HF-14) ---
 
-PRIVATE_FIELDS = ("legal_name", "street", "city", "phone", "birth_date", "iban", "bic", "bank_name")
+PRIVATE_FIELDS = (
+    "legal_name",
+    "street",
+    "city",
+    "phone",
+    "birth_date",
+    "iban",
+    "bic",
+    "bank_name",
+    "net_hourly_wage_eur",
+)
 MAX_FILE_BYTES = 10 * 1024 * 1024
 ALLOWED_TYPES = {"application/pdf", "image/jpeg", "image/png"}
 
@@ -176,7 +186,12 @@ def _is_seated_for_licence(viewer, pf) -> bool:
     seats = Seat.objects.filter(
         member=viewer,
         replaced=False,
-        confirmation__ticket__type__in=("verify_licence", "benefit_claim", "guarantee_claim"),
+        confirmation__ticket__type__in=(
+            "verify_licence",
+            "benefit_claim",
+            "guarantee_claim",
+            "pension_unable_to_work",
+        ),
         confirmation__ticket__status__in=("open", "confirming", "panel"),
     ).values_list("confirmation__ticket__action_payload", flat=True)
     return any(
@@ -542,6 +557,21 @@ def suspend(member, reason):
 
 
 def has_reached_pension_age(member) -> bool:
-    """Whether the member has reached pension age. A stub until P09 reads the birth date."""
-    # OWNER-CHECK: which pension age applies to members outside Germany, and what if the birth date is missing?
-    return False
+    """Whether the member has reached pension age, from the birth date in their private data.
+
+    A missing birth date means False, and the member is asked to add it (P09.T07)."""
+    from datetime import date
+
+    from django.utils import timezone
+
+    from apps.rules.services import get_param
+
+    # OWNER-CHECK: which pension age applies to members outside Germany?
+    birth = get_private(member).get("birth_date")
+    if not birth:
+        return False
+    try:
+        born = date.fromisoformat(str(birth))
+    except ValueError:
+        return False
+    return age_on(born, timezone.localdate()) >= get_param("economy.pension.age")

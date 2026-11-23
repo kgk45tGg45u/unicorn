@@ -87,6 +87,12 @@ class ProductionOrder(models.Model):
     quantity_assigned = models.DecimalField(max_digits=14, decimal_places=4, default=0)  # promised to lines and units
     origin = models.CharField(max_length=14, choices=ORIGINS, default="orders")
     status = models.CharField(max_length=10, choices=STATUSES, default="open")
+    PURPOSES = [
+        ("members", _("for members")),
+        ("outside", _("for outside customers")),
+        ("accumulation", _("tools and workplaces for Unicorn itself")),
+    ]
+    purpose = models.CharField(max_length=12, choices=PURPOSES, default="members")
     due_date = models.DateField()
     week_start = models.DateField(null=True, blank=True)  # the Monday, for a continuous unit's weekly order
     started_at = models.DateTimeField(null=True, blank=True)

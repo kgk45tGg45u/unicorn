@@ -263,7 +263,7 @@
 
 ---
 
-### - [ ] P08.T11 — Fund pages, leaving holders, the yearly statement
+### - [x] P08.T11 — Fund pages, leaving holders, the yearly statement
 
 **Read:** docs/07 sections 2 ("Leaving") and 6 ("The yearly statement").
 **Files:** `apps/tradefund/views.py`, `apps/tradefund/templates/tradefund/*.html`, `apps/tradefund/services.py`, `apps/tradefund/tests/test_pages.py`

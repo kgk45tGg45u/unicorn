@@ -85,6 +85,7 @@ INSTALLED_APPS = [
     "apps.votes",
     "apps.tasks",
     "apps.tradefund",
+    "apps.macro",
 ]
 
 MIDDLEWARE = [

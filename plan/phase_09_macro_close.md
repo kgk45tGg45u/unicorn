@@ -10,7 +10,7 @@
 
 ---
 
-### - [ ] P09.T01 — The macro snapshot and hours by use
+### - [x] P09.T01 — The macro snapshot and hours by use
 
 **Read:** docs/03 section 3.
 **Files:** `apps/macro/` (new app), `apps/macro/models.py` (MacroSnapshot), `apps/macro/accounts.py`, `apps/market/models.py` (ProductionOrder `purpose`), `apps/macro/tests/test_accounts.py`

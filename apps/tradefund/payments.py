@@ -388,6 +388,11 @@ def run_deadlines(today=None) -> dict:
 def _miss(pr) -> int:
     pr.status = "missed"
     pr.save(update_fields=["status"])
+    if pr.purpose == "handover":  # a holder who does not pass on their part has gone: the loss reserve covers it
+        from . import services
+
+        services.vanished(pr.payer, _("A holder did not hand over the held euros in time."))
+        return 0
     trust.record(pr.payer, "missed", ref=f"payment:{pr.pk}", note=_("A payment was not sent in time."))
     notify(
         pr.payer.member,

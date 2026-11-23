@@ -1,7 +1,8 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
@@ -38,12 +39,6 @@ def become_holder(request):
             except services.FundError as e:
                 messages.error(request, str(e))
     return render(request, "tradefund/become_holder.html", {"template": template, "currency": member.currency})
-
-
-@login_required
-def my_holding(request):
-    holder = Holder.objects.filter(member=request.member).first()
-    return render(request, "tradefund/mine.html", {"holder": holder})
 
 
 def _mine(pr, member):
@@ -339,3 +334,68 @@ def benefits_page(request):
             "rows": range(1, 4),
         },
     )
+
+
+# --- The public fund page, my holding, the yearly statement (P08.T11) ---
+
+
+def fund_public(request):
+    from . import public
+
+    return render(request, "tradefund/fund.html", public.public_numbers())
+
+
+def _holder_page_context(member):
+    from . import allocation, books, payers
+    from .models import FundEntry
+
+    holder = Holder.objects.filter(member=member).first()
+    if holder is None:
+        return {"holder": None}
+    to_pay = PaymentRequest.objects.filter(payer=holder, status__in=PaymentRequest.OPEN)
+    candidates = PaymentRequest.objects.filter(status__in=PaymentRequest.OPEN).exclude(payer=holder)
+    to_confirm = [p for p in candidates if payments.can_confirm_receipt(p, member)]
+    return {
+        "holder": holder,
+        "holding": books.holding(holder),
+        "free": books.free(holder),
+        "reserve": books.reserve(holder),
+        "to_pay": to_pay,
+        "to_confirm": to_confirm,
+        "history": FundEntry.objects.filter(holder=holder).order_by("-seq")[:30],
+        "score": trust.score(holder),
+        "cap": trust.cap_eur(holder),
+        "committed": payers.committed(holder),
+        "reserve_months": allocation.reserve_months(),
+        "year": timezone.localdate().year,
+    }
+
+
+@login_required
+def my_holding(request):
+    if request.method == "POST" and request.POST.get("do") == "hand_over":
+        holder = get_object_or_404(Holder, member=request.member)
+        try:
+            made = services.hand_over(holder)
+            messages.success(
+                request,
+                _("Thank you. %(n)s payment requests will pass your holding on.") % {"n": len(made)}
+                if made
+                else _("You hold nothing for the group any more."),
+            )
+        except FundError as e:
+            messages.error(request, str(e))
+        return redirect("tradefund:mine")
+    return render(request, "tradefund/mine.html", _holder_page_context(request.member))
+
+
+@login_required
+def statement_page(request, year, fmt=""):
+    from . import public
+
+    holder = get_object_or_404(Holder, member=request.member)
+    if fmt == "csv":
+        response = HttpResponse(public.statement_csv(holder, year), content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="unicorn-fund-statement-{year}.csv"'
+        return response
+    return render(request, "tradefund/statement.html", public.statement(holder, year))

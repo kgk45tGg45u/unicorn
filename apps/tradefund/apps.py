@@ -12,6 +12,7 @@ class TradefundConfig(AppConfig):
         from . import benefits, jobs, payments, purchases, services, trust  # noqa: F401
 
         payments.register()
+        services.register()
         trust.register()
         purchases.register()
         benefits.register()

@@ -1,15 +1,17 @@
-"""Macro numbers other apps read. Phase 09 fills these in; until then they are stubs."""
+"""Macro numbers other apps read: the planning rate and attractiveness (docs/03 sections 8 and 10)."""
 
 from decimal import Decimal
 
-from apps.rules.services import get_param
-
 
 def planning_rate() -> Decimal:
-    """Euros earned per hour of outside sales. For comparing only; UNIQ are never exchanged (HF-4). Stub until P09."""
-    return Decimal(str(get_param("economy.planning_rate.fallback_eur_per_hour")))
+    """Euros earned per hour of outside sales. For comparing only; UNIQ are never exchanged (HF-4)."""
+    from . import world
+
+    return world.planning_rate()
 
 
 def attractiveness():
-    """How many capitalist hours an hour in Unicorn buys, or None while it is not measured. Stub until P09."""
-    return None
+    """How many capitalist hours an hour in Unicorn buys, or None while there is not enough data."""
+    from . import world
+
+    return world.attractiveness_estimate()

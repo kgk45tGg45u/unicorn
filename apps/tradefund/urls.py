@@ -5,6 +5,9 @@ from . import views
 app_name = "tradefund"
 
 urlpatterns = [
+    path("fund/", views.fund_public, name="public"),
+    path("fund/statement/<int:year>/", views.statement_page, name="statement"),
+    path("fund/statement/<int:year>/<str:fmt>/", views.statement_page, name="statement_csv"),
     path("fund/become-a-holder/", views.become_holder, name="become_holder"),
     path("fund/me/", views.my_holding, name="mine"),
     path("fund/pay/", views.pay_list, name="pay_list"),

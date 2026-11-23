@@ -7,6 +7,23 @@
   <p>{% translate "You do not hold any euros for the group." %}</p>
   <a class="btn btn-primary" href="{% url 'tradefund:become_holder' %}">{% translate "Become a holder" %}</a>
 {% else %}
-  <p>{% translate "You are a holder." %} {{ holder.get_status_display }}, {{ holder.currency }}.</p>
+  <p>{% translate "You are a holder." %} {{ holder.get_status_display }} · {{ holder.currency }}</p>
+  <div class="row mb-4">
+    <div class="col-sm-4"><div class="card"><div class="card-body"><div class="small text-muted">{% translate "I hold" %}</div><div class="h4">{{ holding }} {{ holder.currency }}</div><div class="small">{% translate "Free" %}: {{ free }} · {% translate "Loss reserve" %}: {{ reserve }}</div></div></div></div>
+    <div class="col-sm-4"><div class="card"><div class="card-body"><div class="small text-muted">{% translate "My trust rating" %}</div><div class="h4">{{ score }}</div><div class="small">{% translate "Cap" %}: € {{ cap }} · <a href="{% url 'tradefund:trust' %}">{% translate "Details" %}</a></div></div></div></div>
+    <div class="col-sm-4"><div class="card"><div class="card-body"><div class="small text-muted">{% translate "Months of reserve in the fund" %}</div><div class="h4">{% if reserve_months %}{{ reserve_months }}{% else %}–{% endif %}</div></div></div></div>
+  </div>
+  <h2 class="h5">{% translate "Requests to pay" %}</h2>
+  <ul class="list-group mb-3">{% for p in to_pay %}<li class="list-group-item"><a href="{% url 'tradefund:pay_detail' p.pk %}">{{ p.amount }} {{ p.currency }}</a> · {% translate "by" %} {{ p.due_date }}</li>{% empty %}<li class="list-group-item text-muted">{% translate "Nothing to pay." %}</li>{% endfor %}</ul>
+  <h2 class="h5">{% translate "Please confirm that it arrived" %}</h2>
+  <ul class="list-group mb-3">{% for p in to_confirm %}<li class="list-group-item"><a href="{% url 'tradefund:pay_detail' p.pk %}">{{ p.amount }} {{ p.currency }}</a></li>{% empty %}<li class="list-group-item text-muted">{% translate "Nothing to confirm." %}</li>{% endfor %}</ul>
+  <h2 class="h5">{% translate "History" %}</h2>
+  <table class="table table-sm"><tbody>{% for e in history %}<tr><td>{{ e.created_at|date:"Y-m-d" }}</td><td>{{ e.get_kind_display }}</td><td class="text-end">{{ e.amount }} {{ e.currency }}</td><td class="small text-muted">{{ e.reason|truncatechars:80 }}</td></tr>{% empty %}<tr><td class="text-muted">{% translate "Nothing yet." %}</td></tr>{% endfor %}</tbody></table>
+  <p class="small"><a href="{% url 'tradefund:my_donations' %}">{% translate "Donations paid to me" %}</a> · <a href="{% url 'tradefund:statement' year %}">{% translate "Yearly statement" %}</a></p>
+  {% if holder.status != "left" %}
+  <form method="post" class="mt-3">{% csrf_token %}<input type="hidden" name="do" value="hand_over">
+    <p class="small text-muted">{% translate "If you want to stop being a holder or to leave Unicorn, pass on your holding first. Other holders with room under their cap receive it, and they confirm." %}</p>
+    <button class="btn btn-outline-secondary" type="submit">{% translate "Hand over my holding" %}</button></form>
+  {% endif %}
 {% endif %}
 {% endblock %}

@@ -144,7 +144,11 @@ def move_excess(now=None) -> int:
 
 def mark_reserve(amount, currency, ref, why) -> list:
     """Mark the reserve share of an amount that came in, on the holders with the highest trust that have room."""
-    share = cur(Decimal(amount) * get_param("tradefund.loss_reserve_share"))
+    return mark_reserve_amount(cur(Decimal(amount) * get_param("tradefund.loss_reserve_share")), currency, ref, why)
+
+
+def mark_reserve_amount(share, currency, ref, why) -> list:
+    """Mark exactly `share` as loss reserve, on the holders with the highest trust that have free euros."""
     marked = []
     if share <= 0:
         return marked

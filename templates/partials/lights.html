@@ -1,0 +1,13 @@
+{% load i18n %}
+{% if lights %}
+<ul class="list-unstyled mb-0">
+  {% for key, light in lights %}
+  <li class="d-flex align-items-start gap-2 mb-1">
+    <span class="badge {% if light.color == 'green' %}text-bg-success{% elif light.color == 'amber' %}text-bg-warning{% elif light.color == 'red' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">{{ light.word }}</span>
+    <span class="small">{{ light.text }}</span>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="mb-0 text-muted">{% translate "The lights are shown after the first month closes." %}</p>
+{% endif %}

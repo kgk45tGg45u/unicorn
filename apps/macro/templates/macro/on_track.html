@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Are we on track?" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Are we on track?" %}</h1>
+<p>{% translate "Think of a farmer who plants seeds: some rain and some sun are needed, and the farmer can only watch the weather. Unicorn can do the same. It cannot choose the world around it, but it can measure the conditions under which the simulation succeeded, every month, and show how close we are." %}</p>
+{% if not has_snapshot %}<p class="text-muted">{% translate "The first month has not closed yet, so these numbers are live and rough." %}</p>{% endif %}
+<table class="table align-middle">
+  <thead><tr><th>{% translate "Condition" %}</th><th class="text-end">{% translate "Now" %}</th><th class="text-end">{% translate "Target" %}</th><th class="text-end">{% translate "Default world, month" %} {{ month_index }}</th><th>{% translate "How are we doing?" %}</th></tr></thead>
+  <tbody>
+  {% for r in rows %}<tr>
+    <td>{{ r.label }}</td>
+    <td class="text-end">{% if r.real is None %}–{% else %}{{ r.real }}{% endif %}</td>
+    <td class="text-end">{{ r.target }}</td>
+    <td class="text-end">{{ r.benchmark|floatformat:2 }}</td>
+    <td><span class="badge {% if r.verdict == 'on_track' %}text-bg-success{% elif r.verdict == 'behind' %}text-bg-warning{% elif r.verdict == 'far_behind' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">{{ r.word }}</span></td>
+  </tr>{% endfor %}
+  </tbody>
+</table>
+<p class="small text-muted">{% translate "Behind means below 75% of the default world's value; far behind means below 40%." %}</p>
+{% endblock %}
