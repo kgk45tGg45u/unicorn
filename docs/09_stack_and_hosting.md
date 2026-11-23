@@ -52,41 +52,25 @@ Tests create `test_unicorn_dev` themselves. Creating the append-only triggers ne
 (Done in phase 15; written here so the owner knows what to expect.)
 
 1. **Look at the box** with `deploy/check_programs.sh` (read only: it lists the needed programs as FOUND or MISSING) and `deploy/check_server.sh`. Nothing is installed from a repository: Unicorn uses what the box already has (Python 3.12, git, MariaDB with its client tools, Apache with the proxy, headers and ssl modules, systemd, cron, flock, mail). The database driver is the pure-Python **PyMySQL** (`requirements-server.txt`), because the database development files that `mysqlclient` needs are not on the box. Unicorn's own Python libraries are installed with `pip` into the site's own folder (`~/venv`), not into the system.
-2. **Virtual servers:** one for `unicorn.<domain>` (production) and one for `staging.unicorn.<domain>`. Each has its own Unix user, MariaDB database and Let's Encrypt certificate. The database server needs its time zone tables (`mariadb-tzinfo-to-sql /usr/share/zoneinfo | mariadb -u root mysql`, once). SELinux is off on this box, so nothing more is needed for Apache to reach gunicorn.
-3. **Layout under the virtual server's home** (`/home/<user>/`):
+2. **Virtual servers, made in Virtualmin with the owner's usual defaults and no change of settings:** one for the new domain (production) and a sub-server `staging.<domain>` (it shares the Unix user of the domain). Each has its own MariaDB database and Let's Encrypt certificate. Nothing on the server itself is changed: no systemd unit, no sudo rule, no Apache or Virtualmin setting, no package.
+3. **Layout under the user's home**, one folder per site (`~/unicorn`, `~/unicorn-staging`):
 
    ```
-   app/            the repository (git clone, a release tag checked out)
-   venv/           python3.12 -m venv venv
-   .env            secrets, chmod 600
-   public_html/static/   collectstatic target, served by Apache
-   private_media/  uploaded files, never served directly
-   before_release.sh   optional: your Borg command, run before each release
-   run/            lock files
+   unicorn/
+     unicorn.git/      bare repository: the Mac pushes tags here
+     app/              the code (git clone, a release tag checked out)
+     venv/             python3.12 -m venv venv (requirements-server.txt)
+     .env              secrets, chmod 600
+     run/              gunicorn.pid, gunicorn.log, lock files
+     private_media/    uploaded files, never served directly
+     before_release.sh optional: the owner's Borg command, run before each release
    ```
 
-4. **gunicorn as a systemd service** (`/etc/systemd/system/unicorn.service`, user = the virtual server's user, `--bind 127.0.0.1:8001 --workers 3`; staging uses port 8002). A sudoers line lets the user restart only its own service (task P15.T05).
-5. **Apache proxy** in the virtual server's configuration (`deploy/apache_directives.conf`):
-
-   ```
-   ProxyPreserveHost On
-   ProxyPass /.well-known/acme-challenge/ !
-   ProxyPass /static/ !
-   ProxyPass / http://127.0.0.1:8001/ timeout=60
-   ProxyPassReverse / http://127.0.0.1:8001/
-   RequestHeader set X-Forwarded-Proto "https"
-   LimitRequestBody 12582912
-   ```
-
-6. **Cron** for the virtual server's user (Virtualmin → Scheduled Cron Jobs; `deploy/crontab.txt`). `deploy/manage.sh` sets the path of the settings file and runs `manage.py` (task P15.T04):
-
-   ```
-   * * * * *  flock -n ~/run/jobs.lock ~/app/deploy/manage.sh run_jobs --max-seconds 55
-   5 0 * * *  flock -n ~/run/daily.lock ~/app/deploy/manage.sh daily
-   15 0 1 * * flock -n ~/run/close.lock ~/app/deploy/manage.sh close_period
-   ```
-
-7. **Releases** with `deploy/release.sh <tag>`, on staging first, then on production. The script asks for a fresh backup (your own), checks out the tag, installs, migrates, collects the static files, restarts the service, and rolls back if `/healthz` fails (task P15.T06).
+   The site's web folder (Virtualmin's `public_html` for that virtual server) holds `static/` (collectstatic) and the one `.htaccess` file.
+4. **The app runs as an ordinary program of the site's user** (gunicorn on `127.0.0.1:<port>`; `deploy/run_site.sh start|stop|restart|status|ensure`). A cron job every minute runs `run_site.sh ensure`, which starts it again after a crash or a reboot. That replaces a systemd service.
+5. **Apache sends the pages to the app through the `.htaccess` file in the site's web folder** (`deploy/htaccess_template`): Let's Encrypt checks and the static files stay with Apache, plain http goes to https, everything else is proxied to the app with `X-Forwarded-Proto: https`. That replaces Apache settings. If a box does not honour that file, `deploy/apache_directives.conf` says the same for the virtual server's "Edit Directives" (only with the owner's yes).
+6. **Cron**, entered in Virtualmin's *Scheduled Cron Jobs* for the site's user (`deploy/crontab.txt`): the watchdog, `run_jobs` every minute, `daily` at 00:05, `close_period` on the 1st at 00:15. `deploy/manage.sh` finds the site folder from where it lies, sets the settings file and runs `manage.py` (task P15.T04).
+7. **Releases** with `<site folder>/app/deploy/release.sh <tag>`, on staging first, then on production. The script asks for a fresh backup (the owner's own), checks out the tag, installs, migrates, collects the static files, restarts the app with `run_site.sh`, and rolls back if `/healthz` fails (task P15.T06).
 
 ## 4. Where the data lives
 

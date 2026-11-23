@@ -1,6 +1,8 @@
 # Phase 15 — Running Unicorn on the Virtualmin box
 
-*Changed 2026-11-23 by the owner: nothing new is installed on the box (no `age`, no database development files: the database driver is PyMySQL, `requirements-server.txt`), backups are the owner's own (Borg), and `release.sh` asks for a backup instead of making one. The steps are now in `deploy/README.md`, numbered, each with an undo line.*
+*Changed again 2026-11-23 by the owner: **nothing is changed on the server itself**: no systemd unit, no sudoers file, no Apache or Virtualmin setting. Only the owner's own Virtualmin virtual servers (a new domain, and a sub-server for staging) and their cron jobs are used. So: `run_site.sh` and a cron watchdog replace the systemd service; a `.htaccess` file in the site's web folder (`deploy/htaccess_template`) replaces the Apache directives; `unicorn.service` and `sudoers_unicorn` were removed; every script finds its site folder from where it lies, so staging and production share one Unix user; the root steps of T02, T03 and T05 are gone.*
+
+*Earlier the same day: nothing new is installed on the box (no `age`, no database development files: the database driver is PyMySQL, `requirements-server.txt`), backups are the owner's own (Borg), and `release.sh` asks for a backup instead of making one. The steps are now in `deploy/README.md`, numbered, each with an undo line.*
 
 **Goal:** Unicorn runs on the owner's Virtualmin server (AlmaLinux, Apache, MariaDB), with a staging copy and production. Releases are tested on staging first. Cron runs the jobs, the daily work and the monthly close. Email reaches people's inboxes. Backups go off-site and are restore-tested. The founders can launch.
 **Read first:** docs/09 sections 3–4; docs/08 section 6; plan/phase_14_security_privacy.md T09 (backups).

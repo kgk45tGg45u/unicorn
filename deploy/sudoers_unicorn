@@ -1,4 +1,0 @@
-# Lets the virtual server's user restart and look at its OWN service, and nothing else (P15.T05).
-# Replace <user>. Copy to /etc/sudoers.d/unicorn (mode 0440) and check it with:  visudo -c
-# Staging gets the same line for its own user and unicorn-staging.service.
-<user> ALL=(root) NOPASSWD: /usr/bin/systemctl restart unicorn.service, /usr/bin/systemctl status unicorn.service

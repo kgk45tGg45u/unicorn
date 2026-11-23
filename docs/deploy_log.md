@@ -7,10 +7,10 @@ Every step done on a server, with its date and anything unexpected. **Never writ
 | Step | Who | Done on staging | Done on production |
 |---|---|---|---|
 | T01 `deploy/check_server.sh` run, answers written below | operator | not yet | not yet |
-| T02 packages installed (root) | operator with root | not yet | not yet |
-| T03 virtual servers, DNS, certificates, databases, time zone tables (root) | operator with root | not yet | not yet |
+| T02 packages: none (nothing is installed) | — | — | — |
+| T03 domain, DNS, virtual server and staging sub-server, certificates, databases (Virtualmin) | owner | not yet | not yet |
 | T04 code, `~/.env`, `first_setup.sh` | operator | not yet | not yet |
-| T05 gunicorn service, sudoers line, Apache directives (root) | operator with root | not yet | not yet |
+| T05 run_site.sh and the `.htaccess` in the site's web folder | site user | not yet | not yet |
 | T06 first release through `release.sh` | operator | not yet | not yet |
 | T07 cron, email (DKIM, SPF, DMARC); first restore test of the owner's Borg backup | operator | not yet | not yet |
 | T08 uptime check from the second machine | operator | not yet | not yet |

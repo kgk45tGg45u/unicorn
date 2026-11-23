@@ -45,7 +45,7 @@ show "mysqldump"        "older name of the same"             mysqldump "mysqldum
 show "mariadb-tzinfo-to-sql" "loads time zone tables, once"  mariadb-tzinfo-to-sql
 show "mysql_tzinfo_to_sql"   "older name of the same"        mysql_tzinfo_to_sql
 
-echo; echo "== Web server and service"
+echo; echo "== Web server and tools"
 show "httpd"            "Apache"                             httpd "httpd -v"
 if command -v httpd >/dev/null 2>&1; then
   mods="$(httpd -M 2>/dev/null || true)"
@@ -53,8 +53,7 @@ if command -v httpd >/dev/null 2>&1; then
     printf '%s' "$mods" | grep -q "$m" && echo "FOUND    apache $m" || echo "MISSING  apache $m"
   done
 fi
-show "systemctl"        "runs gunicorn as a service"         systemctl "systemctl --version"
-show "sudo"             "lets the site user restart its service" sudo "sudo --version"
+show "ss"               "finds a free port for the web app"  ss "ss --version"
 show "crontab"          "cron jobs"                          crontab
 show "flock"            "one cron job at a time"             flock "flock --version"
 

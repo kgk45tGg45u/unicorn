@@ -1,32 +1,32 @@
 #!/usr/bin/env bash
-# Puts a tagged version of Unicorn on this virtual server (P15.T06). Run as the virtual server's user.
+# Puts a tagged version of Unicorn on one site (P15.T06). Run as the site's user, from the site's own copy:
 #
-#   deploy/release.sh v0.9.0                      production (service unicorn.service)
-#   deploy/release.sh v0.9.0 unicorn-staging.service   staging
+#   <site folder>/app/deploy/release.sh v0.9.0
 #
-# Always staging first. If anything fails after the code was switched, the old version is put back and the
+# The site folder is found from where this script lies. Always staging first. If anything fails after the code was switched, the old version is put back and the
 # service restarted. The database stays migrated; that is safe because every migration lets the previous
 # release still run (CLAUDE.md, "Database").
 #
 # Backups are the owner's own (Borg). Before anything is changed this script wants to know that a fresh one exists:
-#   - if ~/before_release.sh exists and can be run, it is run first (put your Borg command in it; if it fails,
+#   - if <site folder>/before_release.sh exists and can be run, it is run first (put your Borg command in it; if it fails,
 #     nothing is released);
 #   - otherwise make the backup yourself, and run this script again with BACKUP_DONE=1.
 #
-# Environment (all optional): APP_DIR, VENV_DIR, UNICORN_ENV_FILE, BACKUP_DONE, HEALTH_URL (to test the rollback,
+# Environment (all optional): SITE_ROOT, UNICORN_ENV_FILE, BACKUP_DONE, HEALTH_URL (to test the rollback,
 # point it at an address that fails), HEALTH_WAIT (seconds to wait before looking, default 5).
-# In ~/.env you may set REQUIREMENTS_FILE=requirements-server.txt (the list with PyMySQL, for a box without the
+# In the site's .env you may set REQUIREMENTS_FILE=requirements-server.txt (the list with PyMySQL, for a box without the
 # database development files).
 set -euo pipefail
 
 TAG="${1:-}"
-SERVICE="${2:-unicorn.service}"
-[[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Usage: release.sh vX.Y.Z [service]" >&2; exit 2; }
+[[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Usage: release.sh vX.Y.Z" >&2; exit 2; }
 
-APP_DIR="${APP_DIR:-$HOME/app}"
-VENV_DIR="${VENV_DIR:-$HOME/venv}"
-export UNICORN_ENV_FILE="${UNICORN_ENV_FILE:-$HOME/.env}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
+ROOT="${SITE_ROOT:-$(cd "${HERE}/../.." && pwd)}"
+APP_DIR="${ROOT}/app"
+VENV_DIR="${ROOT}/venv"
+export UNICORN_ENV_FILE="${UNICORN_ENV_FILE:-${ROOT}/.env}"
+export SITE_ROOT="${ROOT}"
 MANAGE="${HERE}/manage.sh"
 cd "${APP_DIR}"
 
@@ -42,14 +42,14 @@ PREVIOUS="$(cat .version 2>/dev/null || true)"
 echo "Now running: ${PREVIOUS}. Going to: ${TAG}."
 
 # 1b. A fresh backup before anything changes (the owner's own: Borg).
-if [ -x "${HOME}/before_release.sh" ]; then
-  echo "Running ~/before_release.sh (your backup)."
-  "${HOME}/before_release.sh" || { echo "Your backup step failed. Nothing was changed." >&2; exit 3; }
+if [ -x "${ROOT}/before_release.sh" ]; then
+  echo "Running ${ROOT}/before_release.sh (your backup)."
+  "${ROOT}/before_release.sh" || { echo "Your backup step failed. Nothing was changed." >&2; exit 3; }
 elif [ "${BACKUP_DONE:-}" = "1" ]; then
   echo "Backup: you said it is done."
 else
   echo "Make your backup first (Borg), then run this again with BACKUP_DONE=1." >&2
-  echo "(Or make ~/before_release.sh run it for you.) Nothing was changed." >&2
+  echo "(Or make ${ROOT}/before_release.sh run it for you.) Nothing was changed." >&2
   exit 3
 fi
 
@@ -61,7 +61,7 @@ rollback() {
     git checkout --detach "${PREVIOUS}" >/dev/null 2>&1 || true
     echo "${PREVIOUS}" > .version
     "${VENV_DIR}/bin/pip" install -q -r "${REQUIREMENTS_FILE}" || true
-    sudo /usr/bin/systemctl restart "${SERVICE}" || true
+    "${HERE}/run_site.sh" restart || true
   fi
   echo "Release failed, rolled back to ${PREVIOUS}" >&2
   exit 1
@@ -84,7 +84,7 @@ echo "${TAG}" > .version
 "${MANAGE}" collectstatic --noinput
 
 # 5. Restart.
-sudo /usr/bin/systemctl restart "${SERVICE}"
+"${HERE}/run_site.sh" restart
 
 # 6. Look at /healthz.
 sleep "${HEALTH_WAIT:-5}"

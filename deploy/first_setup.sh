@@ -7,7 +7,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 MANAGE="${HERE}/manage.sh"
 
-[ -f "${UNICORN_ENV_FILE:-$HOME/.env}" ] || { echo "No .env file: copy .env.example to ~/.env and fill it in." >&2; exit 1; }
+ROOT="${SITE_ROOT:-$(cd "${HERE}/../.." && pwd)}"
+[ -f "${UNICORN_ENV_FILE:-${ROOT}/.env}" ] || { echo "No ${ROOT}/.env: copy .env.example there and fill it in." >&2; exit 1; }
 
 "${MANAGE}" migrate --noinput
 "${MANAGE}" createcachetable

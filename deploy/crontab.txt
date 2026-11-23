@@ -1,13 +1,14 @@
-# Cron for one virtual server's user (P15.T07). Install it with "crontab -e", or in Virtualmin under
-# "Scheduled Cron Jobs". Replace the address in MAILTO with the operators' list.
+# Cron for ONE site (P15.T07). Enter the four jobs in Virtualmin under "Scheduled Cron Jobs" (as the site's user), or
+# put the lines into "crontab -e". Replace <site folder> with the folder of the site (for example
+# /home/<user>/unicorn-staging) and the address in MAILTO with yours. Make the folder <site folder>/run first.
 #
-# The times are the SERVER'S local time. The box should be set to Europe/Berlin (timedatectl set-timezone
-# Europe/Berlin). If it is not, shift the lines: daily 00:05 and the monthly close 00:15 on the 1st must be
-# Berlin time.
-#
+# The times are the SERVER'S local time, which is Berlin time on this box (checked 2026-11-23).
 # `flock -n` means: if the last run is still going, skip this one (one runner at a time).
+# The first line is the "watchdog": it starts the web app if it is not running (after a reboot, or a crash). It says
+# nothing when all is well, and mails you when it had to start the app.
 # Backups are the owner's own (Borg) and are not in this file.
 MAILTO=operators@example.org
-* * * * *   flock -n ~/run/jobs.lock  ~/app/deploy/manage.sh run_jobs --max-seconds 55
-5 0 * * *   flock -n ~/run/daily.lock ~/app/deploy/manage.sh daily
-15 0 1 * *  flock -n ~/run/close.lock ~/app/deploy/manage.sh close_period
+* * * * *   <site folder>/app/deploy/run_site.sh ensure
+* * * * *   flock -n <site folder>/run/jobs.lock  <site folder>/app/deploy/manage.sh run_jobs --max-seconds 55
+5 0 * * *   flock -n <site folder>/run/daily.lock <site folder>/app/deploy/manage.sh daily
+15 0 1 * *  flock -n <site folder>/run/close.lock <site folder>/app/deploy/manage.sh close_period

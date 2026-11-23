@@ -31,49 +31,117 @@ def test_every_deploy_script_parses_and_can_be_run(script):
     assert script.read_text().startswith("#!/usr/bin/env bash")
 
 
-def test_the_crontab_runs_the_jobs_daily_and_the_close_and_never_two_at_once():
+def test_the_crontab_watches_the_app_runs_the_jobs_daily_and_the_close_and_never_two_at_once():
     lines = [x for x in (DEPLOY / "crontab.txt").read_text().splitlines() if x and not x.startswith("#")]
     jobs = [x for x in lines if not x.startswith("MAILTO")]
     assert any(x.startswith("MAILTO=") for x in lines)
-    assert all("flock -n" in x for x in jobs)
     text = "\n".join(jobs)
-    assert "* * * * *" in text and "run_jobs --max-seconds 55" in text
+    assert "* * * * *   <site folder>/app/deploy/run_site.sh ensure" in text  # the watchdog, instead of systemd
+    assert all("flock -n" in x for x in jobs if "run_site.sh" not in x)
+    assert "run_jobs --max-seconds 55" in text
     assert "5 0 * * *" in text and " daily" in text
     assert "15 0 1 * *" in text and "close_period" in text
     assert "backup" not in text  # backups are the owner's own (Borg)
 
 
-def test_the_service_runs_as_the_site_user_with_gunicorn_and_the_env_file():
-    unit = (DEPLOY / "unicorn.service").read_text()
-    assert "User=<user>" in unit and "gunicorn unicorn.wsgi:application" in unit
-    assert "--bind 127.0.0.1:8001" in unit and "UNICORN_ENV_FILE=/home/<user>/.env" in unit
-    assert "NoNewPrivileges=true" in unit and "Restart=on-failure" in unit
+def test_nothing_in_the_deploy_files_needs_root_systemd_or_the_servers_settings():
+    for path in list(DEPLOY.glob("*.sh")) + [DEPLOY / "htaccess_template", DEPLOY / "crontab.txt"]:
+        code = "\n".join(x for x in path.read_text().splitlines() if not x.lstrip().startswith("#"))
+        words = ["systemctl", "sudo ", "dnf ", "yum ", "apt "]
+        if not path.name.startswith("check_"):  # the two check scripts only READ /etc/...-release
+            words.append("/etc/")
+        for word in words:
+            assert word not in code, f"{path.name} uses {word!r}"
+    assert not (DEPLOY / "unicorn.service").exists() and not (DEPLOY / "sudoers_unicorn").exists()
 
 
-def test_the_sudoers_line_lets_the_user_only_restart_and_look_at_the_service():
-    lines = [x for x in (DEPLOY / "sudoers_unicorn").read_text().splitlines() if x and not x.startswith("#")]
-    assert len(lines) == 1
-    allowed = lines[0].split("NOPASSWD:")[1]
-    assert {c.strip() for c in allowed.split(",")} == {
-        "/usr/bin/systemctl restart unicorn.service",
-        "/usr/bin/systemctl status unicorn.service",
-    }
-    assert "ALL\n" not in lines[0].split("NOPASSWD:")[1]
+def test_the_htaccess_keeps_certificates_goes_to_https_serves_static_and_sends_the_rest_to_the_app():
+    text = (DEPLOY / "htaccess_template").read_text()
+    code = [x for x in text.splitlines() if x and not x.startswith("#")]
+    body = "\n".join(code)
+    order = [
+        body.index("^\\.well-known/acme-challenge/"),
+        body.index("%{HTTPS} off"),
+        body.index("-f"),
+        body.index("^static/"),
+        body.index('RequestHeader set X-Forwarded-Proto "https"'),
+        body.index("http://127.0.0.1:<PORT>/$1 [P,L]"),
+    ]
+    assert order == sorted(order)  # the exceptions come before the proxy rule
+    assert "LimitRequestBody 12582912" in body
 
 
-def test_apache_keeps_the_certificate_renewals_and_static_files_and_says_it_is_https():
+def test_the_apache_fallback_is_only_a_fallback_and_matches_the_htaccess():
     text = (DEPLOY / "apache_directives.conf").read_text()
+    assert text.startswith("# FALLBACK ONLY")
     assert "ProxyPass /.well-known/acme-challenge/ !" in text and "ProxyPass /static/ !" in text
-    assert 'RequestHeader set X-Forwarded-Proto "https"' in text
-    assert "ProxyPass / http://127.0.0.1:8001/" in text
-    assert "LimitRequestBody 12582912" in text
+    assert 'RequestHeader set X-Forwarded-Proto "https"' in text and "http://127.0.0.1:<PORT>/" in text
+
+
+def test_run_site_starts_watches_restarts_and_stops_one_site(tmp_path):
+    """With a stand-in for gunicorn: ensure starts it once, is silent when it runs, restarts it after a crash."""
+    import os
+    import shutil
+    import signal
+    import time
+
+    site = tmp_path / "site"
+    (site / "app" / "deploy").mkdir(parents=True)
+    (site / "venv" / "bin").mkdir(parents=True)
+    shutil.copy(DEPLOY / "run_site.sh", site / "app" / "deploy" / "run_site.sh")
+    (site / ".env").write_text("GUNICORN_PORT=18999\nGUNICORN_WORKERS=1\n")
+    fake = site / "venv" / "bin" / "gunicorn"
+    fake.write_text(
+        "#!/usr/bin/env bash\n"
+        'while [ $# -gt 0 ]; do case "$1" in --pid) PID="$2"; shift;; esac; shift; done\n'
+        '( exec -a gunicorn-stand-in sleep 300 ) >/dev/null 2>&1 & echo $! > "$PID"\n'
+    )
+    for f in (fake, site / "app" / "deploy" / "run_site.sh"):
+        f.chmod(0o755)
+    script = str(site / "app" / "deploy" / "run_site.sh")
+
+    def run(*args):
+        return subprocess.run([script, *args], capture_output=True, text=True, timeout=60)
+
+    pidfile = site / "run" / "gunicorn.pid"
+    try:
+        assert run("status").returncode == 1
+        first = run("ensure")
+        assert first.returncode == 0 and "starting" in first.stdout and run("status").returncode == 0
+        pid = int(pidfile.read_text())
+        assert run("ensure").stdout == ""  # all is well: silent, so cron sends no mail
+        assert run("start").stdout.startswith("Already running")
+        os.kill(pid, signal.SIGKILL)  # a crash
+        time.sleep(0.3)
+        assert run("status").returncode == 1
+        assert "starting" in run("ensure").stdout and run("status").returncode == 0
+        assert run("restart").returncode == 0 and int(pidfile.read_text()) != pid
+        assert run("stop").stdout.strip() == "Stopped." and run("status").returncode == 1
+        assert run("bogus").returncode == 2
+    finally:
+        if pidfile.exists():
+            try:
+                os.kill(int(pidfile.read_text()), signal.SIGKILL)
+            except OSError:
+                pass
+
+
+def test_run_site_refuses_without_a_port(tmp_path):
+    import shutil
+
+    site = tmp_path / "site"
+    (site / "app" / "deploy").mkdir(parents=True)
+    shutil.copy(DEPLOY / "run_site.sh", site / "app" / "deploy" / "run_site.sh")
+    (site / ".env").write_text("SECRET_KEY=x\n")
+    done = subprocess.run([str(site / "app" / "deploy" / "run_site.sh"), "status"], capture_output=True, text=True)
+    assert done.returncode == 2 and "GUNICORN_PORT" in done.stderr
 
 
 def test_the_release_script_checks_backs_up_migrates_restarts_and_rolls_back():
     text = (DEPLOY / "release.sh").read_text()
     order = [
         text.index(x) for x in ("before_release.sh", "git checkout --detach", "check --deploy", "migrate --noinput")
-    ] + [text.rindex("systemctl restart")]
+    ] + [text.rindex('run_site.sh" restart')]
     assert order == sorted(order)
     assert text.index("before_release.sh") < text.index("switched=1")  # nothing changes without a backup
     assert "BACKUP_DONE" in text
@@ -109,6 +177,9 @@ def test_the_env_example_names_every_production_variable():
         "SOURCE_URL",
         "SECURE_HSTS_SECONDS",
         "STATIC_ROOT",
+        "GUNICORN_PORT",
+        "GUNICORN_WORKERS",
+        "USE_X_FORWARDED_HOST",
         "PRIVATE_MEDIA_ROOT",
         "BACKUP_EXPECTED",
         "TEST_DATABASE_NAME",

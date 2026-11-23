@@ -30,7 +30,7 @@ git ls-files | grep -E "(^|/)\.env($|\.)|\.pem$|\.key$|id_rsa"
 
 - [ ] No real key, password, token or IBAN appears. (Names such as `UNICORN_MASTER_KEY` read from `env(...)` are fine.)
 - [ ] The last command prints only `.env.example`, and that file has no real values.
-- [ ] `.env` on the server is readable only by the app's user (`ls -l .env` shows `-rw-------`), and lies outside the web root.
+- [ ] `.env` of the site is readable only by the app's user (`ls -l <site folder>/.env` shows `-rw-------`), and lies outside the web folder.
 
 ## 4. The admin is closed
 
@@ -46,7 +46,7 @@ git ls-files | grep -E "(^|/)\.env($|\.)|\.pem$|\.key$|id_rsa"
 
 ## 6. Backups and the books
 
-- [ ] **Last night's Borg backup exists** (the owner looks in the Borg repository: `borg list` shows last night's archive), and its copy on the other machine too. If `BACKUP_EXPECTED` is on, `~/run/last_backup` shows a time in the last 26 hours.
+- [ ] **Last night's Borg backup exists** (the owner looks in the Borg repository: `borg list` shows last night's archive), and its copy on the other machine too. If `BACKUP_EXPECTED` is on, `<site folder>/run/last_backup` shows a time in the last 26 hours.
 - [ ] **The last restore test is less than 35 days old.** On production: the open-books page, or `deploy/manage.sh shell -c "from apps.core.models import RestoreTest; print(RestoreTest.objects.order_by('-ran_at').first())"`, shows `ok`.
 - [ ] `python manage.py audit_books --full` on staging (with a restored copy) prints that the chains are intact.
 - [ ] The release's migrations let the **previous** release still run (CLAUDE.md, "Database"): new columns are empty-able or have a default, and nothing was removed or renamed.

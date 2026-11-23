@@ -219,6 +219,9 @@ SECURE_REFERRER_POLICY = "same-origin"
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Apache adds the original host name as X-Forwarded-Host; the app reads it when this is on (only Apache and the
+# machine itself can reach the app's port, 127.0.0.1).
+USE_X_FORWARDED_HOST = env.bool("USE_X_FORWARDED_HOST", default=False)
 SECURE_SSL_REDIRECT = not DEBUG
 # 3600 at first; 31536000 once the site has run for a week without problems.
 SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=3600) if not DEBUG else 0
@@ -259,7 +262,7 @@ SECURITY_CONTACT = env("SECURITY_CONTACT", default="")  # an email address for /
 BACKUP_EXPECTED = env.bool(
     "BACKUP_EXPECTED", default=False
 )  # production only: /healthz also looks at the backup (P15.T08)
-BACKUP_RUN_DIR = env("BACKUP_RUN_DIR", default=str(Path.home() / "run"))
+BACKUP_RUN_DIR = env("BACKUP_RUN_DIR", default="") or str(Path.home() / "run")
 DISK_CHECK_PATH = env("DISK_CHECK_PATH", default="/home")  # `daily` warns when this disk is over 80 % full
 LOGGING = {
     "version": 1,

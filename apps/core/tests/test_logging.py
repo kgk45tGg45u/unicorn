@@ -89,14 +89,14 @@ def test_the_response_carries_x_request_id_and_a_good_one_is_kept(client):
 def test_the_request_id_and_member_number_are_in_the_log_line(client, caplog):
     from apps.units.tests.conftest import make_member
 
-    member = make_member("m@x.org", "M")
+    member = make_member("m@x.org", "Mara Quillfeather")
     client.force_login(member.user)
     logger, stream = stream_logger("apps.test")
     response = client.get("/fine/", HTTP_X_REQUEST_ID="req-1234567890")
     line = stream.getvalue()
     assert "req-1234567890" in line and member.number in line and "hello world" in line
     assert response["X-Request-ID"] == "req-1234567890"
-    assert "m@x.org" not in line and "M " not in line.split("apps.test")[0]
+    assert "m@x.org" not in line and "Quillfeather" not in line
 
 
 @pytest.mark.urls("apps.core.tests.test_logging")

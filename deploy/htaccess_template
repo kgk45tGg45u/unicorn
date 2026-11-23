@@ -1,0 +1,25 @@
+# Unicorn: the file "<website folder>/.htaccess" of ONE virtual server (P15.T05).
+# It lives in the site's own web folder, so no Apache or Virtualmin setting is changed. Replace <PORT> with the
+# site's GUNICORN_PORT (from its .env). Virtualmin's screens keep working as before.
+#
+#  1. Let's Encrypt keeps working: the certificate checks (/.well-known/acme-challenge/) are answered by Apache itself.
+#  2. Plain http is sent to https (Unicorn never answers over http).
+#  3. Files that exist in the web folder (the static files in static/) are served by Apache.
+#  4. Everything else goes to Unicorn, which listens only on this machine (127.0.0.1:<PORT>).
+RewriteEngine On
+
+RewriteRule ^\.well-known/acme-challenge/ - [L]
+
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^static/ - [L]
+
+# Unicorn reads this to know the visit came over https (SECURE_PROXY_SSL_HEADER). Apache adds the original
+# host name itself (X-Forwarded-Host), which Unicorn reads with USE_X_FORWARDED_HOST.
+RequestHeader set X-Forwarded-Proto "https"
+RewriteRule ^(.*)$ http://127.0.0.1:<PORT>/$1 [P,L]
+
+# 12 MB: a little more than the largest file the app takes (10 MB, with the form around it).
+LimitRequestBody 12582912
