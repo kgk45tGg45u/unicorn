@@ -54,6 +54,9 @@ class UnionRules(models.Model):
     rotation_months = models.PositiveIntegerField()  # how often a unit's delegate changes
     clauses_md = models.TextField(blank=True)
     adopted_at = models.DateTimeField()
+    adopted_by = models.ForeignKey(
+        "UnionDecision", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )  # empty for version 1
 
     class Meta:
         ordering = ["union", "-version"]
@@ -61,3 +64,71 @@ class UnionRules(models.Model):
 
     def __str__(self):
         return f"Rules of {self.union.name}, version {self.version}"
+
+
+class UnionDelegate(models.Model):
+    """The member who speaks for a unit in its union. `ends_at` is empty while current."""
+
+    HOW = [("first", _("first")), ("rotation", _("rotation")), ("handover", _("handover"))]
+
+    union = models.ForeignKey(Union, on_delete=models.PROTECT, related_name="delegates")
+    unit = models.ForeignKey("units.Unit", on_delete=models.PROTECT, related_name="union_delegates")
+    member = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="union_delegations")
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField(null=True, blank=True)
+    how = models.CharField(max_length=10, choices=HOW)
+    declined_by = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        ordering = ["union", "unit", "-starts_at"]
+
+    def __str__(self):
+        return f"{self.member.number} for {self.unit.name} in {self.union.name}"
+
+
+class UnionDecision(models.Model):
+    """A decision of the union's delegates. It binds only the union's own work (HF-15, HF-20)."""
+
+    KINDS = [
+        ("standard", _("trade standard")),
+        ("recipe_template", _("recipe template")),
+        ("nominate_expert", _("name an expert adviser")),
+        ("training", _("training")),
+        ("rules_change", _("change of the union's rules")),
+        ("other", _("other")),
+    ]
+    STATUSES = [("open", _("open")), ("approved", _("approved")), ("rejected", _("rejected"))]
+
+    union = models.ForeignKey(Union, on_delete=models.PROTECT, related_name="decisions")
+    title = models.CharField(max_length=120)
+    text = models.TextField(blank=True)
+    kind = models.CharField(max_length=16, choices=KINDS, default="other")
+    payload = models.JSONField(default=dict, blank=True)
+    status = models.CharField(max_length=10, choices=STATUSES, default="open")
+    opened_by = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="union_decisions_opened"
+    )
+    opens_at = models.DateTimeField()
+    closes_at = models.DateTimeField()
+    result = models.JSONField(default=dict, blank=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.status})"
+
+
+class UnionVote(models.Model):
+    """One vote for each member unit, cast by its delegate."""
+
+    VOTES = [("yes", _("yes")), ("no", _("no")), ("abstain", _("abstain"))]
+
+    decision = models.ForeignKey(UnionDecision, on_delete=models.PROTECT, related_name="votes")
+    unit = models.ForeignKey("units.Unit", on_delete=models.PROTECT, related_name="+")
+    member = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="union_votes")
+    vote = models.CharField(max_length=8, choices=VOTES)
+    voted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["decision", "unit"], name="one_union_vote_per_unit")]
+
+    def __str__(self):
+        return f"{self.unit.name}: {self.vote}"

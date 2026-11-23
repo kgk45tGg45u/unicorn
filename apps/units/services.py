@@ -14,6 +14,9 @@ from .models import JoinRequest, Unit, UnitMembership
 
 COORDINATION_SLUG = "coordination"
 
+# Called with (unit, member) after a worker left a unit; unions use it to hand over a delegate's role at once.
+WORKER_LEFT_HOOKS: list = []
+
 # Called with (unit) when a unit gets its second worker. P03.T03 adds the default council rules here.
 SECOND_WORKER_HOOKS: list = []
 
@@ -147,6 +150,8 @@ def leave_unit(member, unit):
         current = responsible(unit)
         if current is not None and current.member_id == member.pk:
             _hand_over(unit, "handover", exclude={member.pk})
+        for hook in WORKER_LEFT_HOOKS:
+            hook(unit, member)
 
 
 def _default_rules_hook(unit):

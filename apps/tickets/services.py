@@ -56,6 +56,7 @@ def create_ticket(
     *,
     scope="all",
     scope_unit=None,
+    scope_union=None,
     scope_area="",
     brief="",
     check=None,
@@ -74,6 +75,8 @@ def create_ticket(
         raise TicketError(_("Please choose who the ticket is for."))
     if scope == "unit" and scope_unit is None:
         raise TicketError(_("Please name the unit."))
+    if scope == "union" and scope_union is None:
+        raise TicketError(_("Please name the union."))
     _check_brief(info, brief, check)
     from . import actions
 
@@ -91,6 +94,7 @@ def create_ticket(
             author=author,
             scope=scope,
             scope_unit=scope_unit,
+            scope_union=scope_union,
             scope_area=scope_area,
             brief_md=brief or "",
             check_question=check.get("question", ""),

@@ -49,7 +49,7 @@
 
 ---
 
-### - [ ] P13.T03 — Union delegates and union decisions
+### - [x] P13.T03 — Union delegates and union decisions
 
 **Read:** docs/05 section 7 ("Delegates", "No power over councils").
 **Files:** `apps/bodies/models.py` (UnionDelegate, UnionDecision, UnionVote), `apps/bodies/services.py`, `apps/bodies/jobs.py`, `apps/bodies/tests/test_union_decisions.py`

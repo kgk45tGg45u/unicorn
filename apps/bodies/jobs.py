@@ -8,3 +8,5 @@ from . import services
 @job("bodies.daily")
 def daily(payload):
     services.dissolve_forming()
+    services.rotate_delegates()
+    services.close_due_decisions()
