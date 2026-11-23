@@ -28,6 +28,9 @@
   <select class="form-select" name="offer" style="max-width:16rem">{% for o in offers %}<option value="{{ o.pk }}">{{ o.item.name }}</option>{% endfor %}</select>
   <input class="form-control" name="price" placeholder="{% translate 'Price in euros' %}" style="max-width:10rem"><input type="hidden" name="currency" value="EUR">
   <button class="btn btn-outline-primary">{% translate "Propose" %}</button></form>
+{% if courier_offers %}<h2 class="h5">{% translate "Deliveries paid in euros" %}</h2>
+<p class="small text-muted">{% translate "Outside customers can pay your courier unit in euros. You sell in your own name; the set-aside goes to the fund. UNIQ and euros are never exchanged." %}</p>
+{% for co in courier_offers %}<form method="post" class="d-flex gap-2 flex-wrap mb-2">{% csrf_token %}<input type="hidden" name="do" value="courier_rates"><input type="hidden" name="courier_offer" value="{{ co.pk }}"><span class="align-self-center">{{ co.offer.unit.name }}</span><input class="form-control" name="base" placeholder="{% translate 'Base price in euros' %}" value="{{ co.outside_base_eur|default:'' }}" style="max-width:12rem"><input class="form-control" name="per_km" placeholder="{% translate 'Euros per kilometre' %}" value="{{ co.outside_per_km_eur|default:'' }}" style="max-width:12rem"><button class="btn btn-outline-primary">{% translate "Save" %}</button></form>{% endfor %}{% endif %}
 <h2 class="h5">{% translate "My tax reserve" %}</h2>
 <form method="post" class="d-flex gap-2 flex-wrap">{% csrf_token %}<input type="hidden" name="do" value="tax"><input class="form-control" name="share" value="{{ profile.tax_reserve_share }}" style="max-width:8rem"><input class="form-control" name="reason" placeholder="{% translate 'Why do you change it?' %}" style="max-width:20rem"><button class="btn btn-outline-secondary">{% translate "Change" %}</button></form>
 {% endif %}

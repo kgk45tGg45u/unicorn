@@ -139,6 +139,13 @@ set-aside   = (revenue − tax reserve) × tradefund.setaside_share_of_net    (d
 
 The set-aside is held by the seller as holder (up to their cap; the rest is passed on). The tax reserve stays with the seller to pay their taxes. The seller was already paid in UNIQ for the hours (from the tax). This is the simulation's rule: outside sales after German taxes go to the fund.
 
+**Delivery for outside customers (owner decision 2026-11-23; do not change).**
+- An outside customer can choose "Deliver to me". The proposed way is a **Unicorn courier paid in euros** or a **capitalist carrier**, whichever is cheaper in euros. Pickup stays free.
+- The courier unit's council sets a euro price for outsiders: a base plus a price per kilometre (`CourierOffer.outside_base_eur`, `outside_per_km_eur`) and names a seller of record, a worker of the unit with outside sales switched on.
+- The trip is **its own outside order** with the courier as seller. The customer pays the courier directly, gets an invoice, and the tax reserve and set-aside work exactly as above: the set-aside is booked in the courier's holding in the trade fund books, and the money itself stays in the courier's own bank account (HF-12). The trade fund is only the books; it is not an account.
+- **UNIQ and euros are never exchanged (HF-4).** The customer's payment creates no UNIQ entry. The courier's hours are paid in UNIQ like any work (by Fund 2 as hours pay) and count as `trade`.
+- The order is sent only after the courier's payment is confirmed. The customer confirms the delivery by the link in the email, or it counts as confirmed after `market.delivery_confirm_hours`.
+
 **The cap on outside sales.** The plan caps outside-sales hours at 53% of all hours (`economy.outside_sales_cap_share`). When a month's outside orders reach it, the shop shows new outside orders for the next month.
 
 **The yearly statement.** Each member gets one for their tax return: what they sold, what they set aside, what they held and what they sent on (legal frame, section 4).

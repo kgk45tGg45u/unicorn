@@ -14,7 +14,8 @@
 <div class="alert alert-info">{% if iban %}{% blocktranslate %}Please pay to the account number {{ iban }} with the reference {{ reference }}.{% endblocktranslate %}{% else %}{% blocktranslate %}Please pay the seller in person. Reference: {{ reference }}.{% endblocktranslate %}{% endif %} {% translate "The order is made after the seller confirms your payment, and cancelled after 14 days without payment." %}</div>
 {% endif %}
 {% if shipment %}<p>{% translate "Delivery" %}: {{ shipment.get_mode_display }} · {{ shipment.get_status_display }}{% if shipment.tracking %} · {% translate "tracking" %} {{ shipment.tracking }}{% endif %}</p>
-{% if shipment.status == "sent" %}<form method="post" action="{% url 'outside:received' order.public_token %}">{% csrf_token %}<button class="btn btn-success">{% translate "It arrived" %}</button></form>{% endif %}{% endif %}
+{% if shipment.courier_line %}<p>{% blocktranslate with ref=shipment.courier_line.order.public_token %}The courier is paid separately: see the courier's order page.{% endblocktranslate %} <a href="{% url 'outside:order' shipment.courier_line.order.public_token %}">{% translate "Pay the courier" %}</a></p>{% endif %}
+{% if shipment.status == "sent" or shipment.status == "delivered" and shipment.mode == "unicorn_courier" and line.status != "delivered" %}<form method="post" action="{% url 'outside:received' order.public_token %}">{% csrf_token %}<button class="btn btn-success">{% translate "It arrived" %}</button></form>{% endif %}{% endif %}
 {% if invoice %}<p><a href="{% url 'outside:customer_invoice' order.public_token %}">{% translate "Your invoice" %} {{ invoice.number }}</a></p>{% endif %}
 {% if can_withdraw %}<p><a href="{% url 'outside:withdraw' order.public_token %}">{% translate "Withdraw from this order" %}</a></p>{% endif %}
 {% endblock %}

@@ -306,7 +306,11 @@ def confirm_customer_payment(order, seller, amount):
                 )
         except FundError as e:
             raise OutsideError(str(e)) from None
-        market._fulfil(line)  # production can start now
+        if line.offer.is_service:  # a courier leg: the trip is made when the product is sent
+            line.status = "ready"
+            line.save(update_fields=["status"])
+        else:
+            market._fulfil(line)  # production can start now
         audit.record(seller.number, "outside.paid", order, amount=str(amount), setaside=str(setaside))
         invoices.check_small_business(seller)
         return invoice
@@ -410,18 +414,109 @@ def deliver(line, seller):
         return line
 
 
+def place_courier_leg(product_order, proposal):
+    """An outside customer pays a courier in euros. The trip is its own outside order with the courier as seller, so
+    it has its own payment reference, invoice and set-aside, and the customer pays the courier directly (HF-4)."""
+    from apps.market.models import Order, OrderLine
+
+    co = proposal.courier_offer
+    seller = co.outside_seller
+    profile = active_seller(seller)
+    if profile is None:
+        raise OutsideError(_("The courier cannot sell outside yet."))
+    with transaction.atomic():
+        order = Order.objects.create(
+            kind="outside",
+            outside_customer=product_order.outside_customer,
+            public_token=secrets.token_urlsafe(24),
+        )
+        line = OrderLine.objects.create(
+            order=order,
+            offer=co.offer,
+            quantity=Decimal(1),
+            price_uniq=0,
+            total_uniq=0,
+            price_eur=proposal.eur,
+            currency="EUR",
+            seller=seller,
+            value_at_order=cur_hours(proposal.hours),  # the hours of the trip count as `trade`
+            due_date=timezone.localdate(),
+        )
+        audit.record("outside", "outside.courier_ordered", order, total=str(total_of(line)))
+        customer = product_order.outside_customer
+        _confirmation_mail(order, line, profile, crypto.system_decrypt(customer.email_enc).decode())
+        return line
+
+
+def ask_customer_to_confirm(shipment):
+    _mail_customer(
+        shipment.order,
+        _("Your order %(ref)s was delivered") % {"ref": reference_of(shipment.order)},
+        _("Please confirm that it arrived: %(url)s") % {"url": f"{_site()}/shop/order/{shipment.order.public_token}/"},
+    )
+
+
+def _hand_over_leg(line):
+    """Deliver an outside line without asking the seller again (the customer has confirmed)."""
+    deliver(line, line.seller)
+
+
 def customer_received(order):
-    """The customer confirms through the link in the email that the parcel arrived (P12.T06)."""
+    """The customer confirms through the link in the email that it arrived (P12.T06). A courier is paid its hours."""
+    from apps.logistics import services as logistics
     from apps.logistics.models import Shipment
 
     shipment = Shipment.objects.filter(order=order).first()
-    if shipment is None or shipment.status != "sent":
+    if shipment is None or shipment.status not in ("sent", "delivered"):
         raise OutsideError(_("There is no parcel on its way for this order."))
+    if shipment.status == "sent" and shipment.mode == "unicorn_courier":
+        raise OutsideError(_("The courier has not marked it as delivered yet."))
     line = order.lines.get()
-    deliver(line, line.seller)
-    shipment.status, shipment.delivered_at = "delivered", timezone.now()
+    _hand_over_leg(line)
+    if shipment.courier_line_id:
+        _hand_over_leg(shipment.courier_line)
+        logistics.pay_courier_hours(shipment, shipment.courier_line)
+    shipment.status, shipment.delivered_at = "delivered", shipment.delivered_at or timezone.now()
     shipment.save(update_fields=["status", "delivered_at"])
     return shipment
+
+
+def auto_confirm_deliveries(now=None) -> int:
+    """Outside deliveries that nobody confirmed count as received after `market.delivery_confirm_hours`."""
+    from apps.logistics.models import Shipment
+
+    cutoff = (now or timezone.now()) - timedelta(hours=get_param("market.delivery_confirm_hours"))
+    done = 0
+    for s in Shipment.objects.filter(
+        order__buyer__isnull=True, status="delivered", delivered_at__lte=cutoff
+    ).select_related("order"):
+        if s.line.status != "delivered":
+            customer_received(s.order)
+            done += 1
+    return done
+
+
+def set_courier_rates(member, courier_offer, base_eur, per_km_eur, seller):
+    """The courier unit's council sets what outside customers pay for a delivery, and who sells it (HF-4)."""
+    unit = courier_offer.offer.unit
+    if not unit_services.can_edit_unit(member, unit):
+        raise OutsideError(_("Only the courier unit's council can set its prices for outside customers."))
+    if active_seller(seller) is None or not unit_services.is_worker(seller, unit):
+        raise OutsideError(_("The seller must be a worker of the courier unit with outside sales switched on."))
+    try:
+        base, per_km = cur(Decimal(str(base_eur))), cur(Decimal(str(per_km_eur or 0)))
+    except InvalidOperation:
+        raise OutsideError(_("Please enter the prices as numbers.")) from None
+    if base < 0 or per_km < 0 or (base == 0 and per_km == 0):
+        raise OutsideError(_("Please give a price above zero."))
+    courier_offer.outside_base_eur, courier_offer.outside_per_km_eur, courier_offer.outside_seller = (
+        base,
+        per_km,
+        seller,
+    )
+    courier_offer.save(update_fields=["outside_base_eur", "outside_per_km_eur", "outside_seller"])
+    audit.record(member.number, "courier.outside_rates", courier_offer, base=str(base), per_km=str(per_km))
+    return courier_offer
 
 
 def _first_of(year, month):

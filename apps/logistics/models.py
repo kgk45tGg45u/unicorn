@@ -49,6 +49,12 @@ class CourierOffer(models.Model):
     speed_kmh = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     stop_minutes = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     max_km = models.DecimalField(max_digits=7, decimal_places=2, default=30)
+    # Delivery for outside customers, who pay the courier in euros (HF-4: no UNIQ move). Set by the unit's council.
+    outside_base_eur = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    outside_per_km_eur = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    outside_seller = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )  # the courier who sells in their own name and holds the set-aside
 
     def __str__(self):
         return f"courier {self.offer_id}"

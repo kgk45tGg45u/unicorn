@@ -151,6 +151,12 @@ def seller_area(request):
             elif do == "refund":
                 services.refund_order(get_object_or_404(Order, pk=p.get("order")), member, p.get("reason", ""))
                 messages.success(request, _("The order is refunded."))
+            elif do == "courier_rates":
+                from apps.logistics.models import CourierOffer
+
+                co = get_object_or_404(CourierOffer, pk=p.get("courier_offer"))
+                services.set_courier_rates(member, co, p.get("base", ""), p.get("per_km", ""), member)
+                messages.success(request, _("Outsiders can now pay this courier in euros."))
             elif do == "offer":
                 offer = get_object_or_404(Offer, pk=p.get("offer"))
                 result = services.propose_outside_offer(
@@ -169,10 +175,13 @@ def seller_area(request):
         .order_by("-id")[:30]
     )
     unit_ids = unit_services.UnitMembership.objects.filter(member=member, left_at__isnull=True).values("unit_id")
+    from apps.logistics.models import CourierOffer
+
     return render(
         request,
         "outside/seller.html",
         {
+            "courier_offers": CourierOffer.objects.filter(offer__unit_id__in=unit_ids).select_related("offer__unit"),
             "profile": profile,
             "lines": [(line, services.total_of(line), services.reference_of(line.order)) for line in lines],
             "offers": Offer.objects.filter(unit_id__in=unit_ids, status="active", item__kind="product"),

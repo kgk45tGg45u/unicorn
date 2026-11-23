@@ -9,6 +9,12 @@ def cancel_unpaid(payload):
     services.cancel_unpaid()
 
 
+@job("outside.confirm_deliveries")
+def confirm_deliveries(payload):
+    """Daily. Safe to run twice: a delivered line is not delivered again."""
+    services.auto_confirm_deliveries()
+
+
 @job("outside.wipe_contacts")
 def wipe_contacts(payload):
     """Daily. Safe to run twice: wiped contact fields stay wiped."""

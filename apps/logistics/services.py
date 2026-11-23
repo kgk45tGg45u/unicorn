@@ -75,6 +75,8 @@ class Proposal:
     courier_offer: CourierOffer | None = None
     carrier: Carrier | None = None
     notice: str = ""
+    outside: bool = False  # the courier is paid in euros by an outside customer
+    hours: Decimal = D(0)  # the trip's labour value, for the books of hours
 
 
 def abroad_notice(from_country, to_country) -> str:
@@ -93,7 +95,7 @@ def _planning_rate() -> Decimal:
     return D(str(rate)) if rate else D(1)
 
 
-def _courier_options(unit, country, postcode):
+def _courier_options(unit, country, postcode, outsider=False):
     """Couriers that cover both ends, in the same country as the seller, never across a border (P12.T07)."""
     if (unit.country or "DE").upper() != country.upper():
         return []
@@ -109,7 +111,13 @@ def _courier_options(unit, country, postcode):
         if leg > float(co.max_km) or not (geo.covers(cu, country, postcode) and geo.covers(cu, country, unit.postcode)):
             continue
         labour, eur = quotes.courier_quote(co, SimpleNamespace(lat=unit.lat, lng=unit.lng), dest, distance_km=leg)
-        found.append(Proposal("unicorn_courier", labour, eur, courier_offer=co))
+        if outsider:  # an outside customer pays the courier in euros, never in UNIQ
+            price = quotes.courier_outside_price(co, leg)
+            if price is None or co.outside_seller_id is None:
+                continue
+            found.append(Proposal("unicorn_courier", D(0), price, courier_offer=co, outside=True, hours=labour))
+        else:
+            found.append(Proposal("unicorn_courier", labour, eur, courier_offer=co, hours=labour))
     return found
 
 
@@ -118,19 +126,30 @@ def carriers_for(country):
     return [c for c in Carrier.objects.filter(active=True) if country.upper() in {x.upper() for x in c.countries}]
 
 
+def _worth(p, rate) -> Decimal:
+    """What a proposal costs, for comparing: euros for an outside customer, hours (UNIQ plus euros at the rate) else."""
+    return p.eur if p.outside else p.uniq + p.eur / rate
+
+
 def propose(unit, country, postcode, member_buyer=True) -> Proposal:
-    """The make-or-buy rule: a courier when `courier_uniq + courier_eur / r < carrier_eur / r`, else a carrier."""
+    """The make-or-buy rule: a courier when it costs less than the carrier, else a carrier.
+
+    For a member the comparison is in hours: `courier_uniq + courier_eur / r < carrier_eur / r`. For an outside
+    customer both prices are in euros and the cheaper one is proposed.
+    """
     country = (country or "DE").upper()
     rate = _planning_rate()
-    couriers = _courier_options(unit, country, postcode) if member_buyer else []
-    best_courier = min(couriers, key=lambda p: p.uniq + p.eur / rate, default=None)
+    couriers = _courier_options(unit, country, postcode, outsider=not member_buyer)
+    best_courier = min(couriers, key=lambda p: _worth(p, rate), default=None)
     quoted = [(c, quotes.carrier_quote(c)) for c in carriers_for(country)]
     quoted = [(c, e) for c, e in quoted if e is not None]
     carrier, carrier_eur = min(quoted, key=lambda x: x[1], default=(None, None))
     notice = abroad_notice(unit.country or "DE", country)
-    if best_courier and (carrier is None or best_courier.uniq + best_courier.eur / rate < carrier_eur / rate):
-        best_courier.notice = notice
-        return best_courier
+    if best_courier is not None:
+        carrier_worth = None if carrier is None else (carrier_eur if best_courier.outside else carrier_eur / rate)
+        if carrier_worth is None or _worth(best_courier, rate) < carrier_worth:
+            best_courier.notice = notice
+            return best_courier
     if carrier is not None:
         return Proposal("capitalist_carrier", D(0), carrier_eur, carrier=carrier, notice=notice)
     raise LogisticsError(_("We cannot bring this to that address yet. You can pick it up instead."))
@@ -183,7 +202,12 @@ def _setup(shipment, proposal, buyer):
     from apps.tradefund import purchases
 
     line, unit = shipment.line, shipment.line.offer.unit
-    if proposal.mode == "unicorn_courier":
+    if proposal.mode == "unicorn_courier" and proposal.outside:
+        from apps.outside import services as outside
+
+        shipment.courier_line = outside.place_courier_leg(shipment.order, proposal)
+        shipment.uniq_cost, shipment.eur_cost = D(0), proposal.eur
+    elif proposal.mode == "unicorn_courier":
         co = proposal.courier_offer
         courier_line = OrderLine.objects.create(
             order=shipment.order,
@@ -271,8 +295,9 @@ def confirm_mode(shipment, worker, mode=None):
 
 def _all_proposals(unit, shipment):
     rate = _planning_rate()
-    out = list(_courier_options(unit, shipment.to_country, shipment.to_postcode)) if shipment.order.buyer_id else []
-    out.sort(key=lambda p: p.uniq + p.eur / rate)
+    outsider = shipment.order.buyer_id is None
+    out = list(_courier_options(unit, shipment.to_country, shipment.to_postcode, outsider=outsider))
+    out.sort(key=lambda p: p.eur if p.outside else p.uniq + p.eur / rate)
     quoted = [(c, quotes.carrier_quote(c)) for c in carriers_for(shipment.to_country)]
     quoted = [(c, e) for c, e in quoted if e is not None]
     if quoted:
@@ -336,6 +361,9 @@ def mark_sent(shipment, worker, tracking=""):
         if shipment.status != "planned":
             raise LogisticsError(_("This order has already left."))
         _need_ready(shipment)
+        if shipment.mode == "unicorn_courier" and shipment.order.buyer_id is None:
+            if shipment.courier_line.order.paid_at is None:
+                raise LogisticsError(_("The customer has not paid the courier yet."))
         if shipment.mode == "capitalist_carrier" and not (tracking or "").strip():
             raise LogisticsError(_("Please enter the carrier's tracking number."))
         shipment.status, shipment.tracking = "sent", (tracking or "").strip()[:80]
@@ -362,8 +390,13 @@ def courier_delivered(shipment, courier):
         shipment.courier_member = courier
         shipment.courier_minutes = max(1, round(quotes.courier_minutes(co, km)))
         shipment.save()
-        market.mark_arrived(market._lock_line(shipment.line), courier.number)
-        market.mark_arrived(market._lock_line(shipment.courier_line), courier.number, auto_confirm=False)
+        if shipment.order.buyer_id is None:  # an outside customer confirms through the link in the email
+            from apps.outside import services as outside
+
+            outside.ask_customer_to_confirm(shipment)
+        else:
+            market.mark_arrived(market._lock_line(shipment.line), courier.number)
+            market.mark_arrived(market._lock_line(shipment.courier_line), courier.number, auto_confirm=False)
         audit.record(courier.number, "shipment.delivered", shipment)
         return shipment
 
@@ -399,17 +432,24 @@ def on_line_delivered(line):
         if cl is not None and cl.status == OrderLine.HANDED_OVER:
             market._deliver(market._lock_line(cl), "system")
     shipment_as_courier = Shipment.objects.filter(courier_line=line).first()
-    if shipment_as_courier is not None and shipment_as_courier.courier_member_id:
-        unit_services.record_hours(
-            shipment_as_courier.courier_member,
-            line.offer.unit,
-            timezone.localdate(),
-            shipment_as_courier.courier_minutes,
-            activity="other",
-            note=_("Delivery of order %(n)s") % {"n": shipment_as_courier.order_id},
-            ref_type="orderline",
-            ref_id=line.pk,
-        )
+    if shipment_as_courier is not None:
+        pay_courier_hours(shipment_as_courier, line)
+
+
+def pay_courier_hours(shipment, courier_line):
+    """The courier's trip is recorded as hours of the courier unit, and paid like any hours (docs/03 section 3)."""
+    if not shipment.courier_member_id:
+        return None
+    return unit_services.record_hours(
+        shipment.courier_member,
+        courier_line.offer.unit,
+        timezone.localdate(),
+        shipment.courier_minutes,
+        activity="other",
+        note=_("Delivery of order %(n)s") % {"n": shipment.order_id},
+        ref_type="orderline",
+        ref_id=courier_line.pk,
+    )
 
 
 def report_problem(shipment, buyer, reason, text=""):

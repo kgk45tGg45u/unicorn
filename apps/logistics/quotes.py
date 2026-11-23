@@ -40,6 +40,16 @@ def courier_quote(courier_offer, from_point, to_point, distance_km=None) -> tupl
     return labour, cur(euros)
 
 
+def courier_outside_price(courier_offer, distance_km) -> Decimal | None:
+    """What an outside customer pays the courier in euros: a base plus a rate per kilometre, set by the council.
+
+    It is a euro price like any outside price. It is never turned into UNIQ and UNIQ are never turned into it (HF-4).
+    """
+    if courier_offer.outside_base_eur is None:
+        return None
+    return cur(courier_offer.outside_base_eur + (courier_offer.outside_per_km_eur or D(0)) * D(str(distance_km)))
+
+
 def carrier_quote(carrier, weight_kg=0) -> Decimal | None:
     """The carrier's euros for a parcel, or None when the parcel is too heavy for it."""
     rules = carrier.rate_rules or {}

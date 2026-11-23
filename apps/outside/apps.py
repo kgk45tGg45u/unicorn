@@ -13,6 +13,6 @@ class OutsideConfig(AppConfig):
 
         statement.register()
         units_link.register()
-        for entry in (("outside.cancel_unpaid", {}), ("outside.wipe_contacts", {})):
+        for entry in (("outside.cancel_unpaid", {}), ("outside.wipe_contacts", {}), ("outside.confirm_deliveries", {})):
             if entry not in daily.DAILY_JOBS:
                 daily.DAILY_JOBS.append(entry)

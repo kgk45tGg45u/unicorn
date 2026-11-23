@@ -197,6 +197,7 @@ The owner: *"The market shows the services and products currently needed by othe
 | `unicorn_courier` | a courier unit within its own cover area | the courier service's labour value, as its own order line (hours = distance ÷ speed + 5 minutes a stop, docs/04 service values) |
 | `capitalist_carrier` | the buyer is outside every courier's cover area, or the make-or-buy rule at the planning rate says the carrier is cheaper (docs/03, section 8) | **nothing in UNIQ**: the carrier's euros are paid by the trade fund like bought materials (they appear in the offer's euro content statistics, not in its price, HF-3) |
 
+- **Outside customers** (no UNIQ, no account) can also use a courier, and pay it **in euros** (docs/07 section 6, "Delivery for outside customers"; owner decision 2026-11-23). This never turns UNIQ into euros or euros into UNIQ.
 - **Who chooses the carrier:** the app proposes the mode by these rules, and the selling unit's responsible confirms it. Buyers choose only between pickup and delivery.
 - **Delivery records:** each delivery is confirmed by the receiver ("received") or flagged ("damaged", "missing"). A damaged delivery is replaced or refunded: the held UNIQ are released, or a correction is posted with a reason.
 - **Packaging** is an input of the courier offer like any other.
