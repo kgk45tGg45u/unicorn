@@ -39,3 +39,10 @@ def make_ticket(author=None, title="Buy a thing"):
         decision_method="none",
         status="done",
     )
+
+
+def set_param(key, value):
+    """Change a default directly, for a test (real changes go through tickets, HF-16)."""
+    from apps.rules.models import Parameter
+
+    Parameter.objects.filter(key=key).update(value=value)

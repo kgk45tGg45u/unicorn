@@ -204,7 +204,7 @@
 
 ---
 
-### - [ ] P08.T09 — Members' bills: benefit and guarantee claims
+### - [x] P08.T09 — Members' bills: benefit and guarantee claims
 
 **Read:** docs/07 section 9.
 **Files:** `apps/tradefund/models.py` (BenefitClaim, BenefitBill, GuaranteeClaim), `apps/tradefund/benefits.py`, `apps/tradefund/views.py`, `apps/tradefund/jobs.py`, `apps/tradefund/tests/test_benefits.py`
@@ -236,7 +236,7 @@
 
 ---
 
-### - [ ] P08.T10 — Priorities, the reserve, pausing euro-hungry offers
+### - [x] P08.T10 — Priorities, the reserve, pausing euro-hungry offers
 
 **Read:** docs/07 section 10.
 **Files:** `apps/tradefund/allocation.py`, `apps/tradefund/jobs.py`, `apps/catalogue/models.py` (add `paused_for_euros` to Offer), `apps/tradefund/tests/test_allocation.py`

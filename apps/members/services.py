@@ -169,16 +169,20 @@ def _is_public_forecast(pf) -> bool:
 
 
 def _is_seated_for_licence(viewer, pf) -> bool:
-    """The confirmers seated on a licence ticket may open its document while the ticket is open (P06.T07)."""
+    """The confirmers seated on a licence or benefit ticket may open its documents while the ticket is open
+    (P06.T07, P08.T09). Nobody else sees them."""
     from apps.tickets.models import Seat
 
     seats = Seat.objects.filter(
         member=viewer,
         replaced=False,
-        confirmation__ticket__type="verify_licence",
+        confirmation__ticket__type__in=("verify_licence", "benefit_claim", "guarantee_claim"),
         confirmation__ticket__status__in=("open", "confirming", "panel"),
     ).values_list("confirmation__ticket__action_payload", flat=True)
-    return any((payload or {}).get("document_id") == pf.pk for payload in seats)
+    return any(
+        (payload or {}).get("document_id") == pf.pk or pf.pk in ((payload or {}).get("document_ids") or [])
+        for payload in seats
+    )
 
 
 def shred(member) -> None:

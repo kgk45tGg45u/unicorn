@@ -1,6 +1,6 @@
 from apps.core.jobs import job
 
-from . import fx, payments, purchases, trust
+from . import allocation, benefits, fx, payments, purchases, trust
 
 
 @job("tradefund.fx")
@@ -40,3 +40,15 @@ def purchase_lists(payload):
 def purchases_waiting(payload):
     """Daily. Retries purchases waiting for euros and picks buyers whose time is up."""
     purchases.run_waiting()
+
+
+@job("tradefund.allocate")
+def allocate(payload):
+    """Daily (the order of priorities is monthly). Safe to run twice: it only acts on what still waits."""
+    allocation.allocate()
+
+
+@job("tradefund.benefits")
+def benefits_monthly(payload):
+    """Daily. Safe to run twice: a claim paid for the month is not paid again."""
+    benefits.run_monthly()

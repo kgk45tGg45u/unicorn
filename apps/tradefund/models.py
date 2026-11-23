@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -325,3 +327,108 @@ class Donation(models.Model):
     @property
     def reference(self):
         return f"D-{self.pk:06d}"
+
+
+class BenefitClaim(models.Model):
+    """A member asks the fund to pay part of their basic bills, to work less outside (docs/07 section 9)."""
+
+    STATUSES = [
+        ("draft", _("draft")),
+        ("confirming", _("being decided")),
+        ("approved", _("approved")),
+        ("active", _("paid every month")),
+        ("paused", _("paused")),
+        ("ended", _("ended")),
+        ("rejected", _("not approved")),
+    ]
+
+    member = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="benefit_claims")
+    status = models.CharField(max_length=12, choices=STATUSES, default="draft")
+    approved_monthly_eur = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    income_eur = models.DecimalField(max_digits=14, decimal_places=2, default=0)  # their own euro income, as stated
+    burden_score = models.DecimalField(max_digits=10, decimal_places=4, default=0)  # monthly bills / own euro income
+    ticket = models.ForeignKey("tickets.Ticket", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    documents = models.ManyToManyField("members.PrivateFile", blank=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-id"]
+
+    def __str__(self):
+        return f"benefit claim {self.pk} of {self.member.number} ({self.status})"
+
+    @property
+    def monthly_total(self):
+        return sum((b.amount_eur for b in self.bills.all()), Decimal(0))
+
+
+class BenefitBill(models.Model):
+    KINDS = [
+        ("rent", _("rent")),
+        ("health_insurance", _("health insurance")),
+        ("care_insurance", _("care insurance")),
+        ("basic_needs", _("basic needs")),
+        ("other", _("other")),
+    ]
+
+    claim = models.ForeignKey(BenefitClaim, on_delete=models.CASCADE, related_name="bills")
+    kind = models.CharField(max_length=20, choices=KINDS)
+    amount_eur = models.DecimalField(max_digits=14, decimal_places=2)
+    payee_external = models.ForeignKey(ExternalPayee, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    # without an outside payee, the amount is paid to the member
+
+    def __str__(self):
+        return f"{self.kind} {self.amount_eur}"
+
+
+class GuaranteeClaim(models.Model):
+    """A member who is worse off on basic needs than without Unicorn asks for a top-up (docs/07 section 9)."""
+
+    STATUSES = [
+        ("confirming", _("being decided")),
+        ("approved", _("approved")),
+        ("paid", _("paid")),
+        ("rejected", _("not approved")),
+    ]
+
+    member = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="guarantee_claims")
+    month = models.DateField()  # the first of the month that fell short
+    shortfall_eur = models.DecimalField(max_digits=14, decimal_places=2)
+    explanation = models.TextField()
+    ticket = models.ForeignKey("tickets.Ticket", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    status = models.CharField(max_length=12, choices=STATUSES, default="confirming")
+
+    def __str__(self):
+        return f"guarantee claim {self.pk} of {self.member.number} ({self.status})"
+
+
+class BenefitBudget(models.Model):
+    """The fund's budget for benefits in one month. It moves toward what the fund can sustain (docs/07 section 9)."""
+
+    month = models.DateField(unique=True)  # the first of the month
+    target_eur = models.DecimalField(max_digits=14, decimal_places=2)
+    budget_eur = models.DecimalField(max_digits=14, decimal_places=2)
+    note = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ["-month"]
+
+    def __str__(self):
+        return f"benefit budget {self.month:%Y-%m}: {self.budget_eur}"
+
+
+class BenefitPayout(models.Model):
+    """What was done for one claim in one month: paid by payment requests, or waiting and why."""
+
+    month = models.DateField()
+    kind = models.CharField(max_length=10)  # benefit | guarantee
+    ref_id = models.PositiveIntegerField()
+    amount_eur = models.DecimalField(max_digits=14, decimal_places=2)
+    status = models.CharField(max_length=10)  # requested | waiting
+    note = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["month", "kind", "ref_id"], name="one_payout_per_month")]
+
+    def __str__(self):
+        return f"{self.kind} {self.ref_id} {self.month:%Y-%m} {self.status}"

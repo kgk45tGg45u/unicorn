@@ -90,6 +90,7 @@ class Offer(models.Model):
     max_per_week = models.PositiveIntegerField(null=True, blank=True)
 
     advance_share = models.DecimalField(max_digits=5, decimal_places=4, default=0)
+    paused_for_euros = models.BooleanField(default=False)  # the trade fund is short of euros (P08.T10)
     sold_outside = models.BooleanField(default=False)
     outside_price = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     outside_currency = models.CharField(max_length=3, default="EUR")

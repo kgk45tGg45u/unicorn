@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Help with my bills" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Help with my basic bills" %}</h1>
+<p class="text-muted">{% translate "If you want to work less in your outside job, the fund can pay part of your basic bills. Four random members decide. Only they can see your documents, and only while they decide." %}</p>
+<h2 class="h5">{% translate "My claims" %}</h2>
+<ul class="list-group mb-4">
+  {% for c in claims %}<li class="list-group-item d-flex justify-content-between"><span>{{ c.created_at|date:"Y-m-d" }} · {{ c.get_status_display }}{% if c.approved_monthly_eur %} · {{ c.approved_monthly_eur }} € {% translate "a month" %}{% endif %}</span>
+    {% if c.status == "active" or c.status == "confirming" %}<form method="post">{% csrf_token %}<input type="hidden" name="do" value="end"><input type="hidden" name="claim" value="{{ c.pk }}"><button class="btn btn-sm btn-outline-secondary" type="submit">{% translate "End this claim" %}</button></form>{% endif %}</li>
+  {% empty %}<li class="list-group-item text-muted">{% translate "You have no claims." %}</li>{% endfor %}
+  {% for g in guarantees %}<li class="list-group-item">{% translate "Guarantee" %} {{ g.month|date:"Y-m" }} · {{ g.shortfall_eur }} € · {{ g.get_status_display }}</li>{% endfor %}
+</ul>
+<h2 class="h5">{% translate "Ask for help" %}</h2>
+<form method="post" enctype="multipart/form-data" class="mb-4">{% csrf_token %}
+  {% for i in rows %}<div class="row g-2 mb-2">
+    <div class="col-md-3"><select class="form-select" name="kind{{ i }}" aria-label="{% translate 'Kind of bill' %}">{% for k, label in kinds %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><input class="form-control" name="amount{{ i }}" inputmode="decimal" placeholder="{% translate 'Euros a month' %}" aria-label="{% translate 'Euros a month' %}"></div>
+    <div class="col-md-3"><input class="form-control" name="payee{{ i }}" placeholder="{% translate 'Who is paid (landlord, insurer)' %}" aria-label="{% translate 'Who is paid' %}"></div>
+    <div class="col-md-4"><input class="form-control" name="iban{{ i }}" autocomplete="off" placeholder="{% translate 'Their account number (IBAN); empty: pay me' %}" aria-label="IBAN"></div></div>{% endfor %}
+  <div class="mb-2"><label class="form-label" for="inc">{% translate "My own income in euros a month" %}</label><input class="form-control" id="inc" name="income" inputmode="decimal" style="max-width:12rem"></div>
+  <div class="mb-3"><label class="form-label" for="docs">{% translate "Documents (rental contract, insurance letter; PDF, JPEG or PNG)" %}</label><input class="form-control" id="docs" type="file" name="documents" multiple></div>
+  <button class="btn btn-primary" type="submit">{% translate "Send my claim" %}</button>
+</form>
+<h2 class="h5">{% translate "The guarantee" %}</h2>
+<p class="small text-muted">{% translate "Nobody should be worse off on basic needs than without Unicorn. If you were, tell us what was missing." %}</p>
+<form method="post">{% csrf_token %}<input type="hidden" name="do" value="guarantee">
+  <div class="row g-2 mb-2"><div class="col-md-3"><input class="form-control" type="month" name="month" aria-label="{% translate 'Month' %}"></div><div class="col-md-3"><input class="form-control" name="shortfall" inputmode="decimal" placeholder="{% translate 'Euros missing' %}" aria-label="{% translate 'Euros missing' %}"></div></div>
+  <textarea class="form-control mb-2" name="explanation" rows="3" aria-label="{% translate 'What happened?' %}" placeholder="{% translate 'What happened?' %}"></textarea>
+  <button class="btn btn-outline-primary" type="submit">{% translate "Claim the guarantee" %}</button></form>
+{% endblock %}

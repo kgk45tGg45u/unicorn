@@ -29,4 +29,9 @@
   <p class="lead">{% translate "Nothing matches your search yet." %}</p>
   {% block no_results %}{% endblock %}
 {% endif %}
+{% if paused_for_euros %}
+  <h2 class="h5 mt-4">{% translate "Paused" %}</h2>
+  <p class="small text-muted">{% translate "Paused: the trade fund is short of euros" %}. {% translate "These offers open again when the fund can buy their materials." %}</p>
+  <ul class="list-unstyled">{% for o in paused_for_euros %}<li>{{ o.item.name }} · {{ o.unit.name }}</li>{% endfor %}</ul>
+{% endif %}
 {% endblock %}

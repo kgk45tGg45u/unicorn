@@ -3,12 +3,16 @@ from django.contrib import admin
 from apps.core.admin import ReadOnlyAdmin
 
 from .models import (
+    BenefitBudget,
+    BenefitClaim,
+    BenefitPayout,
     BuyerVolunteer,
     Donation,
     ExternalPayee,
     FundEntry,
     FxRate,
     GroupTool,
+    GuaranteeClaim,
     Holder,
     PaymentRequest,
     PurchaseRequest,
@@ -64,3 +68,23 @@ class BuyerVolunteerAdmin(ReadOnlyAdmin):
 @admin.register(Donation)
 class DonationAdmin(ReadOnlyAdmin):
     list_display = ("id", "holder", "amount", "currency", "status")
+
+
+@admin.register(BenefitClaim)
+class BenefitClaimAdmin(ReadOnlyAdmin):
+    list_display = ("id", "member", "status", "approved_monthly_eur")
+
+
+@admin.register(GuaranteeClaim)
+class GuaranteeClaimAdmin(ReadOnlyAdmin):
+    list_display = ("id", "member", "month", "shortfall_eur", "status")
+
+
+@admin.register(BenefitBudget)
+class BenefitBudgetAdmin(ReadOnlyAdmin):
+    list_display = ("month", "target_eur", "budget_eur")
+
+
+@admin.register(BenefitPayout)
+class BenefitPayoutAdmin(ReadOnlyAdmin):
+    list_display = ("month", "kind", "ref_id", "amount_eur", "status")

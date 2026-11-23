@@ -183,6 +183,7 @@ def market_index(request):
             "town": town,
             "trades": trades,
             "more": len(offers) > 60,
+            "paused_for_euros": Offer.objects.filter(paused_for_euros=True).select_related("item", "unit")[:30],
         },
     )
 

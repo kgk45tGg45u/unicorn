@@ -276,3 +276,66 @@ def my_donations(request):
             "received": holder.donations.filter(status="received")[:20],
         },
     )
+
+
+# --- Benefits and the guarantee (P08.T09) ---
+
+
+@login_required
+def benefits_page(request):
+    from datetime import date
+
+    from apps.members import services as member_services
+
+    from . import benefits
+    from .models import BenefitBill, BenefitClaim, GuaranteeClaim
+
+    member = request.member
+    if request.method == "POST":
+        try:
+            if request.POST.get("do") == "end":
+                benefits.end_claim(get_object_or_404(BenefitClaim, pk=request.POST.get("claim"), member=member), member)
+                messages.success(request, _("Your claim has ended."))
+            elif request.POST.get("do") == "guarantee":
+                benefits.file_guarantee(
+                    member,
+                    date.fromisoformat(request.POST.get("month", "") + "-01")
+                    if request.POST.get("month")
+                    else date.today(),
+                    request.POST.get("shortfall", ""),
+                    request.POST.get("explanation", ""),
+                )
+                messages.success(request, _("Thank you. Members will look at your claim."))
+            else:
+                bills = []
+                for i in range(1, 4):
+                    if request.POST.get(f"amount{i}"):
+                        bills.append(
+                            {
+                                "kind": request.POST.get(f"kind{i}", "other"),
+                                "amount_eur": request.POST.get(f"amount{i}"),
+                                "payee_name": request.POST.get(f"payee{i}", ""),
+                                "payee_iban": request.POST.get(f"iban{i}", ""),
+                            }
+                        )
+                documents = []
+                for upload in request.FILES.getlist("documents"):
+                    documents.append(member_services.store_private_file(member, upload, "benefit_document"))
+                benefits.file_claim(member, bills, request.POST.get("income", "0"), documents)
+                messages.success(request, _("Thank you. Four random members will look at your claim."))
+        except (FundError, member_services.FileRejected, ArithmeticError, ValueError) as e:
+            messages.error(
+                request,
+                str(e) if isinstance(e, (FundError, member_services.FileRejected)) else _("Please check the numbers."),
+            )
+        return redirect("tradefund:benefits")
+    return render(
+        request,
+        "tradefund/benefits.html",
+        {
+            "claims": BenefitClaim.objects.filter(member=member),
+            "guarantees": GuaranteeClaim.objects.filter(member=member),
+            "kinds": BenefitBill.KINDS,
+            "rows": range(1, 4),
+        },
+    )

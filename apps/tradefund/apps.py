@@ -9,11 +9,12 @@ class TradefundConfig(AppConfig):
     def ready(self):
         from apps.core.management.commands import daily
 
-        from . import jobs, payments, purchases, services, trust  # noqa: F401
+        from . import benefits, jobs, payments, purchases, services, trust  # noqa: F401
 
         payments.register()
         trust.register()
         purchases.register()
+        benefits.register()
         for entry in (
             ("tradefund.fx", {}),
             ("tradefund.deadlines", {}),
@@ -21,6 +22,8 @@ class TradefundConfig(AppConfig):
             ("tradefund.caps", {}),
             ("tradefund.purchase_lists", {}),
             ("tradefund.purchases", {}),
+            ("tradefund.allocate", {}),
+            ("tradefund.benefits", {}),
         ):
             if entry not in daily.DAILY_JOBS:
                 daily.DAILY_JOBS.append(entry)
