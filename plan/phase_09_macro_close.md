@@ -42,7 +42,7 @@
 
 ---
 
-### - [ ] P09.T02 — The UNIQ identities that must be exact
+### - [x] P09.T02 — The UNIQ identities that must be exact
 
 **Read:** docs/03 sections 2–3 (4-6, 4-7).
 **Files:** `apps/macro/identities.py`, `apps/macro/tests/test_identities.py`
@@ -62,7 +62,7 @@
 
 ---
 
-### - [ ] P09.T03 — The tax balance
+### - [x] P09.T03 — The tax balance
 
 **Read:** docs/03 section 4 (formula and alternatives).
 **Files:** `apps/macro/tax.py`, `apps/macro/tests/test_tax.py`
@@ -93,7 +93,7 @@
 
 ---
 
-### - [ ] P09.T04 — `close_period`
+### - [x] P09.T04 — `close_period`
 
 **Read:** docs/03 section 7 (steps 1–10).
 **Files:** `apps/macro/close.py`, `apps/macro/management/commands/close_period.py`, `apps/macro/jobs.py`, `apps/macro/tests/test_close.py`
