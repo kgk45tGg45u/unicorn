@@ -35,11 +35,13 @@ DATABASES["default"]["OPTIONS"] = {
     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
 }
 DATABASES["default"]["TEST"] = {"CHARSET": "utf8mb4", "COLLATION": "utf8mb4_unicode_ci"}
+if env("TEST_DATABASE_NAME", default=""):  # on staging the tests may use only the database they were given (P15.T04)
+    DATABASES["default"]["TEST"]["NAME"] = env("TEST_DATABASE_NAME")
 DATABASES["default"]["ATOMIC_REQUESTS"] = False  # services open their own transactions
 CACHES = {  # shared by all workers; also holds the rate limits and allauth's login limits
     "default": {"BACKEND": "django.core.cache.backends.db.DatabaseCache", "LOCATION": "unicorn_cache"}
 }
-PRIVATE_MEDIA_ROOT = env("PRIVATE_MEDIA_ROOT", default=str(BASE_DIR / "private_media"))
+PRIVATE_MEDIA_ROOT = env("PRIVATE_MEDIA_ROOT", default="") or str(BASE_DIR / "private_media")
 UNICORN_MASTER_KEY = env("UNICORN_MASTER_KEY", default="")
 UNICORN_HMAC_KEY = env("UNICORN_HMAC_KEY", default="")
 UNICORN_OLD_MASTER_KEYS = env("UNICORN_OLD_MASTER_KEYS", default="")  # only while a rotation runs
@@ -48,8 +50,20 @@ EMAIL_CONFIG = env.email("EMAIL_URL", default="consolemail://")
 vars().update(EMAIL_CONFIG)
 SITE_URL = env("SITE_URL", default="http://127.0.0.1:8000")
 # The AGPL asks that people who use the app over the network can get its source (HF-19).
-SOURCE_URL = env("SOURCE_URL", default="/third-party/")  # set the real address of the repository in .env
-UNICORN_VERSION = env("UNICORN_VERSION", default="dev")  # set by the release script (P15.T06)
+SOURCE_URL = env("SOURCE_URL", default="") or "/third-party/"  # set the real address of the repository in .env
+
+
+def _release_version():
+    """The version: from the environment, else from the file `.version` the release script writes (P15.T06)."""
+    if os.environ.get("UNICORN_VERSION"):
+        return os.environ["UNICORN_VERSION"]
+    try:
+        return (BASE_DIR / ".version").read_text().strip() or "dev"
+    except OSError:
+        return "dev"
+
+
+UNICORN_VERSION = _release_version()
 
 LANGUAGE_CODE = "en"
 LANGUAGES = [("en", "English")]
@@ -174,7 +188,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = env("STATIC_ROOT", default="") or str(BASE_DIR / "staticfiles")  # on the server: ~/public_html/static
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -240,6 +254,13 @@ SILENCED_SYSTEM_CHECKS = ["models.W036"]
 # No personal data: every handler redacts, and SQL is never logged.
 ADMINS = [("Operator", address) for address in env.list("ADMIN_EMAILS", default=[])]
 SERVER_EMAIL = env("SERVER_EMAIL", default="unicorn@localhost")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@localhost")
+SECURITY_CONTACT = env("SECURITY_CONTACT", default="")  # an email address for /.well-known/security.txt
+BACKUP_EXPECTED = env.bool(
+    "BACKUP_EXPECTED", default=False
+)  # production only: /healthz also looks at the backup (P15.T08)
+BACKUP_RUN_DIR = env("BACKUP_RUN_DIR", default=str(Path.home() / "run"))
+DISK_CHECK_PATH = env("DISK_CHECK_PATH", default="/home")  # `daily` warns when this disk is over 80 % full
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
