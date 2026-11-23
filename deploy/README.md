@@ -68,6 +68,8 @@ Steps marked **(root)** need the server's administrator. Do staging first, then 
 
 ### T01 — Look at the server (read only)
 
+If nothing new may be installed on the box, run `bash deploy/check_programs.sh` first: it lists every program Unicorn needs as FOUND or MISSING, and installs nothing. Send its output to whoever adapts the plan to what the box already has.
+
 ```
 bash deploy/check_server.sh
 ```
