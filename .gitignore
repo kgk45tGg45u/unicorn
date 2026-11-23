@@ -27,3 +27,6 @@ htmlcov/
 .idea/
 .vscode/
 *.swp
+
+# Written by deploy/release.sh
+/.version
