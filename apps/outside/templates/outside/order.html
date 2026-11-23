@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ reference }} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Your order" %} {{ reference }}</h1>
+<dl class="row">
+  <dt class="col-sm-3">{% translate "What" %}</dt><dd class="col-sm-9">{{ line.quantity|floatformat:"-2" }} × {{ line.offer.item.name }}</dd>
+  <dt class="col-sm-3">{% translate "Total" %}</dt><dd class="col-sm-9">{{ total }} {{ line.currency }}</dd>
+  <dt class="col-sm-3">{% translate "Seller" %}</dt><dd class="col-sm-9">{{ profile.trader_name }}</dd>
+  <dt class="col-sm-3">{% translate "Ready from" %}</dt><dd class="col-sm-9">{{ line.due_date }}</dd>
+  <dt class="col-sm-3">{% translate "Status" %}</dt><dd class="col-sm-9">{% if order.withdrawn_at %}{% translate "withdrawn" %}{% elif line.status == "cancelled" %}{% translate "cancelled" %}{% elif order.paid_at %}{{ line.get_status_display }}{% else %}{% translate "waiting for your payment" %}{% endif %}</dd>
+</dl>
+{% if not order.paid_at and line.status != "cancelled" %}
+<div class="alert alert-info">{% if iban %}{% blocktranslate %}Please pay to the account number {{ iban }} with the reference {{ reference }}.{% endblocktranslate %}{% else %}{% blocktranslate %}Please pay the seller in person. Reference: {{ reference }}.{% endblocktranslate %}{% endif %} {% translate "The order is made after the seller confirms your payment, and cancelled after 14 days without payment." %}</div>
+{% endif %}
+{% if invoice %}<p><a href="{% url 'outside:customer_invoice' order.public_token %}">{% translate "Your invoice" %} {{ invoice.number }}</a></p>{% endif %}
+{% if can_withdraw %}<p><a href="{% url 'outside:withdraw' order.public_token %}">{% translate "Withdraw from this order" %}</a></p>{% endif %}
+{% endblock %}

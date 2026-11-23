@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ offer.item.name }} · Unicorn{% endblock %}
+{% block content %}
+<h1>{{ offer.item.name }}</h1>
+<p>{{ offer.outside_price }} {{ offer.outside_currency }} · {% translate "Sold by" %} {{ profile.trader_name }}</p>
+<form method="post" class="mb-4" style="max-width:34rem">{% csrf_token %}
+  <div class="mb-3"><label class="form-label" for="q">{% translate "How many" %}</label><input class="form-control" id="q" name="quantity" value="1" inputmode="decimal"></div>
+  <p class="small text-muted">{% translate "Delivery: pickup." %}</p>
+  <div class="mb-3"><label class="form-label" for="n">{% translate "Your name" %}</label><input class="form-control" id="n" name="name" autocomplete="name"></div>
+  <div class="mb-3"><label class="form-label" for="e">{% translate "Your email address" %}</label><input class="form-control" id="e" name="email" type="email" autocomplete="email"></div>
+  <div class="mb-3"><label class="form-label" for="a">{% translate "Your address" %}</label><textarea class="form-control" id="a" name="address" rows="2" autocomplete="street-address"></textarea></div>
+  <div class="mb-3"><label class="form-label" for="c">{% translate "Country (two letters)" %}</label><input class="form-control" id="c" name="country" maxlength="2" style="max-width:6rem"></div>
+  <div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="ri" name="read_info"><label class="form-check-label" for="ri">{% translate "I have read the consumer information" %} (<a href="{% url 'outside:consumer_info' %}" target="_blank">{% translate "open" %}</a>)</label></div>
+  <div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="co" name="consent"><label class="form-check-label" for="co">{% translate "I agree that my contact details are stored encrypted and deleted 90 days after delivery." %}</label></div>
+  <button class="btn btn-primary" type="submit">{% translate "Order with obligation to pay" %}</button>
+</form>
+{% endblock %}

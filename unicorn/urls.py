@@ -31,6 +31,7 @@ urlpatterns = [
     path("", include("apps.tasks.urls")),
     path("", include("apps.tradefund.urls")),
     path("", include("apps.macro.urls")),
+    path("", include("apps.outside.urls")),
     path("rules/", include("apps.rules.urls")),
     path("", include("apps.core.urls")),
 ]

@@ -76,6 +76,16 @@ def _delivered_value(period, purpose):
     return uniq(total)
 
 
+def _outside_lines_value(period, start, end):
+    """The hours inside the outside order lines delivered in the period (docs/03 section 3: Trade)."""
+    from apps.market.models import OrderLine
+
+    total = OrderLine.objects.filter(
+        order__kind="outside", status="delivered", delivered_at__gte=start, delivered_at__lt=end
+    ).aggregate(t=Sum("value_at_order"))["t"]
+    return uniq(total or Decimal(0))
+
+
 def inventory_value() -> Decimal:
     """Products on the shelves at their labour value, plus the approved hours inside unfinished production orders."""
     from apps.market.models import ProductionOrder, StockLot
@@ -106,7 +116,7 @@ def hours_by_use(period, previous_inventory=ZERO) -> dict:
     start, end = _bounds(period)
     social = _paid_minutes(period, unit__kind__in=("social", "coordination"))
     accumulation = _delivered_value(period, "accumulation") + _paid_minutes(period, unit__mode="project")
-    trade = _delivered_value(period, "outside")
+    trade = _outside_lines_value(period, start, end)
     idle = (
         ServiceSlot.objects.filter(status="done", starts_at__gte=start, starts_at__lt=end).aggregate(
             t=Sum("idle_minutes")

@@ -12,5 +12,6 @@
 </dl>
 <table class="table table-sm"><thead><tr><th>{% translate "Date" %}</th><th>{% translate "What" %}</th><th class="text-end">{% translate "Amount" %}</th><th>{% translate "Ticket" %}</th></tr></thead>
 <tbody>{% for r in rows %}<tr><td>{{ r.date|date:"Y-m-d" }}</td><td>{{ r.kind }}<div class="small text-muted">{{ r.reason|truncatechars:90 }}</div></td><td class="text-end">{{ r.amount }} {{ r.currency }}</td><td>{{ r.ticket }}</td></tr>{% empty %}<tr><td colspan="4" class="text-muted">{% translate "Nothing in this year." %}</td></tr>{% endfor %}</tbody></table>
+{% for ext in extensions %}{% include ext.template with ext=ext %}{% endfor %}
 <a class="btn btn-outline-primary" href="{% url 'tradefund:statement_csv' year 'csv' %}">{% translate "Download as a spreadsheet (CSV)" %}</a>
 {% endblock %}

@@ -24,5 +24,18 @@
       "valid_from": "2026-11-22T00:00:00Z",
       "is_current": true
     }
+  },
+  {
+    "model": "members.contracttemplate",
+    "pk": 3,
+    "fields": {
+      "kind": "outside_seller",
+      "version": 1,
+      "title": "Outside seller terms",
+      "body_md": "## 1. You sell in your own name\n\n**DRAFT — to be written with lawyers (docs/12, section 2)**\n\nWhen you switch on outside sales, the sale, the invoice and the VAT are yours, not the group's and not the association's. Unicorn only helps you to keep the records.\n\n## 2. Your name and address appear on invoices\n\nThe name and address you give are shown to your customers on invoices and in the imprint of your offers. They are stored encrypted.\n\n## 3. Your own taxes\n\nYou pay your own taxes from the tax reserve: the share of every sale that you keep back for them. You may change the share with a written reason. Most members fall under the small-business rule (§ 19 UStG); Unicorn warns you when you come near its limits.\n\n## 4. The set-aside belongs to the group\n\nAfter the tax reserve, the rest of each sale is set aside. It is part of the trade fund: it is held in your holding for the group and passed on by decisions of the members. A small share is marked as loss reserve.",
+      "sha256": "44ed662dd2d9d7db37e32fe72f044cde8bbedb6c7247941dbc8e2311cca9de34",
+      "valid_from": "2026-11-22T00:00:00Z",
+      "is_current": true
+    }
   }
 ]

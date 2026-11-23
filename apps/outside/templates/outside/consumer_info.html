@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Consumer information" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Consumer information" %}</h1>
+<div class="alert alert-warning"><strong>{% translate "DRAFT — to be checked by lawyers" %}</strong></div>
+<h2 class="h5">{% translate "Who sells" %}</h2><p>{% translate "The seller is the member named on the offer and on your invoice, with the name and address shown there. Unicorn only helps with the shop; the sale is between you and the seller." %}</p>
+<h2 class="h5">{% translate "What you buy and the price" %}</h2><p>{% translate "The main features, the unit and the total price in euros are shown before you order." %}</p>
+<h2 class="h5">{% translate "Payment and delivery" %}</h2><p>{% translate "You pay the seller directly, by bank transfer or in person. The seller makes your order after the payment arrives, and tells you when it is ready." %}</p>
+<h2 class="h5">{% translate "Your right of withdrawal" %}</h2><p>{% translate "For goods bought at a distance you can withdraw within 14 days of receiving them, without giving a reason. Goods made to your specification are excepted by law." %}</p>
+<h2 class="h5">{% translate "Services" %}</h2><p>{% translate "For a service, you must ask for it to start within the withdrawal period. If you withdraw after it has started, you pay for what was already done." %}</p>
+{% endblock %}

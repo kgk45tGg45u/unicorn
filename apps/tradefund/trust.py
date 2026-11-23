@@ -165,6 +165,22 @@ def mark_reserve_amount(share, currency, ref, why) -> list:
     return marked
 
 
+def release_reserve(amount, currency, prefer, why) -> list:
+    """Release the reserve share of an amount that went out again (a refunded set-aside), first on `prefer`."""
+    share = cur(Decimal(amount) * get_param("tradefund.loss_reserve_share"))
+    released = []
+    holders = [prefer, *Holder.objects.filter(status=Holder.ACTIVE, currency=currency).exclude(pk=prefer.pk)]
+    for h in holders:
+        chunk = min(share, books.reserve(h))
+        if chunk <= 0:
+            continue
+        released.append(books.post_fund(h, "reserve_unmark", chunk, why, "internal"))
+        share -= chunk
+        if share <= 0:
+            break
+    return released
+
+
 def reserve_total(currency) -> Decimal:
     return sum((books.reserve(h) for h in Holder.objects.filter(currency=currency)), Decimal(0))
 

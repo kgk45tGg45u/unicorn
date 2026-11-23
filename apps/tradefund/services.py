@@ -201,3 +201,40 @@ def register():
         member_services.LEAVE_CHECKS.append(_leave_check)
     if _handover_confirmed not in payments.CONFIRMED_HOOKS:
         payments.CONFIRMED_HOOKS.append(_handover_confirmed)
+
+
+# --- What the outside shop asks of the fund (docs/07 section 6) ---
+
+
+def record_setaside(holder, amount, currency, reason, ref=None):
+    """A confirmed outside sale: the set-aside enters the seller's holding, a share becomes loss reserve, and any
+    excess above the holder's cap is asked to move on. `amount` is in `currency`; it is converted to the holder's."""
+    from . import books, trust
+
+    if holder.status != Holder.ACTIVE:
+        raise FundError(_("The seller is not an active holder."))
+    amount = (
+        cur(fx.from_eur(fx.to_eur(amount, currency), holder.currency)) if currency != holder.currency else cur(amount)
+    )
+    with transaction.atomic():
+        entry = books.post_fund(holder, "setaside", amount, reason, "internal", ref=ref)
+        trust.mark_reserve(amount, holder.currency, ("setaside", entry.pk), _("Loss reserve share of a set-aside"))
+        trust.move_excess()
+        return entry
+
+
+def reverse_setaside(holder, amount, currency, reason, ref=None):
+    """A refund: the set-aside is taken out of the holding again (the tax reserve stays with the seller)."""
+    from . import books, trust
+
+    amount = (
+        cur(fx.from_eur(fx.to_eur(amount, currency), holder.currency)) if currency != holder.currency else cur(amount)
+    )
+    try:
+        with transaction.atomic():
+            trust.release_reserve(amount, holder.currency, holder, _("Loss reserve share of a refunded set-aside"))
+            return books.post_fund(holder, "correction", -amount, reason, "internal", ref=ref)
+    except books.BooksError:
+        raise FundError(
+            _("The set-aside is no longer in this holding (it was already used or moved), so it cannot be taken back.")
+        ) from None

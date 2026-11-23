@@ -98,6 +98,10 @@ def _ticket_number(entry):
     return ""
 
 
+# Functions called with (member, year) that return more to show on the statement. The outside shop adds invoices.
+STATEMENT_EXTENSIONS: list = []
+
+
 def statement(holder, year) -> dict:
     """What the holder set aside, held, sent on and received in a year, with dates and ticket numbers."""
     entries = FundEntry.objects.filter(holder=holder, created_at__year=year).exclude(kind__in=books.RESERVE_KINDS)
@@ -127,6 +131,7 @@ def statement(holder, year) -> dict:
         "held_at_year_end": held_end.aggregate(t=Sum("amount"))["t"] or Decimal(0),
         "currency": holder.currency,
         "year": year,
+        "extensions": [ext(holder.member, year) for ext in STATEMENT_EXTENSIONS],
     }
 
 

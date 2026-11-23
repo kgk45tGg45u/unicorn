@@ -341,6 +341,8 @@ def _next_responsible(unit, exclude):
 def _notify(member, subject, body):
     from django.core import mail
 
+    if member is None:  # an outside customer has no account here
+        return
     audit.record("system", "notice.sent", member, subject=subject)
     if not member.deleted and member.status == "member":
         mail.send_mail(subject, body, None, [member.user.email])

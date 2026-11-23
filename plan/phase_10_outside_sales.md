@@ -5,7 +5,7 @@
 
 ---
 
-### - [ ] P10.T01 — Becoming an outside seller; euro prices by the council
+### - [x] P10.T01 — Becoming an outside seller; euro prices by the council
 
 **Read:** docs/07 section 6 ("Who sells", "What and at what price").
 **Files:** `apps/outside/` (new app), `apps/outside/models.py` (SellerProfile), `apps/members/fixtures/contracts.json` (add `outside_seller` v1), `apps/outside/services.py`, `apps/outside/views.py`, `apps/outside/tests/test_seller.py`
@@ -26,7 +26,7 @@
 
 ---
 
-### - [ ] P10.T02 — The outside shop and checkout
+### - [x] P10.T02 — The outside shop and checkout
 
 **Read:** docs/07 section 6 ("The outside shop").
 **Files:** `apps/outside/models.py` (OutsideCustomer), `apps/market/models.py` (OrderLine: `price_eur`, `currency`, `seller`), `apps/outside/views.py`, `apps/outside/templates/outside/*.html`, `apps/outside/tests/test_shop.py`
@@ -50,7 +50,7 @@
 
 ---
 
-### - [ ] P10.T03 — Payment received and the set-aside
+### - [x] P10.T03 — Payment received and the set-aside
 
 **Read:** docs/07 section 6 ("Payment", "The set-aside"); docs/07 section 5 (reserve).
 **Files:** `apps/outside/services.py`, `apps/outside/tests/test_setaside.py`
@@ -73,7 +73,7 @@
 
 ---
 
-### - [ ] P10.T04 — The cap on outside-sales hours
+### - [x] P10.T04 — The cap on outside-sales hours
 
 **Read:** docs/07 section 6 ("The cap on outside sales"); `economy.outside_sales_cap_share`.
 **Files:** `apps/outside/cap.py`, `apps/outside/tests/test_cap.py`
@@ -87,7 +87,7 @@
 
 ---
 
-### - [ ] P10.T05 — Invoices and the small-business limit
+### - [x] P10.T05 — Invoices and the small-business limit
 
 **Read:** docs/07 section 6 ("Who sells"); legal frame section 4 (VAT).
 **Files:** `apps/outside/models.py` (Invoice), `apps/outside/invoices.py`, `apps/outside/templates/outside/invoice.html`, `apps/outside/tests/test_invoices.py`
@@ -107,7 +107,7 @@
 
 ---
 
-### - [ ] P10.T06 — Consumer information and withdrawal
+### - [x] P10.T06 — Consumer information and withdrawal
 
 **Read:** docs/07 section 6; docs/08 section 8 (legal pages).
 **Files:** `apps/outside/templates/outside/consumer_info.html`, `.../withdrawal.html`, `apps/outside/services.py`, `apps/outside/tests/test_withdrawal.py`
@@ -126,7 +126,7 @@
 
 ---
 
-### - [ ] P10.T07 — Outside deliveries in the books of hours
+### - [x] P10.T07 — Outside deliveries in the books of hours
 
 **Read:** docs/03 sections 3 (Trade) and 8 (planning rate).
 **Files:** `apps/macro/accounts.py`, `apps/macro/world.py`, `apps/outside/tests/test_macro_link.py`
@@ -142,7 +142,7 @@
 
 ---
 
-### - [ ] P10.T08 — The yearly statement, now with sales
+### - [x] P10.T08 — The yearly statement, now with sales
 
 **Files:** `apps/tradefund/views.py`, `apps/tradefund/templates/tradefund/statement.html`, `apps/outside/tests/test_statement.py`
 

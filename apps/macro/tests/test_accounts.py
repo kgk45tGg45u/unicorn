@@ -76,11 +76,11 @@ def test_the_residual_warning_appears_when_recipes_and_hours_drift():
     assert str(accounts.RESIDUAL_WORDS)
 
 
-def test_accumulation_and_trade_come_from_the_purpose_of_production_orders():
-    from apps.market.models import ProductionOrder
+def test_accumulation_comes_from_production_orders_and_trade_from_delivered_outside_lines():
+    from apps.market.models import Order, OrderLine, ProductionOrder
 
     world = World()
-    po = ProductionOrder.objects.create(
+    ProductionOrder.objects.create(
         offer=world.bread,
         quantity=D(10),
         status="done",
@@ -89,16 +89,21 @@ def test_accumulation_and_trade_come_from_the_purpose_of_production_orders():
         done_at=timezone.now(),
         quantity_done=D(10),
     )
-    out = ProductionOrder.objects.create(
+    order = Order.objects.create(kind="outside", public_token="t" * 20)
+    OrderLine.objects.create(
+        order=order,
         offer=world.bread,
         quantity=D(4),
-        status="done",
-        purpose="outside",
+        price_uniq=0,
+        total_uniq=0,
+        price_eur=D("5.00"),
+        currency="EUR",
+        seller=world.baker,
+        value_at_order=D(4) * world.bread.value_total,
         due_date=timezone.localdate(),
-        done_at=timezone.now(),
-        quantity_done=D(4),
+        status="delivered",
+        delivered_at=timezone.now(),
     )
     data = accounts.hours_by_use(ledger.current_period())
     assert data["accumulation"] == (D(10) * world.bread.value_total).quantize(D("0.0001"))
     assert data["trade"] == (D(4) * world.bread.value_total).quantize(D("0.0001"))
-    assert po.pk and out.pk

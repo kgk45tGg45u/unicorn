@@ -94,6 +94,9 @@ class Offer(models.Model):
     sold_outside = models.BooleanField(default=False)
     outside_price = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     outside_currency = models.CharField(max_length=3, default="EUR")
+    outside_seller = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )  # the seller of record: a worker of the unit with an active SellerProfile (P10.T01)
 
     # computed by the value engine only (HF-3)
     declared_hours_per_unit = models.DecimalField(max_digits=18, decimal_places=4, default=0)

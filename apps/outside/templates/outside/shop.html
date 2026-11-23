@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Shop" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "The Unicorn shop" %}</h1>
+<p class="text-muted">{% translate "Things made by Unicorn members, for sale to everyone. You pay the seller directly. Each thing is made after you order it." %}</p>
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+  {% for o in offers %}<div class="col"><div class="card h-100"><div class="card-body">
+    <h2 class="h5">{{ o.item.name }}</h2>
+    <p class="mb-1">{{ o.outside_price }} {{ o.outside_currency }} · {{ o.item.uom_id }}</p>
+    <p class="small text-muted">{{ o.unit.town }} · {% translate "Sold by" %} {{ o.outside_seller.seller_profile.trader_name }}</p>
+    <a class="btn btn-primary" href="{% url 'outside:checkout' o.pk %}">{% translate "Order" %}</a>
+  </div></div></div>
+  {% empty %}<p class="lead">{% translate "Nothing is for sale here yet." %}</p>{% endfor %}
+</div>
+{% endblock %}

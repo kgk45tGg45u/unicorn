@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Withdraw" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Withdraw from your order" %}</h1>
+<div class="alert alert-warning"><strong>{% translate "DRAFT — to be checked by lawyers" %}</strong></div>
+{% if open %}
+<p>{% translate "You may withdraw within 14 days. The seller is told and refunds you." %}</p>
+<form method="post">{% csrf_token %}<button class="btn btn-danger" type="submit">{% translate "I withdraw from this order" %}</button></form>
+{% else %}
+<p>{% translate "The 14 days to withdraw have ended, or you already withdrew." %}</p>
+{% endif %}
+<p><a href="{% url 'outside:order' order.public_token %}">{% translate "Back to my order" %}</a></p>
+{% endblock %}

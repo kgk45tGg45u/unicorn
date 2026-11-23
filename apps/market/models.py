@@ -7,10 +7,18 @@ from apps.core.models import AppendOnlyModel
 class Order(models.Model):
     """One purchase by a member. Its lines hold the offer, the price and the status."""
 
-    KINDS = [("member", _("member"))]  # P10 adds "outside"
+    KINDS = [("member", _("member")), ("outside", _("outside customer"))]
     DELIVERY_MODES = [("pickup", _("pickup"))]  # P12 adds the courier and the carrier
 
-    buyer = models.ForeignKey("members.Member", on_delete=models.PROTECT, related_name="orders")
+    buyer = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="orders"
+    )  # empty for an outside customer's order
+    outside_customer = models.ForeignKey(
+        "outside.OutsideCustomer", null=True, blank=True, on_delete=models.PROTECT, related_name="orders"
+    )
+    public_token = models.CharField(max_length=40, blank=True)  # an outside customer opens the order with it
+    paid_at = models.DateTimeField(null=True, blank=True)  # outside orders: the seller confirmed the payment
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
     kind = models.CharField(max_length=8, choices=KINDS, default="member")
     delivery_mode = models.CharField(max_length=16, choices=DELIVERY_MODES, default="pickup")
     note = models.CharField(max_length=300, blank=True)
@@ -20,7 +28,7 @@ class Order(models.Model):
         ordering = ["-created_at", "-id"]
 
     def __str__(self):
-        return f"order {self.pk} of {self.buyer.number}"
+        return f"order {self.pk} of {self.buyer.number if self.buyer_id else 'an outside customer'}"
 
 
 class OrderLine(models.Model):
@@ -44,6 +52,13 @@ class OrderLine(models.Model):
     quantity = models.DecimalField(max_digits=14, decimal_places=4)
     price_uniq = models.DecimalField(max_digits=18, decimal_places=4)  # per unit, as it was when ordered (HF-3)
     total_uniq = models.DecimalField(max_digits=18, decimal_places=4)
+    # an outside customer's line: the euro price at ordering, the seller, and the hours inside it (no UNIQ move: HF-4)
+    price_eur = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    currency = models.CharField(max_length=3, blank=True)
+    seller = models.ForeignKey(
+        "members.Member", null=True, blank=True, on_delete=models.PROTECT, related_name="outside_lines"
+    )
+    value_at_order = models.DecimalField(max_digits=18, decimal_places=4, default=0)
     hold = models.ForeignKey("ledger.Hold", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
     status = models.CharField(max_length=14, choices=STATUSES, default=PLACED)
     due_date = models.DateField(null=True, blank=True)

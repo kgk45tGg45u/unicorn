@@ -87,7 +87,9 @@ def expected_consumption(period, months=3) -> Decimal:
             status__in=("placed", "from_stock", "in_production", "ready", "handed_over"),
             due_date__gte=first,
             due_date__lt=after,
-        ).aggregate(t=Sum("total_uniq"))["t"]
+        )
+        .exclude(order__kind="outside")
+        .aggregate(t=Sum("total_uniq"))["t"]
         or ZERO
     )
     periods = [period, *_previous_periods(period, months - 1)]

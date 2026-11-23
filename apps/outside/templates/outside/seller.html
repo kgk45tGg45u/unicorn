@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Selling outside" %} · Unicorn{% endblock %}
+{% block content %}
+<h1>{% translate "Selling to outside customers" %}</h1>
+{% if not profile %}
+<p>{% translate "You sell in your own name. Your name and address appear on invoices, you pay your own taxes from the tax reserve, and the set-aside belongs to the group. You must also be a holder." %}</p>
+<form method="post" style="max-width:34rem">{% csrf_token %}<input type="hidden" name="do" value="activate">
+  <div class="mb-2"><label class="form-label" for="t">{% translate "Name on invoices" %}</label><input class="form-control" id="t" name="trader_name"></div>
+  <div class="mb-2"><label class="form-label" for="a">{% translate "Address on invoices" %}</label><textarea class="form-control" id="a" name="address" rows="2"></textarea></div>
+  <div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="sb" name="small_business" checked><label class="form-check-label" for="sb">{% translate "Small business (§ 19 UStG): no VAT is charged" %}</label></div>
+  <div class="mb-2"><label class="form-label" for="v">{% translate "VAT ID, if you have one" %}</label><input class="form-control" id="v" name="vat_id"></div>
+  <div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="si" name="show_iban" checked><label class="form-check-label" for="si">{% translate "Show my account number to customers" %}</label></div>
+  <button class="btn btn-primary" type="submit">{% translate "Switch on outside sales" %}</button></form>
+{% else %}
+<p>{{ profile.trader_name }} · {% translate "tax reserve" %}: {{ profile.tax_reserve_share }}</p>
+<h2 class="h5">{% translate "Orders" %}</h2>
+<ul class="list-group mb-4">{% for line, total, ref in lines %}<li class="list-group-item">
+  <strong>{{ ref }}</strong> · {{ line.quantity|floatformat:"-2" }} × {{ line.offer.item.name }} · {{ total }} {{ line.currency }} · {% if line.order.withdrawn_at %}{% translate "withdrawn" %}{% elif line.status == "cancelled" %}{% translate "cancelled" %}{% elif not line.order.paid_at %}{% translate "waiting for payment" %}{% else %}{{ line.get_status_display }}{% endif %}
+  <div class="d-flex gap-2 mt-1">
+  {% if not line.order.paid_at and line.status != "cancelled" %}<form method="post" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="do" value="paid"><input type="hidden" name="order" value="{{ line.order.pk }}"><input class="form-control form-control-sm" name="amount" value="{{ total }}" style="width:7rem" aria-label="{% translate 'Amount received' %}"><button class="btn btn-sm btn-primary">{% translate "Payment received" %}</button></form>{% endif %}
+  {% if line.status == "ready" or line.status == "from_stock" %}<form method="post">{% csrf_token %}<input type="hidden" name="do" value="deliver"><input type="hidden" name="line" value="{{ line.pk }}"><button class="btn btn-sm btn-success">{% translate "Handed over" %}</button></form>{% endif %}
+  {% if line.order.paid_at and not line.order.invoice.refunded_at %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'outside:seller_invoice' line.order.invoice.pk %}">{% translate "Invoice" %}</a>
+  <form method="post" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="do" value="refund"><input type="hidden" name="order" value="{{ line.order.pk }}"><input class="form-control form-control-sm" name="reason" placeholder="{% translate 'Reason' %}" style="width:9rem"><button class="btn btn-sm btn-outline-danger">{% translate "Refund" %}</button></form>{% endif %}
+  </div></li>{% empty %}<li class="list-group-item text-muted">{% translate "No orders yet." %}</li>{% endfor %}</ul>
+<h2 class="h5">{% translate "Sell one of my unit's offers outside" %}</h2>
+<form method="post" class="d-flex gap-2 flex-wrap mb-4">{% csrf_token %}<input type="hidden" name="do" value="offer">
+  <select class="form-select" name="offer" style="max-width:16rem">{% for o in offers %}<option value="{{ o.pk }}">{{ o.item.name }}</option>{% endfor %}</select>
+  <input class="form-control" name="price" placeholder="{% translate 'Price in euros' %}" style="max-width:10rem"><input type="hidden" name="currency" value="EUR">
+  <button class="btn btn-outline-primary">{% translate "Propose" %}</button></form>
+<h2 class="h5">{% translate "My tax reserve" %}</h2>
+<form method="post" class="d-flex gap-2 flex-wrap">{% csrf_token %}<input type="hidden" name="do" value="tax"><input class="form-control" name="share" value="{{ profile.tax_reserve_share }}" style="max-width:8rem"><input class="form-control" name="reason" placeholder="{% translate 'Why do you change it?' %}" style="max-width:20rem"><button class="btn btn-outline-secondary">{% translate "Change" %}</button></form>
+{% endif %}
+{% endblock %}
